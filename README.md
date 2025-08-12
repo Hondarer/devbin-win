@@ -33,3 +33,17 @@ from [Antonz0/doxybook2](https://github.com/Antonz0/doxybook2)
 
 + [/releases/tag/v1.6.1](https://github.com/Antonz0/doxybook2/releases/tag/v1.6.1)
     + [doxybook2-windows-win64-v1.6.1.zip](https://github.com/Antonz0/doxybook2/releases/download/v1.6.1/doxybook2-windows-win64-v1.6.1.zip)
+
+## Microsoft Build of OpenJDK
+
+from [Download the Microsoft Build of OpenJDK](https://learn.microsoft.com/en-us/java/openjdk/download)
+
++ [OpenJDK 21.0.8 LTS](https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-2108-lts--see-previous-releases)
+    + [microsoft-jdk-21.0.8-windows-x64.zip](https://aka.ms/download-jdk/microsoft-jdk-21.0.8-windows-x64.zip)
+
+## PlantUML
+
+from [plantuml](https://github.com/plantuml/plantuml)
+
++ [/releases/tag/v1.2025.4](https://github.com/plantuml/plantuml/releases/tag/v1.2025.4)
+    + [plantuml-1.2025.4.jar](https://github.com/plantuml/plantuml/releases/download/v1.2025.4/plantuml-1.2025.4.jar)
