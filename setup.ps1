@@ -21,8 +21,19 @@ function Get-PackageShortName {
     if ($PackageName -match "pandoc-crossref") { return "pandoc-crossref" }
     if ($PackageName -match "Doxygen") { return "doxygen" }
     if ($PackageName -match "doxybook2") { return "doxybook2" }
+    if ($PackageName -match "Microsoft JDK") { return "jdk" }
     # Add more package name mappings as needed
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
+}
+
+function Test-SpecialPackageHandling {
+    param([string]$PackageName)
+    
+    # Check if package requires special subdirectory handling
+    if ($PackageName -match "Microsoft JDK") {
+        return $true
+    }
+    return $false
 }
 
 function Get-ResolvedFileName {
@@ -198,32 +209,93 @@ function Extract-Package {
         }
         
         if ($sourcePath) {
-            # Copy files to bin directory with duplicate handling
-            Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
-                if ($sourcePath -eq $TempDir) {
-                    # Files are directly in temp directory
-                    $relativePath = $_.Name
+            # Check if this package requires special handling
+            $isSpecialPackage = Test-SpecialPackageHandling -PackageName $PackageName
+            
+            if ($isSpecialPackage -and $PackageName -match "Microsoft JDK") {
+                # Special handling for Microsoft JDK
+                Write-Host "Applying special JDK handling..." -ForegroundColor Yellow
+                
+                # Find the JDK folder (e.g., jdk-21.0.8+9)
+                # Check if the sourcePath itself is a JDK folder
+                if ((Split-Path $sourcePath -Leaf) -match "^jdk-\d+") {
+                    # The extracted folder is the JDK folder itself
+                    $jdkFolder = Get-Item $sourcePath
+                    Write-Host "Source path is JDK folder: $($jdkFolder.Name)" -ForegroundColor Green
                 } else {
-                    # Files are in a subdirectory
-                    $relativePath = $_.FullName.Substring($sourcePath.Length + 1)
+                    # Look for JDK folder inside the source path
+                    $jdkFolder = Get-ChildItem -Path $sourcePath -Directory | Where-Object { $_.Name -match "^jdk-\d+" } | Select-Object -First 1
                 }
                 
-                if ($_.PSIsContainer) {
-                    # Directory case - no renaming needed for directories
-                    $destinationPath = Join-Path $BinDir $relativePath
-                    if (!(Test-Path $destinationPath)) {
-                        New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                if ($jdkFolder) {
+                    Write-Host "Found JDK folder: $($jdkFolder.Name)" -ForegroundColor Green
+                    
+                    # Extract major version and create target folder name (e.g., jdk-21)
+                    if ($jdkFolder.Name -match "^jdk-(\d+)") {
+                        $majorVersion = $matches[1]
+                        $targetFolderName = "jdk-$majorVersion"
+                        $targetPath = Join-Path $BinDir $targetFolderName
+                        
+                        Write-Host "Creating target directory: $targetFolderName" -ForegroundColor Green
+                        
+                        # Create target directory
+                        if (!(Test-Path $targetPath)) {
+                            New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+                        }
+                        
+                        # Copy JDK folder contents to target directory
+                        Get-ChildItem -Path $jdkFolder.FullName -Recurse | ForEach-Object {
+                            $relativePath = $_.FullName.Substring($jdkFolder.FullName.Length + 1)
+                            $destinationPath = Join-Path $targetPath $relativePath
+                            
+                            if ($_.PSIsContainer) {
+                                if (!(Test-Path $destinationPath)) {
+                                    New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                                }
+                            } else {
+                                $destinationDir = Split-Path $destinationPath -Parent
+                                if ($destinationDir -and !(Test-Path $destinationDir)) {
+                                    New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                                }
+                                Copy-Item -Path $_.FullName -Destination $destinationPath -Force
+                            }
+                        }
+                        
+                        Write-Host "JDK installed to: $targetPath" -ForegroundColor Green
+                    } else {
+                        Write-Host "Warning: Could not extract major version from JDK folder name: $($jdkFolder.Name)" -ForegroundColor Yellow
                     }
                 } else {
-                    # File case - check for duplicates and resolve
-                    $resolvedPath = Get-ResolvedFileName -OriginalPath $relativePath -PackageName $PackageName -BinDir $BinDir
-                    $destinationPath = Join-Path $BinDir $resolvedPath
-                    
-                    $destinationDir = Split-Path $destinationPath -Parent
-                    if ($destinationDir -and !(Test-Path $destinationDir)) {
-                        New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                    Write-Host "Warning: JDK folder not found in extracted archive" -ForegroundColor Yellow
+                }
+            } else {
+                # Standard handling for other packages
+                Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
+                    if ($sourcePath -eq $TempDir) {
+                        # Files are directly in temp directory
+                        $relativePath = $_.Name
+                    } else {
+                        # Files are in a subdirectory
+                        $relativePath = $_.FullName.Substring($sourcePath.Length + 1)
                     }
-                    Copy-Item -Path $_.FullName -Destination $destinationPath -Force
+                    
+                    if ($_.PSIsContainer) {
+                        # Directory case - no renaming needed for directories
+                        $destinationPath = Join-Path $BinDir $relativePath
+                        if (!(Test-Path $destinationPath)) {
+                            New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                        }
+                    } else {
+                        # File case - check for duplicates and resolve
+                        $resolvedPath = Get-ResolvedFileName -OriginalPath $relativePath -PackageName $PackageName -BinDir $BinDir
+                        $destinationPath = Join-Path $BinDir $resolvedPath
+                        
+                        $destinationDir = Split-Path $destinationPath -Parent
+                        if ($destinationDir -and !(Test-Path $destinationDir)) {
+                            New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                        }
+                        Copy-Item -Path $_.FullName -Destination $destinationPath -Force
+                    }
                 }
             }
             
@@ -270,6 +342,10 @@ $extractionResults += $doxygenResult
 # Extract doxybook2
 $doxybook2Result = Extract-Package -ArchiveFile "packages\doxybook2-windows-win64-v1.6.1.zip" -PackageName "doxybook2 v1.6.1"
 $extractionResults += $doxybook2Result
+
+# Extract Microsoft JDK
+$jdkResult = Extract-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8"
+$extractionResults += $jdkResult
 
 # Check overall result
 $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
