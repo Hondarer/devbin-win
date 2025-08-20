@@ -408,6 +408,16 @@ endlocal
                             }
                         }
                         
+                        # Add standard library zip first
+                        $zipFiles = Get-ChildItem -Path $targetPath -Filter "python*.zip"
+                        if ($zipFiles) {
+                            $zipFile = $zipFiles[0].Name
+                            if (-not ($newContent -contains $zipFile)) {
+                                $newContent = @($zipFile) + $newContent
+                                Write-Host "  Added standard library: $zipFile" -ForegroundColor Green
+                            }
+                        }
+                        
                         # Add site-packages if not found
                         if (-not $sitePackagesAdded) {
                             $newContent += "Lib\site-packages"
@@ -420,8 +430,9 @@ endlocal
                         $newContent += "import site"
                         Write-Host "  Enabled 'import site'" -ForegroundColor Green
                         
-                        # Write back the modified content
-                        $newContent | Out-File -FilePath $pthFile.FullName -Encoding UTF8
+                        # Write back the modified content (UTF-8 without BOM)
+                        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                        [System.IO.File]::WriteAllText($pthFile.FullName, ($newContent -join "`r`n"), $utf8NoBom)
                     }
                     
                     # Install pip
@@ -429,7 +440,22 @@ endlocal
                     $pythonExe = Join-Path $targetPath "python.exe"
                     if (Test-Path $pythonExe) {
                         try {
-                            & $pythonExe $getPipDestination
+                            # Set environment variables to help Python find standard library
+                            $env:PYTHONHOME = $targetPath
+                            
+                            # Find the python zip file for standard library and set PYTHONPATH
+                            $zipFiles = Get-ChildItem -Path $targetPath -Filter "python*.zip"
+                            if ($zipFiles) {
+                                $zipPath = $zipFiles[0].FullName
+                                $env:PYTHONPATH = "$targetPath;$zipPath"
+                                Write-Host "  Set PYTHONHOME: $targetPath" -ForegroundColor Yellow
+                                Write-Host "  Set PYTHONPATH: $targetPath;$zipPath" -ForegroundColor Yellow
+                            } else {
+                                $env:PYTHONPATH = $targetPath
+                                Write-Host "  Set PYTHONPATH: $targetPath (zip file not found)" -ForegroundColor Yellow
+                            }
+                            
+                            & $pythonExe $getPipDestination --no-warn-script-location
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "pip installed successfully" -ForegroundColor Green
                             } else {
@@ -437,6 +463,10 @@ endlocal
                             }
                         } catch {
                             Write-Host "Warning: Failed to install pip: $($_.Exception.Message)" -ForegroundColor Yellow
+                        } finally {
+                            # Clean up environment variables
+                            Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
+                            Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
                         }
                     } else {
                         Write-Host "Warning: python.exe not found, skipping pip installation" -ForegroundColor Yellow
@@ -520,36 +550,36 @@ Write-Host "Starting package extraction process..." -ForegroundColor Cyan
 $extractionResults = @()
 
 # Extract Node.js
-$nodeResult = Extract-Package -ArchiveFile "packages\node-v22.18.0-win-x64.zip" -PackageName "Node.js v22.18.0"
-$extractionResults += $nodeResult
+$nodeOutput = Extract-Package -ArchiveFile "packages\node-v22.18.0-win-x64.zip" -PackageName "Node.js v22.18.0"
+$extractionResults += @($nodeOutput[-1])
 
-# Extract Pandoc
-$pandocResult = Extract-Package -ArchiveFile "packages\pandoc-3.7.0.2-windows-x86_64.zip" -PackageName "Pandoc 3.7.0.2"
-$extractionResults += $pandocResult
+# Extract Pandoc  
+$pandocOutput = Extract-Package -ArchiveFile "packages\pandoc-3.7.0.2-windows-x86_64.zip" -PackageName "Pandoc 3.7.0.2"
+$extractionResults += @($pandocOutput[-1])
 
 # Extract pandoc-crossref
-$crossrefResult = Extract-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref"
-$extractionResults += $crossrefResult
+$crossrefOutput = Extract-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref"
+$extractionResults += @($crossrefOutput[-1])
 
 # Extract Doxygen
-$doxygenResult = Extract-Package -ArchiveFile "packages\doxygen-1.14.0.windows.x64.bin.zip" -PackageName "Doxygen 1.14.0"
-$extractionResults += $doxygenResult
+$doxygenOutput = Extract-Package -ArchiveFile "packages\doxygen-1.14.0.windows.x64.bin.zip" -PackageName "Doxygen 1.14.0"
+$extractionResults += @($doxygenOutput[-1])
 
 # Extract doxybook2
-$doxybook2Result = Extract-Package -ArchiveFile "packages\doxybook2-windows-win64-v1.6.1.zip" -PackageName "doxybook2 v1.6.1"
-$extractionResults += $doxybook2Result
+$doxybook2Output = Extract-Package -ArchiveFile "packages\doxybook2-windows-win64-v1.6.1.zip" -PackageName "doxybook2 v1.6.1"
+$extractionResults += @($doxybook2Output[-1])
 
 # Extract Microsoft JDK
-$jdkResult = Extract-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8"
-$extractionResults += $jdkResult
+$jdkOutput = Extract-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8"
+$extractionResults += @($jdkOutput[-1])
 
 # Extract PlantUML
-$plantumlResult = Extract-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4"
-$extractionResults += $plantumlResult
+$plantumlOutput = Extract-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4"
+$extractionResults += @($plantumlOutput[-1])
 
 # Extract Python
-$pythonResult = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7"
-$extractionResults += $pythonResult
+$pythonOutput = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7"
+$extractionResults += @($pythonOutput[-1])
 
 # Check overall result
 $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
