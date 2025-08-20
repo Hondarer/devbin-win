@@ -126,6 +126,13 @@ function Extract-Package {
     
     Write-Host "Archive file found: $ArchiveFile" -ForegroundColor Green
     
+    # Unblock the archive file to prevent security restrictions
+    try {
+        Unblock-File -Path $ArchiveFile -ErrorAction SilentlyContinue
+    } catch {
+        # Silently continue if unblocking fails
+    }
+    
     # Special handling for PlantUML JAR files
     if ($PackageName -match "PlantUML" -and $ArchiveFile -match "\.jar$") {
         Write-Host "Detected PlantUML JAR file, applying special handling..." -ForegroundColor Yellow
@@ -486,6 +493,26 @@ endlocal
         }
     }
 }
+
+# Unblock all package files first
+Write-Host "Unblocking package files..." -ForegroundColor Cyan
+$packageFiles = Get-ChildItem -Path "packages" -File
+foreach ($packageFile in $packageFiles) {
+    try {
+        # Try to unblock the file directly (safer approach)
+        $beforeAttribs = (Get-Item $packageFile.FullName).Attributes
+        Unblock-File -Path $packageFile.FullName -ErrorAction SilentlyContinue
+        $afterAttribs = (Get-Item $packageFile.FullName).Attributes
+        
+        # If attributes changed, the file was likely blocked
+        if ($beforeAttribs -ne $afterAttribs) {
+            Write-Host "Unblocked: $($packageFile.Name)" -ForegroundColor Yellow
+        }
+    } catch {
+        # Silently continue if unblocking fails
+    }
+}
+Write-Host "Package file unblocking completed." -ForegroundColor Green
 
 # Extract packages
 Write-Host "Starting package extraction process..." -ForegroundColor Cyan
