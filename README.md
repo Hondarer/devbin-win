@@ -54,13 +54,28 @@ from [plantuml](https://github.com/plantuml/plantuml)
 + [/releases/tag/v1.2025.4](https://github.com/plantuml/plantuml/releases/tag/v1.2025.4)
     + [plantuml-1.2025.4.jar](https://github.com/plantuml/plantuml/releases/download/v1.2025.4/plantuml-1.2025.4.jar)
 
+### Python
+
+from [python.org](https://www.python.org/)
+
++ [Python Releases for Windows](https://www.python.org/downloads/windows/)
+    + [Python 3.13.7](https://www.python.org/downloads/release/python-3137/)
+        + [Windows embeddable package (64-bit)](https://www.python.org/ftp/python/3.13.7/python-3.13.7-embed-amd64.zip)
+
++ [get-pip](https://bootstrap.pypa.io/get-pip.py)
+
 ## セットアップ
 
 以下のコマンドで実行ファイルを bin フォルダに展開します。  
-展開後、bin フォルダに PATH を通してください。
+展開後、bin フォルダと bin\python-3.13 フォルダに PATH を通してください。  
+また、PYTHONPATH を以下のように設定してください。
+
+```bat
+set PYTHONPATH=C:\path\to\your\bin\python-3.13\Lib\site-packages
+```
 
 PlantUML のために java をセットアップしています。  
-java を直接利用する場合は、bin/jdk-21/bin フォルダに PATH を通し、bin/jdk-21 を JAVA_HOME として設定してください。
+java を外部から利用する場合は、bin/jdk-21/bin フォルダに PATH を通し、bin/jdk-21 を JAVA_HOME として設定してください。
 
 ### PowerShell から実行
 

@@ -23,6 +23,7 @@ function Get-PackageShortName {
     if ($PackageName -match "doxybook2") { return "doxybook2" }
     if ($PackageName -match "Microsoft JDK") { return "jdk" }
     if ($PackageName -match "PlantUML") { return "plantuml" }
+    if ($PackageName -match "Python") { return "python" }
     # Add more package name mappings as needed
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
 }
@@ -35,6 +36,9 @@ function Test-SpecialPackageHandling {
         return $true
     }
     if ($PackageName -match "PlantUML") {
+        return $true
+    }
+    if ($PackageName -match "Python") {
         return $true
     }
     return $false
@@ -312,6 +316,127 @@ endlocal
                 } else {
                     Write-Host "Warning: JDK folder not found in extracted archive" -ForegroundColor Yellow
                 }
+            }
+            elseif ($isSpecialPackage -and $PackageName -match "Python") {
+                # Special handling for Python embeddable package
+                Write-Host "Applying special Python embeddable package handling..." -ForegroundColor Yellow
+                
+                # Extract major.minor version from package name or archive name
+                $pythonVersion = "3.13"  # Default version
+                if ($ArchiveFile -match "python-(\d+\.\d+)") {
+                    $pythonVersion = $matches[1]
+                }
+                
+                $targetFolderName = "python-$pythonVersion"
+                $targetPath = Join-Path $BinDir $targetFolderName
+                
+                Write-Host "Creating target directory: $targetFolderName" -ForegroundColor Green
+                
+                # Create target directory
+                if (!(Test-Path $targetPath)) {
+                    New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+                }
+                
+                # Copy Python files to target directory
+                # For Python embeddable package, files might be directly in sourcePath or in a subdirectory
+                if ($sourcePath -eq $TempDir) {
+                    # Files are directly in temp directory
+                    Get-ChildItem -Path $sourcePath -File | ForEach-Object {
+                        $destinationPath = Join-Path $targetPath $_.Name
+                        Copy-Item -Path $_.FullName -Destination $destinationPath -Force
+                    }
+                } else {
+                    # Files are in a subdirectory
+                    Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
+                        $relativePath = $_.FullName.Substring($sourcePath.Length + 1)
+                        $destinationPath = Join-Path $targetPath $relativePath
+                        
+                        if ($_.PSIsContainer) {
+                            if (!(Test-Path $destinationPath)) {
+                                New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                            }
+                        } else {
+                            $destinationDir = Split-Path $destinationPath -Parent
+                            if ($destinationDir -and !(Test-Path $destinationDir)) {
+                                New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                            }
+                            Copy-Item -Path $_.FullName -Destination $destinationPath -Force
+                        }
+                    }
+                }
+                
+                Write-Host "Python installed to: $targetPath" -ForegroundColor Green
+                
+                # Copy get-pip.py if it exists
+                $getPipPath = "packages\get-pip.py"
+                if (Test-Path $getPipPath) {
+                    $getPipDestination = Join-Path $targetPath "get-pip.py"
+                    Copy-Item -Path $getPipPath -Destination $getPipDestination -Force
+                    Write-Host "Copied get-pip.py to Python directory" -ForegroundColor Green
+                    
+                    # Patch pth file to enable site-packages
+                    $pthFiles = Get-ChildItem -Path $targetPath -Filter "*._pth"
+                    foreach ($pthFile in $pthFiles) {
+                        Write-Host "Patching pth file: $($pthFile.Name)" -ForegroundColor Yellow
+                        
+                        $pthContent = Get-Content $pthFile.FullName
+                        $newContent = @()
+                        $sitePackagesAdded = $false
+                        
+                        foreach ($line in $pthContent) {
+                            # Skip comment lines about import site
+                            if ($line -match "^#.*import.*site") {
+                                continue
+                            }
+                            # Skip existing import site line to add it at the end
+                            elseif ($line -match "^import\s+site") {
+                                continue
+                            } else {
+                                $newContent += $line
+                            }
+                            
+                            # Check if site-packages is already present
+                            if ($line -match "Lib\\site-packages") {
+                                $sitePackagesAdded = $true
+                            }
+                        }
+                        
+                        # Add site-packages if not found
+                        if (-not $sitePackagesAdded) {
+                            $newContent += "Lib\site-packages"
+                            Write-Host "  Added Lib\site-packages path" -ForegroundColor Green
+                        }
+                        
+                        # Add import site at the end
+                        $newContent += ""
+                        $newContent += "# Uncomment to run site.main() automatically"
+                        $newContent += "import site"
+                        Write-Host "  Enabled 'import site'" -ForegroundColor Green
+                        
+                        # Write back the modified content
+                        $newContent | Out-File -FilePath $pthFile.FullName -Encoding UTF8
+                    }
+                    
+                    # Install pip
+                    Write-Host "Installing pip..." -ForegroundColor Yellow
+                    $pythonExe = Join-Path $targetPath "python.exe"
+                    if (Test-Path $pythonExe) {
+                        try {
+                            & $pythonExe $getPipDestination
+                            if ($LASTEXITCODE -eq 0) {
+                                Write-Host "pip installed successfully" -ForegroundColor Green
+                            } else {
+                                Write-Host "Warning: pip installation may have issues (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+                            }
+                        } catch {
+                            Write-Host "Warning: Failed to install pip: $($_.Exception.Message)" -ForegroundColor Yellow
+                        }
+                    } else {
+                        Write-Host "Warning: python.exe not found, skipping pip installation" -ForegroundColor Yellow
+                    }
+                } else {
+                    Write-Host "Warning: get-pip.py not found, skipping pip installation" -ForegroundColor Yellow
+                }
             } else {
                 # Standard handling for other packages
                 Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
@@ -394,6 +519,10 @@ $extractionResults += $jdkResult
 # Extract PlantUML
 $plantumlResult = Extract-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4"
 $extractionResults += $plantumlResult
+
+# Extract Python
+$pythonResult = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7"
+$extractionResults += $pythonResult
 
 # Check overall result
 $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
