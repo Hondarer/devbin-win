@@ -59,6 +59,9 @@ from [plantuml](https://github.com/plantuml/plantuml)
 以下のコマンドで実行ファイルを bin フォルダに展開します。  
 展開後、bin フォルダに PATH を通してください。
 
+PlantUML のために java をセットアップしています。  
+java を直接利用する場合は、bin/jdk-21/bin フォルダに PATH を通し、bin/jdk-21 を JAVA_HOME として設定してください。
+
 ### PowerShell から実行
 
 ```powershell

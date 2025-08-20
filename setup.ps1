@@ -22,6 +22,7 @@ function Get-PackageShortName {
     if ($PackageName -match "Doxygen") { return "doxygen" }
     if ($PackageName -match "doxybook2") { return "doxybook2" }
     if ($PackageName -match "Microsoft JDK") { return "jdk" }
+    if ($PackageName -match "PlantUML") { return "plantuml" }
     # Add more package name mappings as needed
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
 }
@@ -29,8 +30,11 @@ function Get-PackageShortName {
 function Test-SpecialPackageHandling {
     param([string]$PackageName)
     
-    # Check if package requires special subdirectory handling
+    # Check if package requires special handling
     if ($PackageName -match "Microsoft JDK") {
+        return $true
+    }
+    if ($PackageName -match "PlantUML") {
         return $true
     }
     return $false
@@ -117,6 +121,46 @@ function Extract-Package {
     }
     
     Write-Host "Archive file found: $ArchiveFile" -ForegroundColor Green
+    
+    # Special handling for PlantUML JAR files
+    if ($PackageName -match "PlantUML" -and $ArchiveFile -match "\.jar$") {
+        Write-Host "Detected PlantUML JAR file, applying special handling..." -ForegroundColor Yellow
+        
+        # Create bin directory if it doesn't exist
+        if (!(Test-Path $BinDir)) {
+            New-Item -ItemType Directory -Path $BinDir
+            Write-Host "Created bin directory." -ForegroundColor Green
+        }
+        
+        # Extract JAR file name
+        $jarFileName = Split-Path $ArchiveFile -Leaf
+        Write-Host "PlantUML JAR file: $jarFileName" -ForegroundColor Green
+        
+        # Copy JAR file to bin directory
+        $jarDestination = Join-Path $BinDir $jarFileName
+        Copy-Item -Path $ArchiveFile -Destination $jarDestination -Force
+        Write-Host "Copied $jarFileName to bin directory" -ForegroundColor Green
+        
+        # Create plantuml.cmd batch file
+        $cmdContent = @"
+@echo off
+setlocal
+
+set "SCRIPT_DIR=%~dp0"
+set "JAVA_HOME=%SCRIPT_DIR%jdk-21"
+"%JAVA_HOME%\bin\java.exe" -jar "%SCRIPT_DIR%$jarFileName" %*
+
+endlocal
+"@
+        
+        $cmdPath = Join-Path $BinDir "plantuml.cmd"
+        $cmdContent | Out-File -FilePath $cmdPath -Encoding ASCII
+        Write-Host "Created plantuml.cmd wrapper script" -ForegroundColor Green
+        Write-Host "PlantUML can be run with: plantuml.cmd" -ForegroundColor Cyan
+        
+        Write-Host "$PackageName binary extraction completed." -ForegroundColor Green
+        return $true
+    }
     
     # Create bin directory
     if (!(Test-Path $BinDir)) {
@@ -346,6 +390,10 @@ $extractionResults += $doxybook2Result
 # Extract Microsoft JDK
 $jdkResult = Extract-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8"
 $extractionResults += $jdkResult
+
+# Extract PlantUML
+$plantumlResult = Extract-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4"
+$extractionResults += $plantumlResult
 
 # Check overall result
 $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
