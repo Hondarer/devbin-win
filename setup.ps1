@@ -2,10 +2,10 @@
 # Extracts binaries from packages folder to bin directory
 
 # Clean bin directory at startup
-Write-Host "Cleaning bin directory..." -ForegroundColor Yellow
+Write-Host "Cleaning bin directory..."
 if (Test-Path "bin") {
     Remove-Item -Path "bin" -Recurse -Force
-    Write-Host "Removed existing bin directory." -ForegroundColor Green
+    Write-Host "Removed existing bin directory."
 }
 
 # Global cache for duplicate file tracking
@@ -115,7 +115,7 @@ function Extract-Package {
         [string]$TempDir = "temp_extract"
     )
     
-    Write-Host "Starting $PackageName binary extraction..." -ForegroundColor Green
+    Write-Host "Starting $PackageName binary extraction..."
     
     # Check if archive file exists
     if (!(Test-Path $ArchiveFile)) {
@@ -124,7 +124,7 @@ function Extract-Package {
         return $false
     }
     
-    Write-Host "Archive file found: $ArchiveFile" -ForegroundColor Green
+    Write-Host "Archive file found: $ArchiveFile"
     
     # Unblock the archive file to prevent security restrictions
     try {
@@ -135,22 +135,22 @@ function Extract-Package {
     
     # Special handling for PlantUML JAR files
     if ($PackageName -match "PlantUML" -and $ArchiveFile -match "\.jar$") {
-        Write-Host "Detected PlantUML JAR file, applying special handling..." -ForegroundColor Yellow
+        Write-Host "Detected PlantUML JAR file, applying special handling..."
         
         # Create bin directory if it doesn't exist
         if (!(Test-Path $BinDir)) {
             New-Item -ItemType Directory -Path $BinDir
-            Write-Host "Created bin directory." -ForegroundColor Green
+            Write-Host "Created bin directory."
         }
         
         # Extract JAR file name
         $jarFileName = Split-Path $ArchiveFile -Leaf
-        Write-Host "PlantUML JAR file: $jarFileName" -ForegroundColor Green
+        Write-Host "PlantUML JAR file: $jarFileName"
         
         # Copy JAR file to bin directory
         $jarDestination = Join-Path $BinDir $jarFileName
         Copy-Item -Path $ArchiveFile -Destination $jarDestination -Force
-        Write-Host "Copied $jarFileName to bin directory" -ForegroundColor Green
+        Write-Host "Copied $jarFileName to bin directory"
         
         # Create plantuml.cmd batch file
         $cmdContent = @"
@@ -166,17 +166,17 @@ endlocal
         
         $cmdPath = Join-Path $BinDir "plantuml.cmd"
         $cmdContent | Out-File -FilePath $cmdPath -Encoding ASCII
-        Write-Host "Created plantuml.cmd wrapper script" -ForegroundColor Green
-        Write-Host "PlantUML can be run with: plantuml.cmd" -ForegroundColor Cyan
+        Write-Host "Created plantuml.cmd wrapper script"
+        Write-Host "PlantUML can be run with: plantuml.cmd"
         
-        Write-Host "$PackageName binary extraction completed." -ForegroundColor Green
+        Write-Host "$PackageName binary extraction completed."
         return $true
     }
     
     # Create bin directory
     if (!(Test-Path $BinDir)) {
         New-Item -ItemType Directory -Path $BinDir
-        Write-Host "Created bin directory." -ForegroundColor Green
+        Write-Host "Created bin directory."
     }
     
     # Create temporary directory
@@ -186,7 +186,7 @@ endlocal
     New-Item -ItemType Directory -Path $TempDir
     
     try {
-        Write-Host "Extracting archive file..." -ForegroundColor Yellow
+        Write-Host "Extracting archive file..."
         
         # Determine file type and extract accordingly
         $fileExtension = [System.IO.Path]::GetExtension($ArchiveFile).ToLower()
@@ -200,7 +200,7 @@ endlocal
             try {
                 $tarPath = "$env:WINDIR\System32\tar.exe"
                 if (Test-Path $tarPath) {
-                    Write-Host "Using Windows built-in tar.exe (libarchive) for .7z extraction..." -ForegroundColor Yellow
+                    Write-Host "Using Windows built-in tar.exe (libarchive) for .7z extraction..."
                     
                     # Use tar.exe with libarchive to extract .7z file
                     $absoluteArchive = (Resolve-Path $ArchiveFile).Path
@@ -212,7 +212,7 @@ endlocal
                         throw "tar.exe extraction failed with exit code: $LASTEXITCODE"
                     }
                     
-                    Write-Host "Successfully extracted .7z file using tar.exe" -ForegroundColor Green
+                    Write-Host "Successfully extracted .7z file using tar.exe"
                 } else {
                     throw "tar.exe not found at expected location: $tarPath"
                 }
@@ -227,7 +227,7 @@ endlocal
                     try {
                         & 7z x $ArchiveFile -o"$TempDir" -y | Out-Null
                         if ($LASTEXITCODE -eq 0) {
-                            Write-Host "Successfully extracted using 7z fallback." -ForegroundColor Green
+                            Write-Host "Successfully extracted using 7z fallback."
                         } else {
                             throw "7z fallback failed"
                         }
@@ -256,11 +256,11 @@ endlocal
         if (-not $extractedFolder -and ($extractedItems | Where-Object { -not $_.PSIsContainer })) {
             # Files are directly in temp directory, use temp directory as source
             $sourcePath = $TempDir
-            Write-Host "Files extracted directly to temp directory: $sourcePath" -ForegroundColor Green
+            Write-Host "Files extracted directly to temp directory: $sourcePath"
         }
         elseif ($extractedFolder) {
             $sourcePath = $extractedFolder.FullName
-            Write-Host "Extracted folder: $sourcePath" -ForegroundColor Green
+            Write-Host "Extracted folder: $sourcePath"
         }
         
         if ($sourcePath) {
@@ -269,21 +269,21 @@ endlocal
             
             if ($isSpecialPackage -and $PackageName -match "Microsoft JDK") {
                 # Special handling for Microsoft JDK
-                Write-Host "Applying special JDK handling..." -ForegroundColor Yellow
+                Write-Host "Applying special JDK handling..."
                 
                 # Find the JDK folder (e.g., jdk-21.0.8+9)
                 # Check if the sourcePath itself is a JDK folder
                 if ((Split-Path $sourcePath -Leaf) -match "^jdk-\d+") {
                     # The extracted folder is the JDK folder itself
                     $jdkFolder = Get-Item $sourcePath
-                    Write-Host "Source path is JDK folder: $($jdkFolder.Name)" -ForegroundColor Green
+                    Write-Host "Source path is JDK folder: $($jdkFolder.Name)"
                 } else {
                     # Look for JDK folder inside the source path
                     $jdkFolder = Get-ChildItem -Path $sourcePath -Directory | Where-Object { $_.Name -match "^jdk-\d+" } | Select-Object -First 1
                 }
                 
                 if ($jdkFolder) {
-                    Write-Host "Found JDK folder: $($jdkFolder.Name)" -ForegroundColor Green
+                    Write-Host "Found JDK folder: $($jdkFolder.Name)"
                     
                     # Extract major version and create target folder name (e.g., jdk-21)
                     if ($jdkFolder.Name -match "^jdk-(\d+)") {
@@ -291,7 +291,7 @@ endlocal
                         $targetFolderName = "jdk-$majorVersion"
                         $targetPath = Join-Path $BinDir $targetFolderName
                         
-                        Write-Host "Creating target directory: $targetFolderName" -ForegroundColor Green
+                        Write-Host "Creating target directory: $targetFolderName"
                         
                         # Create target directory
                         if (!(Test-Path $targetPath)) {
@@ -316,7 +316,7 @@ endlocal
                             }
                         }
                         
-                        Write-Host "JDK installed to: $targetPath" -ForegroundColor Green
+                        Write-Host "JDK installed to: $targetPath"
                     } else {
                         Write-Host "Warning: Could not extract major version from JDK folder name: $($jdkFolder.Name)" -ForegroundColor Yellow
                     }
@@ -326,7 +326,7 @@ endlocal
             }
             elseif ($isSpecialPackage -and $PackageName -match "Python") {
                 # Special handling for Python embeddable package
-                Write-Host "Applying special Python embeddable package handling..." -ForegroundColor Yellow
+                Write-Host "Applying special Python embeddable package handling..."
                 
                 # Extract major.minor version from package name or archive name
                 $pythonVersion = "3.13"  # Default version
@@ -337,7 +337,7 @@ endlocal
                 $targetFolderName = "python-$pythonVersion"
                 $targetPath = Join-Path $BinDir $targetFolderName
                 
-                Write-Host "Creating target directory: $targetFolderName" -ForegroundColor Green
+                Write-Host "Creating target directory: $targetFolderName"
                 
                 # Create target directory
                 if (!(Test-Path $targetPath)) {
@@ -372,19 +372,19 @@ endlocal
                     }
                 }
                 
-                Write-Host "Python installed to: $targetPath" -ForegroundColor Green
+                Write-Host "Python installed to: $targetPath"
                 
                 # Copy get-pip.py if it exists
                 $getPipPath = "packages\get-pip.py"
                 if (Test-Path $getPipPath) {
                     $getPipDestination = Join-Path $targetPath "get-pip.py"
                     Copy-Item -Path $getPipPath -Destination $getPipDestination -Force
-                    Write-Host "Copied get-pip.py to Python directory" -ForegroundColor Green
+                    Write-Host "Copied get-pip.py to Python directory"
                     
                     # Patch pth file to enable site-packages
                     $pthFiles = Get-ChildItem -Path $targetPath -Filter "*._pth"
                     foreach ($pthFile in $pthFiles) {
-                        Write-Host "Patching pth file: $($pthFile.Name)" -ForegroundColor Yellow
+                        Write-Host "Patching pth file: $($pthFile.Name)"
                         
                         $pthContent = Get-Content $pthFile.FullName
                         $newContent = @()
@@ -393,6 +393,10 @@ endlocal
                         foreach ($line in $pthContent) {
                             # Skip comment lines about import site
                             if ($line -match "^#.*import.*site") {
+                                continue
+                            }
+                            # Skip "Uncomment to run site.main()" comment
+                            elseif ($line -match "^#.*Uncomment.*site\.main") {
                                 continue
                             }
                             # Skip existing import site line to add it at the end
@@ -414,21 +418,21 @@ endlocal
                             $zipFile = $zipFiles[0].Name
                             if (-not ($newContent -contains $zipFile)) {
                                 $newContent = @($zipFile) + $newContent
-                                Write-Host "  Added standard library: $zipFile" -ForegroundColor Green
+                                Write-Host "  Added standard library: $zipFile"
                             }
                         }
                         
                         # Add site-packages if not found
                         if (-not $sitePackagesAdded) {
                             $newContent += "Lib\site-packages"
-                            Write-Host "  Added Lib\site-packages path" -ForegroundColor Green
+                            Write-Host "  Added Lib\site-packages path"
                         }
                         
-                        # Add import site at the end
+                        # Add import site at the end (with proper comment)
                         $newContent += ""
                         $newContent += "# Uncomment to run site.main() automatically"
                         $newContent += "import site"
-                        Write-Host "  Enabled 'import site'" -ForegroundColor Green
+                        Write-Host "  Enabled 'import site'"
                         
                         # Write back the modified content (UTF-8 without BOM)
                         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
@@ -436,28 +440,28 @@ endlocal
                     }
                     
                     # Install pip
-                    Write-Host "Installing pip..." -ForegroundColor Yellow
+                    Write-Host "Installing pip..."
                     $pythonExe = Join-Path $targetPath "python.exe"
                     if (Test-Path $pythonExe) {
                         try {
                             # Set environment variables to help Python find standard library
-                            $env:PYTHONHOME = $targetPath
+                            #$env:PYTHONHOME = $targetPath
                             
                             # Find the python zip file for standard library and set PYTHONPATH
-                            $zipFiles = Get-ChildItem -Path $targetPath -Filter "python*.zip"
-                            if ($zipFiles) {
-                                $zipPath = $zipFiles[0].FullName
-                                $env:PYTHONPATH = "$targetPath;$zipPath"
-                                Write-Host "  Set PYTHONHOME: $targetPath" -ForegroundColor Yellow
-                                Write-Host "  Set PYTHONPATH: $targetPath;$zipPath" -ForegroundColor Yellow
-                            } else {
-                                $env:PYTHONPATH = $targetPath
-                                Write-Host "  Set PYTHONPATH: $targetPath (zip file not found)" -ForegroundColor Yellow
-                            }
+                            #$zipFiles = Get-ChildItem -Path $targetPath -Filter "python*.zip"
+                            #if ($zipFiles) {
+                            #    $zipPath = $zipFiles[0].FullName
+                            #    $env:PYTHONPATH = "$targetPath;$zipPath"
+                            #    Write-Host "  Set PYTHONHOME: $targetPath"
+                            #    Write-Host "  Set PYTHONPATH: $targetPath;$zipPath"
+                            #} else {
+                            #    $env:PYTHONPATH = $targetPath
+                            #    Write-Host "  Set PYTHONPATH: $targetPath (zip file not found)"
+                            #}
                             
                             & $pythonExe $getPipDestination --no-warn-script-location
                             if ($LASTEXITCODE -eq 0) {
-                                Write-Host "pip installed successfully" -ForegroundColor Green
+                                Write-Host "pip installed successfully"
                             } else {
                                 Write-Host "Warning: pip installation may have issues (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
                             }
@@ -505,7 +509,7 @@ endlocal
                 }
             }
             
-            Write-Host "$PackageName binary extraction completed." -ForegroundColor Green
+            Write-Host "$PackageName binary extraction completed."
             return $true
         } else {
             Write-Host "Error: Extracted folder not found." -ForegroundColor Red
@@ -519,13 +523,13 @@ endlocal
         # Clean up temporary directory
         if (Test-Path $TempDir) {
             Remove-Item -Path $TempDir -Recurse -Force
-            Write-Host "Temporary directory cleaned up." -ForegroundColor Green
+            Write-Host "Temporary directory cleaned up."
         }
     }
 }
 
 # Unblock all package files first
-Write-Host "Unblocking package files..." -ForegroundColor Cyan
+Write-Host "Unblocking package files..."
 $packageFiles = Get-ChildItem -Path "packages" -File
 foreach ($packageFile in $packageFiles) {
     try {
@@ -536,16 +540,16 @@ foreach ($packageFile in $packageFiles) {
         
         # If attributes changed, the file was likely blocked
         if ($beforeAttribs -ne $afterAttribs) {
-            Write-Host "Unblocked: $($packageFile.Name)" -ForegroundColor Yellow
+            Write-Host "Unblocked: $($packageFile.Name)"
         }
     } catch {
         # Silently continue if unblocking fails
     }
 }
-Write-Host "Package file unblocking completed." -ForegroundColor Green
+Write-Host "Package file unblocking completed."
 
 # Extract packages
-Write-Host "Starting package extraction process..." -ForegroundColor Cyan
+Write-Host "Starting package extraction process..."
 
 $extractionResults = @()
 
@@ -585,12 +589,12 @@ $extractionResults += @($pythonOutput[-1])
 $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
 $totalPackages = $extractionResults.Count
 
-Write-Host "`nExtraction Summary:" -ForegroundColor Cyan
-Write-Host "Successful: $successfulExtractions / $totalPackages" -ForegroundColor Green
+Write-Host "`nExtraction Summary:"
+Write-Host "Successful: $successfulExtractions / $totalPackages"
 
 if ($successfulExtractions -eq $totalPackages) {
-    Write-Host "All packages extracted successfully." -ForegroundColor Green
+    Write-Host "`nAll packages extracted successfully." -ForegroundColor Green
 } else {
-    Write-Host "Some packages failed to extract." -ForegroundColor Red
+    Write-Host "`nSome packages failed to extract." -ForegroundColor Yellow
     exit 1
 }
