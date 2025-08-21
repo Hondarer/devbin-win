@@ -24,6 +24,7 @@ function Get-PackageShortName {
     if ($PackageName -match "Microsoft JDK") { return "jdk" }
     if ($PackageName -match "PlantUML") { return "plantuml" }
     if ($PackageName -match "Python") { return "python" }
+    
     # Add more package name mappings as needed
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
 }
@@ -444,21 +445,6 @@ endlocal
                     $pythonExe = Join-Path $targetPath "python.exe"
                     if (Test-Path $pythonExe) {
                         try {
-                            # Set environment variables to help Python find standard library
-                            #$env:PYTHONHOME = $targetPath
-                            
-                            # Find the python zip file for standard library and set PYTHONPATH
-                            #$zipFiles = Get-ChildItem -Path $targetPath -Filter "python*.zip"
-                            #if ($zipFiles) {
-                            #    $zipPath = $zipFiles[0].FullName
-                            #    $env:PYTHONPATH = "$targetPath;$zipPath"
-                            #    Write-Host "  Set PYTHONHOME: $targetPath"
-                            #    Write-Host "  Set PYTHONPATH: $targetPath;$zipPath"
-                            #} else {
-                            #    $env:PYTHONPATH = $targetPath
-                            #    Write-Host "  Set PYTHONPATH: $targetPath (zip file not found)"
-                            #}
-                            
                             & $pythonExe $getPipDestination --no-warn-script-location
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "pip installed successfully"
@@ -590,7 +576,7 @@ $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Co
 $totalPackages = $extractionResults.Count
 
 Write-Host "`nExtraction Summary:"
-Write-Host "Successful: $successfulExtractions / $totalPackages"
+Write-Host "Success: $successfulExtractions / $totalPackages"
 
 if ($successfulExtractions -eq $totalPackages) {
     Write-Host "`nAll packages extracted successfully." -ForegroundColor Green
