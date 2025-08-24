@@ -148,10 +148,10 @@ function Extract-Package {
         $jarFileName = Split-Path $ArchiveFile -Leaf
         Write-Host "PlantUML JAR file: $jarFileName"
         
-        # Copy JAR file to bin directory
-        $jarDestination = Join-Path $BinDir $jarFileName
+        # Copy JAR file to bin directory with generic name
+        $jarDestination = Join-Path $BinDir "plantuml.jar"
         Copy-Item -Path $ArchiveFile -Destination $jarDestination -Force
-        Write-Host "Copied $jarFileName to bin directory"
+        Write-Host "Copied $jarFileName to bin directory as plantuml.jar"
         
         # Create plantuml.cmd batch file
         $cmdContent = @"
@@ -160,7 +160,7 @@ setlocal
 
 set "SCRIPT_DIR=%~dp0"
 set "JAVA_HOME=%SCRIPT_DIR%jdk-21"
-"%JAVA_HOME%\bin\java.exe" -jar "%SCRIPT_DIR%$jarFileName" %*
+"%JAVA_HOME%\bin\java.exe" -jar "%SCRIPT_DIR%plantuml.jar" %*
 
 endlocal
 "@
