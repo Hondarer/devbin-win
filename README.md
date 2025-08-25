@@ -69,17 +69,6 @@ from [python.org](https://www.python.org/)
 以下のコマンドで実行ファイルを bin フォルダに展開します。  
 展開後、bin フォルダと bin\python-3.13 フォルダに PATH を通してください。
 
-<!--
-### python313._pth により以下は解決されるため明示的な設定は不要
-
-また、PYTHONHOME と PYTHONPATH を以下のように設定してください。
-
-```bat
-set PYTHONHOME=C:\path\to\your\bin\python-3.13
-set PYTHONPATH=C:\path\to\your\bin\python-3.13;C:\path\to\your\bin\python-3.13\python313.zip;C:\path\to\your\bin\python-3.13\Lib\site-packages
-```
--->
-
 PlantUML のために java をセットアップしています。  
 java を外部から利用する場合は、bin/jdk-21/bin フォルダに PATH を通し、bin/jdk-21 を JAVA_HOME として設定してください。
 

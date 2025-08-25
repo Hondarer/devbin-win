@@ -1,4 +1,4 @@
-# Binary extraction script
+﻿# Binary extraction script
 # Extracts binaries from packages folder to bin directory
 
 # Clean bin directory at startup
