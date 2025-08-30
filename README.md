@@ -64,6 +64,13 @@ from [python.org](https://www.python.org/)
 
 + [get-pip](https://bootstrap.pypa.io/get-pip.py)
 
+### Git
+
+from [Git](https://git-scm.com/)
+
++ [Download for Windows](https://git-scm.com/downloads/win)
+    + [Portable 2.51.0](https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe)
+
 ## セットアップ
 
 以下のコマンドで実行ファイルを bin フォルダに展開します。  
@@ -75,18 +82,11 @@ java を外部から利用する場合は、bin/jdk-21/bin フォルダに PATH 
 ### PowerShell から実行
 
 ```powershell
-.\setup.ps1
+.\make_bin.ps1
 ```
 
 ### コマンドプロンプトから実行
 
 ```cmd
-powershell -ExecutionPolicy Bypass -File setup.ps1
-```
-
-### PowerShell 実行ポリシーエラーが発生する場合
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\setup.ps1
+powershell -ExecutionPolicy Bypass -File make_bin.ps1
 ```

@@ -63,7 +63,8 @@ $downloads = @(
     "https://aka.ms/download-jdk/microsoft-jdk-21.0.8-windows-x64.zip",
     "https://github.com/plantuml/plantuml/releases/download/v1.2025.4/plantuml-1.2025.4.jar",
     "https://www.python.org/ftp/python/3.13.7/python-3.13.7-embed-amd64.zip",
-    "https://bootstrap.pypa.io/get-pip.py"
+    "https://bootstrap.pypa.io/get-pip.py",
+    "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe"
 )
 
 # ダウンロード実行
@@ -93,7 +94,7 @@ Write-Host "Success: $successCount / $totalCount"
 
 if ($successCount -eq $totalCount) {
     Write-Host "`nAll files downloaded successfully." -ForegroundColor Green
-    Write-Host "Please run setup.ps1 to start the setup process."
+    Write-Host "Please run make_bin.ps1 to start the setup process."
 } else {
     $failedCount = $totalCount - $successCount
     Write-Host "`n$failedCount file(s) failed to download." -ForegroundColor Yellow

@@ -571,6 +571,36 @@ $extractionResults += @($plantumlOutput[-1])
 $pythonOutput = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7"
 $extractionResults += @($pythonOutput[-1])
 
+# Extract Portable Git
+Write-Host "Starting Portable Git extraction..."
+$gitArchiveFile = "packages\PortableGit-2.51.0-64-bit.7z.exe"
+if (Test-Path $gitArchiveFile) {
+    Write-Host "Archive file found: $gitArchiveFile"
+    
+    # Create git directory in bin folder
+    $gitBinDir = "bin\git"
+    if (!(Test-Path $gitBinDir)) {
+        New-Item -ItemType Directory -Path $gitBinDir -Force | Out-Null
+        Write-Host "Created git directory: $gitBinDir"
+    }
+    
+    # Extract using the self-extracting executable (wait for completion)
+    Write-Host "Extracting Portable Git (this may take a moment)..."
+    $process = Start-Process -FilePath $gitArchiveFile -ArgumentList "-y", "-o$(Resolve-Path $gitBinDir)" -Wait -PassThru
+    
+    if ($process.ExitCode -eq 0) {
+        Write-Host "Portable Git extracted successfully to: $gitBinDir"
+        $extractionResults += @($true)
+    } else {
+        Write-Host "Error: Portable Git extraction failed with exit code: $($process.ExitCode)"
+        $extractionResults += @($false)
+    }
+} else {
+    Write-Host "Error: $gitArchiveFile not found."
+    Write-Host "Please download Portable Git and place it in the packages folder."
+    $extractionResults += @($false)
+}
+
 # Check overall result
 $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
 $totalPackages = $extractionResults.Count

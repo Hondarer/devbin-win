@@ -41,7 +41,7 @@ New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
 #$itemsToInclude = @(
 #    "README.md",
 #    "CLAUDE.md",
-#    "setup.ps1",
+#    "make_bin.ps1",
 #    "download.ps1",
 #    ".gitignore",
 #    "bin"
