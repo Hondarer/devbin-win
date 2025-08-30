@@ -1,11 +1,128 @@
-﻿# Binary extraction script
-# Extracts binaries from packages folder to bin directory
+﻿# Development Tools Setup Script
+# Extracts, installs, or uninstalls development tools
 
-# Clean bin directory at startup
-Write-Host "Cleaning bin directory..."
-if (Test-Path "bin") {
-    Remove-Item -Path "bin" -Recurse -Force
-    Write-Host "Removed existing bin directory."
+param(
+    [string]$InstallDir = ".\bin",
+    [switch]$Extract,
+    [switch]$Install,
+    [switch]$Uninstall
+)
+
+# Show usage if no options specified
+if (-not ($Extract -or $Install -or $Uninstall)) {
+    Write-Host "Development Tools Setup Script" -ForegroundColor Green
+    Write-Host "================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Usage:"
+    Write-Host "  .\setup.ps1 -Extract [-InstallDir <path>]    # Extract tools only"
+    Write-Host "  .\setup.ps1 -Install [-InstallDir <path>]    # Extract tools and add to PATH"
+    Write-Host "  .\setup.ps1 -Uninstall [-InstallDir <path>]  # Remove tools and clean PATH"
+    Write-Host ""
+    Write-Host "Options:"
+    Write-Host "  -InstallDir <path>  Installation directory (default: .\bin)"
+    Write-Host ""
+    Write-Host "Examples:"
+    Write-Host "  .\setup.ps1 -Extract                         # Extract to .\bin"
+    Write-Host "  .\setup.ps1 -Install -InstallDir C:\Tools    # Install to C:\Tools"
+    Write-Host "  .\setup.ps1 -Uninstall                       # Uninstall from .\bin"
+    exit 0
+}
+
+# Function to get PATH directories that should be added/removed
+function Get-PathDirectories {
+    param([string]$BaseDir)
+    
+    $pathDirs = @(
+        $BaseDir,
+        "$BaseDir\jdk-21\bin",
+        "$BaseDir\python-3.13",
+        "$BaseDir\git\bin",
+        "$BaseDir\git\cmd"
+    )
+    
+    return $pathDirs
+}
+
+# Function to add directories to user PATH
+function Add-ToUserPath {
+    param([string[]]$Directories)
+    
+    Write-Host "Adding directories to user PATH..."
+    
+    $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+    if (-not $currentPath) {
+        $currentPath = ""
+    }
+    
+    $pathChanged = $false
+    foreach ($dir in $Directories) {
+        $absolutePath = (Resolve-Path $dir -ErrorAction SilentlyContinue)
+        if ($absolutePath -and (Test-Path $absolutePath)) {
+            $dirPath = $absolutePath.Path
+            if ($currentPath -notlike "*$dirPath*") {
+                if ($currentPath) {
+                    $currentPath = "$dirPath;$currentPath"
+                } else {
+                    $currentPath = $dirPath
+                }
+                Write-Host "  Added: $dirPath" -ForegroundColor Green
+                $pathChanged = $true
+            } else {
+                Write-Host "  Already exists: $dirPath" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "  Directory not found: $dir" -ForegroundColor Red
+        }
+    }
+    
+    if ($pathChanged) {
+        [Environment]::SetEnvironmentVariable("PATH", $currentPath, "User")
+        Write-Host "User PATH updated successfully." -ForegroundColor Green
+        Write-Host "Note: Restart your terminal for PATH changes to take effect." -ForegroundColor Cyan
+    } else {
+        Write-Host "No PATH changes needed."
+    }
+}
+
+# Function to remove directories from user PATH
+function Remove-FromUserPath {
+    param([string[]]$Directories)
+    
+    Write-Host "Removing directories from user PATH..."
+    
+    $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+    if (-not $currentPath) {
+        Write-Host "User PATH is empty."
+        return
+    }
+    
+    $pathChanged = $false
+    $pathEntries = $currentPath -split ';'
+    $newPathEntries = @()
+    
+    foreach ($entry in $pathEntries) {
+        $shouldRemove = $false
+        foreach ($dir in $Directories) {
+            $absolutePath = (Resolve-Path $dir -ErrorAction SilentlyContinue)
+            if ($absolutePath -and ($entry -eq $absolutePath.Path)) {
+                Write-Host "  Removed: $entry" -ForegroundColor Green
+                $shouldRemove = $true
+                $pathChanged = $true
+                break
+            }
+        }
+        if (-not $shouldRemove -and $entry.Trim() -ne "") {
+            $newPathEntries += $entry
+        }
+    }
+    
+    if ($pathChanged) {
+        $newPath = $newPathEntries -join ';'
+        [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
+        Write-Host "User PATH updated successfully." -ForegroundColor Green
+    } else {
+        Write-Host "No matching directories found in PATH."
+    }
 }
 
 # Global cache for duplicate file tracking
@@ -112,7 +229,7 @@ function Extract-Package {
     param(
         [string]$ArchiveFile,
         [string]$PackageName,
-        [string]$BinDir = "bin",
+        [string]$BinDir = $InstallDir,
         [string]$TempDir = "temp_extract"
     )
     
@@ -514,103 +631,145 @@ endlocal
     }
 }
 
-# Unblock all package files first
-Write-Host "Unblocking package files..."
-$packageFiles = Get-ChildItem -Path "packages" -File
-foreach ($packageFile in $packageFiles) {
-    try {
-        # Try to unblock the file directly (safer approach)
-        $beforeAttribs = (Get-Item $packageFile.FullName).Attributes
-        Unblock-File -Path $packageFile.FullName -ErrorAction SilentlyContinue
-        $afterAttribs = (Get-Item $packageFile.FullName).Attributes
-        
-        # If attributes changed, the file was likely blocked
-        if ($beforeAttribs -ne $afterAttribs) {
-            Write-Host "Unblocked: $($packageFile.Name)"
-        }
-    } catch {
-        # Silently continue if unblocking fails
-    }
-}
-Write-Host "Package file unblocking completed."
-
-# Extract packages
-Write-Host "Starting package extraction process..."
-
-$extractionResults = @()
-
-# Extract Node.js
-$nodeOutput = Extract-Package -ArchiveFile "packages\node-v22.18.0-win-x64.zip" -PackageName "Node.js v22.18.0"
-$extractionResults += @($nodeOutput[-1])
-
-# Extract Pandoc  
-$pandocOutput = Extract-Package -ArchiveFile "packages\pandoc-3.7.0.2-windows-x86_64.zip" -PackageName "Pandoc 3.7.0.2"
-$extractionResults += @($pandocOutput[-1])
-
-# Extract pandoc-crossref
-$crossrefOutput = Extract-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref"
-$extractionResults += @($crossrefOutput[-1])
-
-# Extract Doxygen
-$doxygenOutput = Extract-Package -ArchiveFile "packages\doxygen-1.14.0.windows.x64.bin.zip" -PackageName "Doxygen 1.14.0"
-$extractionResults += @($doxygenOutput[-1])
-
-# Extract doxybook2
-$doxybook2Output = Extract-Package -ArchiveFile "packages\doxybook2-windows-win64-v1.6.1.zip" -PackageName "doxybook2 v1.6.1"
-$extractionResults += @($doxybook2Output[-1])
-
-# Extract Microsoft JDK
-$jdkOutput = Extract-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8"
-$extractionResults += @($jdkOutput[-1])
-
-# Extract PlantUML
-$plantumlOutput = Extract-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4"
-$extractionResults += @($plantumlOutput[-1])
-
-# Extract Python
-$pythonOutput = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7"
-$extractionResults += @($pythonOutput[-1])
-
-# Extract Portable Git
-Write-Host "Starting Portable Git extraction..."
-$gitArchiveFile = "packages\PortableGit-2.51.0-64-bit.7z.exe"
-if (Test-Path $gitArchiveFile) {
-    Write-Host "Archive file found: $gitArchiveFile"
+# Main execution based on options
+if ($Uninstall) {
+    # Uninstall: Remove directories and clean PATH
+    Write-Host "Starting uninstall process..." -ForegroundColor Cyan
     
-    # Create git directory in bin folder
-    $gitBinDir = "bin\git"
-    if (!(Test-Path $gitBinDir)) {
-        New-Item -ItemType Directory -Path $gitBinDir -Force | Out-Null
-        Write-Host "Created git directory: $gitBinDir"
-    }
+    # Remove from PATH first
+    $pathDirs = Get-PathDirectories -BaseDir $InstallDir
+    Remove-FromUserPath -Directories $pathDirs
     
-    # Extract using the self-extracting executable (wait for completion)
-    Write-Host "Extracting Portable Git (this may take a moment)..."
-    $process = Start-Process -FilePath $gitArchiveFile -ArgumentList "-y", "-o$(Resolve-Path $gitBinDir)" -Wait -PassThru
-    
-    if ($process.ExitCode -eq 0) {
-        Write-Host "Portable Git extracted successfully to: $gitBinDir"
-        $extractionResults += @($true)
+    # Remove installation directory
+    if (Test-Path $InstallDir) {
+        Write-Host "Removing installation directory: $InstallDir"
+        Remove-Item -Path $InstallDir -Recurse -Force
+        Write-Host "Installation directory removed." -ForegroundColor Green
     } else {
-        Write-Host "Error: Portable Git extraction failed with exit code: $($process.ExitCode)"
+        Write-Host "Installation directory not found: $InstallDir" -ForegroundColor Yellow
+    }
+    
+    Write-Host "Uninstall completed." -ForegroundColor Green
+    exit 0
+}
+
+# For Extract or Install, perform extraction
+if ($Extract -or $Install) {
+    # Clean bin directory at startup
+    Write-Host "Cleaning installation directory: $InstallDir"
+    if (Test-Path $InstallDir) {
+        Remove-Item -Path $InstallDir -Recurse -Force
+        Write-Host "Removed existing installation directory."
+    }
+    
+    # Unblock all package files first
+    Write-Host "Unblocking package files..."
+    $packageFiles = Get-ChildItem -Path "packages" -File
+    foreach ($packageFile in $packageFiles) {
+        try {
+            # Try to unblock the file directly (safer approach)
+            $beforeAttribs = (Get-Item $packageFile.FullName).Attributes
+            Unblock-File -Path $packageFile.FullName -ErrorAction SilentlyContinue
+            $afterAttribs = (Get-Item $packageFile.FullName).Attributes
+            
+            # If attributes changed, the file was likely blocked
+            if ($beforeAttribs -ne $afterAttribs) {
+                Write-Host "Unblocked: $($packageFile.Name)"
+            }
+        } catch {
+            # Silently continue if unblocking fails
+        }
+    }
+    Write-Host "Package file unblocking completed."
+
+    # Extract packages
+    Write-Host "Starting package extraction process..."
+
+    $extractionResults = @()
+
+    # Extract Node.js
+    $nodeOutput = Extract-Package -ArchiveFile "packages\node-v22.18.0-win-x64.zip" -PackageName "Node.js v22.18.0" -BinDir $InstallDir
+    $extractionResults += @($nodeOutput[-1])
+
+    # Extract Pandoc  
+    $pandocOutput = Extract-Package -ArchiveFile "packages\pandoc-3.7.0.2-windows-x86_64.zip" -PackageName "Pandoc 3.7.0.2" -BinDir $InstallDir
+    $extractionResults += @($pandocOutput[-1])
+
+    # Extract pandoc-crossref
+    $crossrefOutput = Extract-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref" -BinDir $InstallDir
+    $extractionResults += @($crossrefOutput[-1])
+
+    # Extract Doxygen
+    $doxygenOutput = Extract-Package -ArchiveFile "packages\doxygen-1.14.0.windows.x64.bin.zip" -PackageName "Doxygen 1.14.0" -BinDir $InstallDir
+    $extractionResults += @($doxygenOutput[-1])
+
+    # Extract doxybook2
+    $doxybook2Output = Extract-Package -ArchiveFile "packages\doxybook2-windows-win64-v1.6.1.zip" -PackageName "doxybook2 v1.6.1" -BinDir $InstallDir
+    $extractionResults += @($doxybook2Output[-1])
+
+    # Extract Microsoft JDK
+    $jdkOutput = Extract-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8" -BinDir $InstallDir
+    $extractionResults += @($jdkOutput[-1])
+
+    # Extract PlantUML
+    $plantumlOutput = Extract-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4" -BinDir $InstallDir
+    $extractionResults += @($plantumlOutput[-1])
+
+    # Extract Python
+    $pythonOutput = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7" -BinDir $InstallDir
+    $extractionResults += @($pythonOutput[-1])
+
+    # Extract Portable Git
+    Write-Host "Starting Portable Git extraction..."
+    $gitArchiveFile = "packages\PortableGit-2.51.0-64-bit.7z.exe"
+    if (Test-Path $gitArchiveFile) {
+        Write-Host "Archive file found: $gitArchiveFile"
+        
+        # Create git directory in bin folder
+        $gitBinDir = "$InstallDir\git"
+        if (!(Test-Path $gitBinDir)) {
+            New-Item -ItemType Directory -Path $gitBinDir -Force | Out-Null
+            Write-Host "Created git directory: $gitBinDir"
+        }
+        
+        # Extract using the self-extracting executable (wait for completion)
+        Write-Host "Extracting Portable Git (this may take a moment)..."
+        $process = Start-Process -FilePath $gitArchiveFile -ArgumentList "-y", "-o$(Resolve-Path $gitBinDir)" -Wait -PassThru
+        
+        if ($process.ExitCode -eq 0) {
+            Write-Host "Portable Git extracted successfully to: $gitBinDir"
+            $extractionResults += @($true)
+        } else {
+            Write-Host "Error: Portable Git extraction failed with exit code: $($process.ExitCode)"
+            $extractionResults += @($false)
+        }
+    } else {
+        Write-Host "Error: $gitArchiveFile not found."
+        Write-Host "Please download Portable Git and place it in the packages folder."
         $extractionResults += @($false)
     }
-} else {
-    Write-Host "Error: $gitArchiveFile not found."
-    Write-Host "Please download Portable Git and place it in the packages folder."
-    $extractionResults += @($false)
-}
 
-# Check overall result
-$successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
-$totalPackages = $extractionResults.Count
+    # Check overall result
+    $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
+    $totalPackages = $extractionResults.Count
 
-Write-Host "`nExtraction Summary:"
-Write-Host "Success: $successfulExtractions / $totalPackages"
+    Write-Host "`nExtraction Summary:"
+    Write-Host "Success: $successfulExtractions / $totalPackages"
 
-if ($successfulExtractions -eq $totalPackages) {
-    Write-Host "`nAll packages extracted successfully." -ForegroundColor Green
-} else {
-    Write-Host "`nSome packages failed to extract." -ForegroundColor Yellow
-    exit 1
+    if ($successfulExtractions -eq $totalPackages) {
+        Write-Host "`nAll packages extracted successfully." -ForegroundColor Green
+        
+        # If Install option, add to PATH
+        if ($Install) {
+            Write-Host "`nAdding tools to PATH..." -ForegroundColor Cyan
+            $pathDirs = Get-PathDirectories -BaseDir $InstallDir
+            Add-ToUserPath -Directories $pathDirs
+            Write-Host "Installation completed." -ForegroundColor Green
+        } else {
+            Write-Host "Extraction completed." -ForegroundColor Green
+        }
+    } else {
+        Write-Host "`nSome packages failed to extract." -ForegroundColor Yellow
+        exit 1
+    }
 }

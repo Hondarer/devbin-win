@@ -82,11 +82,11 @@ java を外部から利用する場合は、bin/jdk-21/bin フォルダに PATH 
 ### PowerShell から実行
 
 ```powershell
-.\make_bin.ps1
+.\setup.ps1
 ```
 
 ### コマンドプロンプトから実行
 
 ```cmd
-powershell -ExecutionPolicy Bypass -File make_bin.ps1
+powershell -ExecutionPolicy Bypass -File setup.ps1
 ```
