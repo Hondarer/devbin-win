@@ -38,16 +38,13 @@ $archiveRoot = Join-Path $stagingRoot $projectName
 New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
 
 # 追加対象のファイル・ディレクトリ一覧
-#$itemsToInclude = @(
-#    "README.md",
-#    "CLAUDE.md",
-#    "setup.ps1",
-#    "download.ps1",
-#    ".gitignore",
-#    "bin"
-#)
 $itemsToInclude = @(
-    "bin"
+    "packages",
+    "README.md",
+    "INSTALL.md",
+    "setup.ps1",
+    "install.cmd",
+    "uninstall.cmd"
 )
 
 $addedCount = 0

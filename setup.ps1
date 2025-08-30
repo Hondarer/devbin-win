@@ -10,8 +10,8 @@ param(
 
 # Show usage if no options specified
 if (-not ($Extract -or $Install -or $Uninstall)) {
-    Write-Host "Development Tools Setup Script" -ForegroundColor Green
-    Write-Host "================================" -ForegroundColor Green
+    Write-Host "Development Tools Setup Script"
+    Write-Host "================================"
     Write-Host ""
     Write-Host "Usage:"
     Write-Host "  .\setup.ps1 -Extract [-InstallDir <path>]    # Extract tools only"
@@ -43,6 +43,17 @@ function Get-PathDirectories {
     return $pathDirs
 }
 
+# Function to check if a command is already available in PATH
+function Test-CommandExists {
+    param([string]$CommandName)
+    try {
+        Get-Command $CommandName -ErrorAction Stop | Out-Null
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 # Function to add directories to user PATH
 function Add-ToUserPath {
     param([string[]]$Directories)
@@ -59,26 +70,47 @@ function Add-ToUserPath {
         $absolutePath = (Resolve-Path $dir -ErrorAction SilentlyContinue)
         if ($absolutePath -and (Test-Path $absolutePath)) {
             $dirPath = $absolutePath.Path
-            if ($currentPath -notlike "*$dirPath*") {
+            $shouldSkip = $false
+            
+            # Check for existing commands and skip specific paths
+            if ($dirPath -like "*jdk-*\bin") {
+                if (Test-CommandExists "java") {
+                    Write-Host "  Skipped (java.exe already available): $dirPath"
+                    $shouldSkip = $true
+                }
+            }
+            elseif ($dirPath -like "*python-*") {
+                if (Test-CommandExists "python") {
+                    Write-Host "  Skipped (python.exe already available): $dirPath"
+                    $shouldSkip = $true
+                }
+            }
+            elseif ($dirPath -like "*git\bin" -or $dirPath -like "*git\cmd") {
+                if (Test-CommandExists "git") {
+                    Write-Host "  Skipped (git.exe already available): $dirPath"
+                    $shouldSkip = $true
+                }
+            }
+            
+            if (-not $shouldSkip) {
+                # Since we pre-remove entries, we can directly add without duplicate check
                 if ($currentPath) {
                     $currentPath = "$dirPath;$currentPath"
                 } else {
                     $currentPath = $dirPath
                 }
-                Write-Host "  Added: $dirPath" -ForegroundColor Green
+                Write-Host "  Added: $dirPath"
                 $pathChanged = $true
-            } else {
-                Write-Host "  Already exists: $dirPath" -ForegroundColor Yellow
             }
         } else {
-            Write-Host "  Directory not found: $dir" -ForegroundColor Red
+            Write-Host "  Directory not found: $dir"
         }
     }
     
     if ($pathChanged) {
         [Environment]::SetEnvironmentVariable("PATH", $currentPath, "User")
-        Write-Host "User PATH updated successfully." -ForegroundColor Green
-        Write-Host "Note: Restart your terminal for PATH changes to take effect." -ForegroundColor Cyan
+        Write-Host "User PATH updated successfully."
+        Write-Host "Note: Restart your terminal for PATH changes to take effect."
     } else {
         Write-Host "No PATH changes needed."
     }
@@ -105,7 +137,7 @@ function Remove-FromUserPath {
         foreach ($dir in $Directories) {
             $absolutePath = (Resolve-Path $dir -ErrorAction SilentlyContinue)
             if ($absolutePath -and ($entry -eq $absolutePath.Path)) {
-                Write-Host "  Removed: $entry" -ForegroundColor Green
+                Write-Host "  Removed: $entry"
                 $shouldRemove = $true
                 $pathChanged = $true
                 break
@@ -119,7 +151,7 @@ function Remove-FromUserPath {
     if ($pathChanged) {
         $newPath = $newPathEntries -join ';'
         [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
-        Write-Host "User PATH updated successfully." -ForegroundColor Green
+        Write-Host "User PATH updated successfully."
     } else {
         Write-Host "No matching directories found in PATH."
     }
@@ -184,12 +216,12 @@ function Get-ResolvedFileName {
         $newFileName = "${fileNameWithoutExt}_${packageShortName}${extension}"
         $newRelativePath = $relativePath -replace [regex]::Escape($fileName), $newFileName
         
-        Write-Host "  Renaming duplicate file: $fileName -> $newFileName" -ForegroundColor Yellow
+        Write-Host "  Renaming duplicate file: $fileName -> $newFileName"
         return $newRelativePath
     }
     elseif (Test-Path $fullDestinationPath) {
         # File exists, mark as duplicate and rename both
-        Write-Host "  Duplicate file detected: $fileName" -ForegroundColor Yellow
+        Write-Host "  Duplicate file detected: $fileName"
         
         # Mark as duplicate
         $global:DuplicateFiles[$fileName] = $true
@@ -206,7 +238,7 @@ function Get-ResolvedFileName {
             
             if ((Test-Path $fullDestinationPath) -and !(Test-Path $existingNewPath)) {
                 Move-Item -Path $fullDestinationPath -Destination $existingNewPath
-                Write-Host "  Renamed existing file: $fileName -> $existingNewFileName" -ForegroundColor Yellow
+                Write-Host "  Renamed existing file: $fileName -> $existingNewFileName"
             }
         }
         
@@ -237,8 +269,8 @@ function Extract-Package {
     
     # Check if archive file exists
     if (!(Test-Path $ArchiveFile)) {
-        Write-Host "Error: $ArchiveFile not found." -ForegroundColor Red
-        Write-Host "Please download $PackageName and place it in the packages folder." -ForegroundColor Yellow
+        Write-Host "Error: $ArchiveFile not found."
+        Write-Host "Please download $PackageName and place it in the packages folder."
         return $false
     }
     
@@ -336,12 +368,12 @@ endlocal
                 }
             }
             catch {
-                Write-Host "Error: 7z extraction failed using tar.exe." -ForegroundColor Red
-                Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Error: 7z extraction failed using tar.exe."
+                Write-Host "Details: $($_.Exception.Message)"
                 
                 # Fallback: Try 7z command if available
                 if (Get-Command "7z" -ErrorAction SilentlyContinue) {
-                    Write-Host "Trying fallback with 7z command..." -ForegroundColor Yellow
+                    Write-Host "Trying fallback with 7z command..."
                     try {
                         & 7z x $ArchiveFile -o"$TempDir" -y | Out-Null
                         if ($LASTEXITCODE -eq 0) {
@@ -351,18 +383,18 @@ endlocal
                         }
                     }
                     catch {
-                        Write-Host "Error: All 7z extraction methods failed." -ForegroundColor Red
-                        Write-Host "Please install 7-Zip: https://www.7-zip.org/" -ForegroundColor Yellow
+                        Write-Host "Error: All 7z extraction methods failed."
+                        Write-Host "Please install 7-Zip: https://www.7-zip.org/"
                         return $false
                     }
                 } else {
-                    Write-Host "No fallback available. Please install 7-Zip: https://www.7-zip.org/" -ForegroundColor Yellow
+                    Write-Host "No fallback available. Please install 7-Zip: https://www.7-zip.org/"
                     return $false
                 }
             }
         }
         else {
-            Write-Host "Error: Unsupported file type: $fileExtension" -ForegroundColor Red
+            Write-Host "Error: Unsupported file type: $fileExtension"
             return $false
         }
         
@@ -436,10 +468,10 @@ endlocal
                         
                         Write-Host "JDK installed to: $targetPath"
                     } else {
-                        Write-Host "Warning: Could not extract major version from JDK folder name: $($jdkFolder.Name)" -ForegroundColor Yellow
+                        Write-Host "Warning: Could not extract major version from JDK folder name: $($jdkFolder.Name)"
                     }
                 } else {
-                    Write-Host "Warning: JDK folder not found in extracted archive" -ForegroundColor Yellow
+                    Write-Host "Warning: JDK folder not found in extracted archive"
                 }
             }
             elseif ($isSpecialPackage -and $PackageName -match "Python") {
@@ -566,20 +598,20 @@ endlocal
                             if ($LASTEXITCODE -eq 0) {
                                 Write-Host "pip installed successfully"
                             } else {
-                                Write-Host "Warning: pip installation may have issues (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+                                Write-Host "Warning: pip installation may have issues (exit code: $LASTEXITCODE)"
                             }
                         } catch {
-                            Write-Host "Warning: Failed to install pip: $($_.Exception.Message)" -ForegroundColor Yellow
+                            Write-Host "Warning: Failed to install pip: $($_.Exception.Message)"
                         } finally {
                             # Clean up environment variables
                             Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
                             Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
                         }
                     } else {
-                        Write-Host "Warning: python.exe not found, skipping pip installation" -ForegroundColor Yellow
+                        Write-Host "Warning: python.exe not found, skipping pip installation"
                     }
                 } else {
-                    Write-Host "Warning: get-pip.py not found, skipping pip installation" -ForegroundColor Yellow
+                    Write-Host "Warning: get-pip.py not found, skipping pip installation"
                 }
             } else {
                 # Standard handling for other packages
@@ -615,12 +647,12 @@ endlocal
             Write-Host "$PackageName binary extraction completed."
             return $true
         } else {
-            Write-Host "Error: Extracted folder not found." -ForegroundColor Red
+            Write-Host "Error: Extracted folder not found."
             return $false
         }
     } catch {
-        Write-Host "Error: Failed to extract archive file." -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Red
+        Write-Host "Error: Failed to extract archive file."
+        Write-Host $_.Exception.Message
         return $false
     } finally {
         # Clean up temporary directory
@@ -634,7 +666,7 @@ endlocal
 # Main execution based on options
 if ($Uninstall) {
     # Uninstall: Remove directories and clean PATH
-    Write-Host "Starting uninstall process..." -ForegroundColor Cyan
+    Write-Host "Starting uninstall process..."
     
     # Remove from PATH first
     $pathDirs = Get-PathDirectories -BaseDir $InstallDir
@@ -644,9 +676,9 @@ if ($Uninstall) {
     if (Test-Path $InstallDir) {
         Write-Host "Removing installation directory: $InstallDir"
         Remove-Item -Path $InstallDir -Recurse -Force
-        Write-Host "Installation directory removed." -ForegroundColor Green
+        Write-Host "Installation directory removed."
     } else {
-        Write-Host "Installation directory not found: $InstallDir" -ForegroundColor Yellow
+        Write-Host "Installation directory not found: $InstallDir"
     }
     
     Write-Host "Uninstall completed." -ForegroundColor Green
@@ -757,12 +789,19 @@ if ($Extract -or $Install) {
     Write-Host "Success: $successfulExtractions / $totalPackages"
 
     if ($successfulExtractions -eq $totalPackages) {
-        Write-Host "`nAll packages extracted successfully." -ForegroundColor Green
+        Write-Host "`nAll packages extracted successfully."
         
         # If Install option, add to PATH
         if ($Install) {
-            Write-Host "`nAdding tools to PATH..." -ForegroundColor Cyan
+            Write-Host "`nManaging PATH environment variables..."
             $pathDirs = Get-PathDirectories -BaseDir $InstallDir
+            
+            # Remove existing entries first (for reinstall scenarios)
+            Write-Host "Removing any existing PATH entries..."
+            Remove-FromUserPath -Directories $pathDirs
+            
+            # Add fresh entries
+            Write-Host "Adding tools to PATH..."
             Add-ToUserPath -Directories $pathDirs
             Write-Host "Installation completed." -ForegroundColor Green
         } else {
