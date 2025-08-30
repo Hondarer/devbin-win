@@ -37,7 +37,9 @@ function Get-PathDirectories {
         "$BaseDir\jdk-21\bin",
         "$BaseDir\python-3.13",
         "$BaseDir\git\bin",
-        "$BaseDir\git\cmd"
+        "$BaseDir\git\cmd",
+        "$BaseDir\git\mingw64\bin",
+        "$BaseDir\git\usr\bin"
     )
     
     return $pathDirs
@@ -85,7 +87,7 @@ function Add-ToUserPath {
                     $shouldSkip = $true
                 }
             }
-            elseif ($dirPath -like "*git\bin" -or $dirPath -like "*git\cmd") {
+            elseif ($dirPath -like "*git\bin" -or $dirPath -like "*git\mingw64\bin" -or $dirPath -like "*git\usr\bin" -or $dirPath -like "*git\cmd") {
                 if (Test-CommandExists "git") {
                     Write-Host "  Skipped (git.exe already available): $dirPath"
                     $shouldSkip = $true
