@@ -8,17 +8,57 @@ $userName = [Environment]::UserName
 $homeEnvVar = [Environment]::GetEnvironmentVariable("HOME", "User")
 
 if ([string]::IsNullOrEmpty($homeEnvVar)) {
-    Write-Host "HOME environment variable not set. Starting setup..."
-    
     # ホームディレクトリのパスを定義
     $baseHomePath = "C:\ProgramData\home"
     $homePath = "$baseHomePath\$userName"
     $continuePath = "$homePath\.continue"
     
-    Write-Host "Username: $userName"
-    Write-Host "Base home directory: $baseHomePath"
-    Write-Host "User home directory: $homePath"
-    Write-Host "Continue directory: $continuePath"
+    Write-Host "HOME Environment Setup"
+    Write-Host "======================"
+    Write-Host ""
+    Write-Host "Current Status:"
+    Write-Host "  Username: $userName"
+    Write-Host ""
+    Write-Host "Planned Actions:"
+    
+    $actions = @()
+    
+    # ベースディレクトリチェック
+    if (!(Test-Path $baseHomePath)) {
+        $actions += "  - Create base home directory: $baseHomePath"
+    }
+    
+    # ユーザーホームディレクトリチェック
+    if (!(Test-Path $homePath)) {
+        $actions += "  - Create user home directory: $homePath"
+    }
+    
+    # .continue ディレクトリチェック
+    if (!(Test-Path $continuePath)) {
+        $actions += "  - Create continue directory: $continuePath"
+    }
+    
+    # 環境変数設定
+    $actions += "  - Set HOME environment variable to: $homePath"
+    $actions += "  - Set CONTINUE_GLOBAL_DIR environment variable to: $continuePath"
+    
+    # 実行予定内容を表示
+    if ($actions.Count -eq 2) {
+        Write-Host "  - All directories already exist"
+    }
+    foreach ($action in $actions) {
+        Write-Host $action
+    }
+    
+    Write-Host ""
+    $confirmation = Read-Host "Do you want to proceed? (Y/n)"
+    if ($confirmation -eq "n" -or $confirmation -eq "N") {
+        Write-Host "Setup cancelled by user."
+        exit 0
+    }
+    
+    Write-Host ""
+    Write-Host "Starting setup..."
     
     # ベースホームディレクトリ (C:\ProgramData\home) が存在しない場合は作成
     if (!(Test-Path $baseHomePath)) {
@@ -77,13 +117,47 @@ if ([string]::IsNullOrEmpty($homeEnvVar)) {
     Write-Host "Setup complete!"
     Write-Host "Start a new terminal session for environment variables to take effect."
 } else {
-    Write-Host "HOME environment variable already set: $homeEnvVar"
+    Write-Host "HOME Environment Setup"
+    Write-Host "======================"
+    Write-Host ""
+    Write-Host "Current Status:"
+    Write-Host "  Username: $userName"
     
     # CONTINUE_GLOBAL_DIR もチェック
     $continueEnvVar = [Environment]::GetEnvironmentVariable("CONTINUE_GLOBAL_DIR", "User")
     if ([string]::IsNullOrEmpty($continueEnvVar)) {
-        Write-Host "CONTINUE_GLOBAL_DIR environment variable not set. Setting now..."
         $continuePath = "$homeEnvVar\.continue"
+        
+        Write-Host "  CONTINUE_GLOBAL_DIR environment variable: Not set"
+        Write-Host ""
+        Write-Host "Planned Actions:"
+        
+        $actions = @()
+        
+        # .continue ディレクトリチェック
+        if (!(Test-Path $continuePath)) {
+            $actions += "  - Create continue directory: $continuePath"
+        }
+        
+        $actions += "  - Set CONTINUE_GLOBAL_DIR environment variable to: $continuePath"
+        
+        # 実行予定内容を表示
+        if ($actions.Count -eq 1) {
+            Write-Host "  - Continue directory already exists"
+        }
+        foreach ($action in $actions) {
+            Write-Host $action
+        }
+        
+        Write-Host ""
+        $confirmation = Read-Host "Do you want to proceed? (Y/n)"
+        if ($confirmation -eq "n" -or $confirmation -eq "N") {
+            Write-Host "Setup cancelled by user."
+            exit 0
+        }
+        
+        Write-Host ""
+        Write-Host "Starting setup..."
         
         # .continue ディレクトリが存在しない場合は作成
         if (!(Test-Path $continuePath)) {
@@ -99,7 +173,13 @@ if ([string]::IsNullOrEmpty($homeEnvVar)) {
         
         [Environment]::SetEnvironmentVariable("CONTINUE_GLOBAL_DIR", $continuePath, "User")
         Write-Host "CONTINUE_GLOBAL_DIR environment variable set: $continuePath"
+        
+        Write-Host ""
+        Write-Host "Setup complete!"
+        Write-Host "Start a new terminal session for environment variables to take effect."
     } else {
-        Write-Host "CONTINUE_GLOBAL_DIR environment variable also already set: $continueEnvVar"
+        Write-Host "  CONTINUE_GLOBAL_DIR environment variable: Already set ($continueEnvVar)"
+        Write-Host ""
+        Write-Host "All environment variables are already configured."
     }
 }

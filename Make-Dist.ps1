@@ -42,9 +42,13 @@ $itemsToInclude = @(
     "packages",
     "README.md",
     "INSTALL.md",
-    "setup.ps1",
-    "install.cmd",
-    "uninstall.cmd"
+    "Setup.ps1",
+    "Install.cmd",
+    "Uninstall.cmd",
+    "Setup-Home.ps1",
+    "Setup-Home.cmd",
+    "Update-GitBash-Profile.ps1",
+    "Update-GitBash-Profile.cmd"
 )
 
 $addedCount = 0
