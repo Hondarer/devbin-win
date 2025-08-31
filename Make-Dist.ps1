@@ -41,12 +41,14 @@ New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
 $itemsToInclude = @(
     "packages",
     "README.md",
-    "INSTALL.md",
+    "Install.md",
     "Setup.ps1",
     "Install.cmd",
     "Uninstall.cmd",
+    "Setup-Home.md",
     "Setup-Home.ps1",
     "Setup-Home.cmd",
+    "Update-GitBash-Profile.md",
     "Update-GitBash-Profile.ps1",
     "Update-GitBash-Profile.cmd"
 )
