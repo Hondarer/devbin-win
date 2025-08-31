@@ -19,7 +19,7 @@ echo Target directory: %INSTALL_DIR%
 echo.
 
 REM Check if setup.ps1 exists
-if not exist "%SCRIPT_DIR%\setup.ps1" (
+if not exist "%SCRIPT_DIR%\Setup.ps1" (
     echo Error: setup.ps1 not found in current directory
     echo Please run this script from the devbin-win directory
     pause
@@ -39,7 +39,7 @@ echo Running installation...
 echo This may take several minutes...
 echo.
 
-powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\setup.ps1" -Install -InstallDir "%INSTALL_DIR%"
+powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Setup.ps1" -Install -InstallDir "%INSTALL_DIR%"
 
 set "PS_EXIT_CODE=%errorLevel%"
 

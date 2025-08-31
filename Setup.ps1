@@ -1,5 +1,5 @@
-﻿# Development Tools Setup Script
-# Extracts, installs, or uninstalls development tools
+﻿# 開発ツール セットアップ スクリプト
+# 開発ツールの抽出、インストール、またはアンインストールを行う
 
 param(
     [string]$InstallDir = ".\bin",
@@ -8,7 +8,7 @@ param(
     [switch]$Uninstall
 )
 
-# Show usage if no options specified
+# オプションが指定されていない場合は使用方法を表示
 if (-not ($Extract -or $Install -or $Uninstall)) {
     Write-Host "Development Tools Setup Script"
     Write-Host "================================"
@@ -28,7 +28,7 @@ if (-not ($Extract -or $Install -or $Uninstall)) {
     exit 0
 }
 
-# Function to get PATH directories that should be added/removed
+# 追加 / 削除すべき PATH ディレクトリを取得する
 function Get-PathDirectories {
     param([string]$BaseDir)
     
@@ -46,7 +46,7 @@ function Get-PathDirectories {
     return $pathDirs
 }
 
-# Function to check if a command is already available in PATH
+# コマンドが PATH で既に利用可能かどうかをチェックする
 function Test-CommandExists {
     param([string]$CommandName)
     try {
@@ -57,7 +57,7 @@ function Test-CommandExists {
     }
 }
 
-# Function to add directories to user PATH
+# ユーザー PATH にディレクトリを追加する関数
 function Add-ToUserPath {
     param([string[]]$Directories)
     
@@ -75,7 +75,7 @@ function Add-ToUserPath {
             $dirPath = $absolutePath.Path
             $shouldSkip = $false
             
-            # Check for existing commands and skip specific paths
+            # 既存のコマンドをチェックして特定のパスをスキップ
             if ($dirPath -like "*jdk-*\bin") {
                 if (Test-CommandExists "java") {
                     Write-Host "  Skipped (java.exe already available): $dirPath"
@@ -96,7 +96,7 @@ function Add-ToUserPath {
             }
             
             if (-not $shouldSkip) {
-                # Since we pre-remove entries, we can directly add without duplicate check
+                # エントリを事前削除しているため、重複チェックなしで直接追加
                 if ($currentPath) {
                     $currentPath = "$dirPath;$currentPath"
                 } else {
@@ -119,7 +119,7 @@ function Add-ToUserPath {
     }
 }
 
-# Function to remove directories from user PATH
+# ユーザー PATH からディレクトリを削除する
 function Remove-FromUserPath {
     param([string[]]$Directories)
     
@@ -160,14 +160,14 @@ function Remove-FromUserPath {
     }
 }
 
-# Global cache for duplicate file tracking
+# 重複ファイル追跡用のグローバル キャッシュ
 $global:DuplicateFiles = @{}
 $global:PackageFileMapping = @{}
 
 function Get-PackageShortName {
     param([string]$PackageName)
     
-    # Extract short names from package names
+    # パッケージ名から短縮名を抽出
     if ($PackageName -match "Node\.js") { return "nodejs" }
     if ($PackageName -match "Pandoc") { return "pandoc" }
     if ($PackageName -match "pandoc-crossref") { return "pandoc-crossref" }
@@ -177,14 +177,14 @@ function Get-PackageShortName {
     if ($PackageName -match "PlantUML") { return "plantuml" }
     if ($PackageName -match "Python") { return "python" }
     
-    # Add more package name mappings as needed
+    # 必要に応じてパッケージ名マッピングを追加
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
 }
 
+# パッケージが特別な処理を必要とするかチェック
 function Test-SpecialPackageHandling {
     param([string]$PackageName)
     
-    # Check if package requires special handling
     if ($PackageName -match "Microsoft JDK") {
         return $true
     }
@@ -208,11 +208,11 @@ function Get-ResolvedFileName {
     $relativePath = $OriginalPath
     $packageShortName = Get-PackageShortName $PackageName
     
-    # Check if this file already exists in bin directory or is marked as duplicate
+    # このファイルが bin ディレクトリに既に存在するか、重複としてマークされているかチェック
     $fullDestinationPath = Join-Path $BinDir $relativePath
     
     if ($global:DuplicateFiles.ContainsKey($fileName)) {
-        # This filename is already marked as duplicate, rename all instances
+        # このファイル名は既に重複としてマークされているため、すべてのインスタンスを名前変更
         $fileNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
         $extension = [System.IO.Path]::GetExtension($fileName)
         
@@ -223,13 +223,13 @@ function Get-ResolvedFileName {
         return $newRelativePath
     }
     elseif (Test-Path $fullDestinationPath) {
-        # File exists, mark as duplicate and rename both
+        # ファイルが存在するため、重複としてマークして両方の名前を変更
         Write-Host "  Duplicate file detected: $fileName"
         
-        # Mark as duplicate
+        # 重複としてマーク
         $global:DuplicateFiles[$fileName] = $true
         
-        # Rename existing file if it hasn't been renamed yet
+        # 既存ファイルがまだ名前変更されていない場合は名前変更
         $existingPackage = $global:PackageFileMapping[$fileName]
         if ($existingPackage) {
             $existingShortName = Get-PackageShortName $existingPackage
@@ -245,7 +245,7 @@ function Get-ResolvedFileName {
             }
         }
         
-        # Return renamed path for current file
+        # 現在のファイルの名前変更されたパスを返す
         $fileNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
         $extension = [System.IO.Path]::GetExtension($fileName)
         $newFileName = "${fileNameWithoutExt}_${packageShortName}${extension}"
@@ -254,7 +254,7 @@ function Get-ResolvedFileName {
         return $newRelativePath
     }
     else {
-        # No conflict, track the file-package mapping
+        # 競合なし、ファイル-パッケージ マッピングを追跡
         $global:PackageFileMapping[$fileName] = $PackageName
         return $relativePath
     }
@@ -270,7 +270,7 @@ function Extract-Package {
     
     Write-Host "Starting $PackageName binary extraction..."
     
-    # Check if archive file exists
+    # アーカイブファイルが存在するかチェック
     if (!(Test-Path $ArchiveFile)) {
         Write-Host "Error: $ArchiveFile not found."
         Write-Host "Please download $PackageName and place it in the packages folder."
@@ -279,33 +279,33 @@ function Extract-Package {
     
     Write-Host "Archive file found: $ArchiveFile"
     
-    # Unblock the archive file to prevent security restrictions
+    # セキュリティ制限を防ぐためアーカイブファイルのブロックを解除
     try {
         Unblock-File -Path $ArchiveFile -ErrorAction SilentlyContinue
     } catch {
-        # Silently continue if unblocking fails
+        # ブロック解除に失敗した場合は続行
     }
     
-    # Special handling for PlantUML JAR files
+    # PlantUML JAR ファイルの特別処理
     if ($PackageName -match "PlantUML" -and $ArchiveFile -match "\.jar$") {
         Write-Host "Detected PlantUML JAR file, applying special handling..."
         
-        # Create bin directory if it doesn't exist
+        # bin ディレクトリが存在しない場合は作成
         if (!(Test-Path $BinDir)) {
             New-Item -ItemType Directory -Path $BinDir
             Write-Host "Created bin directory."
         }
         
-        # Extract JAR file name
+        # JAR ファイル名を抽出
         $jarFileName = Split-Path $ArchiveFile -Leaf
         Write-Host "PlantUML JAR file: $jarFileName"
         
-        # Copy JAR file to bin directory with generic name
+        # JAR ファイルを汎用名で bin ディレクトリにコピー
         $jarDestination = Join-Path $BinDir "plantuml.jar"
         Copy-Item -Path $ArchiveFile -Destination $jarDestination -Force
         Write-Host "Copied $jarFileName to bin directory as plantuml.jar"
         
-        # Create plantuml.cmd batch file
+        # plantuml.cmd バッチファイルを作成
         $cmdContent = @"
 @echo off
 setlocal
@@ -326,13 +326,13 @@ endlocal
         return $true
     }
     
-    # Create bin directory
+    # bin ディレクトリを作成
     if (!(Test-Path $BinDir)) {
         New-Item -ItemType Directory -Path $BinDir
         Write-Host "Created bin directory."
     }
     
-    # Create temporary directory
+    # 一時ディレクトリを作成
     if (Test-Path $TempDir) {
         Remove-Item -Path $TempDir -Recurse -Force
     }
@@ -341,21 +341,21 @@ endlocal
     try {
         Write-Host "Extracting archive file..."
         
-        # Determine file type and extract accordingly
+        # ファイルタイプを判定して適切に抽出
         $fileExtension = [System.IO.Path]::GetExtension($ArchiveFile).ToLower()
         
         if ($fileExtension -eq ".zip") {
-            # Extract ZIP file to temporary directory
+            # ZIP ファイルを一時ディレクトリに抽出
             Expand-Archive -Path $ArchiveFile -DestinationPath $TempDir -Force
         }
         elseif ($fileExtension -eq ".7z") {
-            # Extract 7z file using Windows built-in tar.exe (libarchive)
+            # Windows 組み込みの tar.exe (libarchive) を使用して 7z ファイルを抽出
             try {
                 $tarPath = "$env:WINDIR\System32\tar.exe"
                 if (Test-Path $tarPath) {
                     Write-Host "Using Windows built-in tar.exe (libarchive) for .7z extraction..."
                     
-                    # Use tar.exe with libarchive to extract .7z file
+                    # libarchive 付き tar.exe を使用して .7z ファイルを抽出
                     $absoluteArchive = (Resolve-Path $ArchiveFile).Path
                     $absoluteTempDir = (Resolve-Path $TempDir).Path
                     
@@ -374,7 +374,7 @@ endlocal
                 Write-Host "Error: 7z extraction failed using tar.exe."
                 Write-Host "Details: $($_.Exception.Message)"
                 
-                # Fallback: Try 7z command if available
+                # フォールバック: 7z コマンドが利用可能な場合は試行
                 if (Get-Command "7z" -ErrorAction SilentlyContinue) {
                     Write-Host "Trying fallback with 7z command..."
                     try {
@@ -401,13 +401,13 @@ endlocal
             return $false
         }
         
-        # Find extracted folder or files
+        # 抽出されたフォルダまたはファイルを検索
         $extractedItems = Get-ChildItem -Path $TempDir
         $extractedFolder = $extractedItems | Where-Object { $_.PSIsContainer } | Select-Object -First 1
         
-        # If no folder found, check if there are files directly in temp directory
+        # フォルダが見つからない場合、一時ディレクトリに直接ファイルがあるかチェック
         if (-not $extractedFolder -and ($extractedItems | Where-Object { -not $_.PSIsContainer })) {
-            # Files are directly in temp directory, use temp directory as source
+            # ファイルが一時ディレクトリに直接ある場合、一時ディレクトリをソースとして使用
             $sourcePath = $TempDir
             Write-Host "Files extracted directly to temp directory: $sourcePath"
         }
@@ -417,28 +417,28 @@ endlocal
         }
         
         if ($sourcePath) {
-            # Check if this package requires special handling
+            # このパッケージが特別な処理を必要とするかチェック
             $isSpecialPackage = Test-SpecialPackageHandling -PackageName $PackageName
             
             if ($isSpecialPackage -and $PackageName -match "Microsoft JDK") {
-                # Special handling for Microsoft JDK
+                # Microsoft JDK の特別処理
                 Write-Host "Applying special JDK handling..."
                 
-                # Find the JDK folder (e.g., jdk-21.0.8+9)
-                # Check if the sourcePath itself is a JDK folder
+                # JDK フォルダを検索 (例: jdk-21.0.8+9)
+                # sourcePath 自体が JDK フォルダかチェック
                 if ((Split-Path $sourcePath -Leaf) -match "^jdk-\d+") {
-                    # The extracted folder is the JDK folder itself
+                    # 抽出されたフォルダが JDK フォルダ自体
                     $jdkFolder = Get-Item $sourcePath
                     Write-Host "Source path is JDK folder: $($jdkFolder.Name)"
                 } else {
-                    # Look for JDK folder inside the source path
+                    # ソースパス内で JDK フォルダを検索
                     $jdkFolder = Get-ChildItem -Path $sourcePath -Directory | Where-Object { $_.Name -match "^jdk-\d+" } | Select-Object -First 1
                 }
                 
                 if ($jdkFolder) {
                     Write-Host "Found JDK folder: $($jdkFolder.Name)"
                     
-                    # Extract major version and create target folder name (e.g., jdk-21)
+                    # メジャーバージョンを抽出してターゲットフォルダ名を作成 (例: jdk-21)
                     if ($jdkFolder.Name -match "^jdk-(\d+)") {
                         $majorVersion = $matches[1]
                         $targetFolderName = "jdk-$majorVersion"
@@ -446,12 +446,12 @@ endlocal
                         
                         Write-Host "Creating target directory: $targetFolderName"
                         
-                        # Create target directory
+                        # ターゲットディレクトリを作成
                         if (!(Test-Path $targetPath)) {
                             New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
                         }
                         
-                        # Copy JDK folder contents to target directory
+                        # JDK フォルダの内容をターゲットディレクトリにコピー
                         Get-ChildItem -Path $jdkFolder.FullName -Recurse | ForEach-Object {
                             $relativePath = $_.FullName.Substring($jdkFolder.FullName.Length + 1)
                             $destinationPath = Join-Path $targetPath $relativePath
@@ -478,11 +478,11 @@ endlocal
                 }
             }
             elseif ($isSpecialPackage -and $PackageName -match "Python") {
-                # Special handling for Python embeddable package
+                # Python 埋め込みパッケージの特別処理
                 Write-Host "Applying special Python embeddable package handling..."
                 
-                # Extract major.minor version from package name or archive name
-                $pythonVersion = "3.13"  # Default version
+                # パッケージ名またはアーカイブ名からメジャー.マイナーバージョンを抽出
+                $pythonVersion = "3.13"  # デフォルトバージョン
                 if ($ArchiveFile -match "python-(\d+\.\d+)") {
                     $pythonVersion = $matches[1]
                 }
@@ -492,21 +492,21 @@ endlocal
                 
                 Write-Host "Creating target directory: $targetFolderName"
                 
-                # Create target directory
+                # ターゲットディレクトリを作成
                 if (!(Test-Path $targetPath)) {
                     New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
                 }
                 
-                # Copy Python files to target directory
-                # For Python embeddable package, files might be directly in sourcePath or in a subdirectory
+                # Python ファイルをターゲットディレクトリにコピー
+                # Python 埋め込みパッケージの場合、ファイルは sourcePath に直接あるかサブディレクトリにある可能性があります
                 if ($sourcePath -eq $TempDir) {
-                    # Files are directly in temp directory
+                    # ファイルが一時ディレクトリに直接ある
                     Get-ChildItem -Path $sourcePath -File | ForEach-Object {
                         $destinationPath = Join-Path $targetPath $_.Name
                         Copy-Item -Path $_.FullName -Destination $destinationPath -Force
                     }
                 } else {
-                    # Files are in a subdirectory
+                    # ファイルがサブディレクトリにある
                     Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
                         $relativePath = $_.FullName.Substring($sourcePath.Length + 1)
                         $destinationPath = Join-Path $targetPath $relativePath
@@ -527,14 +527,14 @@ endlocal
                 
                 Write-Host "Python installed to: $targetPath"
                 
-                # Copy get-pip.py if it exists
+                # get-pip.py が存在する場合はコピー
                 $getPipPath = "packages\get-pip.py"
                 if (Test-Path $getPipPath) {
                     $getPipDestination = Join-Path $targetPath "get-pip.py"
                     Copy-Item -Path $getPipPath -Destination $getPipDestination -Force
                     Write-Host "Copied get-pip.py to Python directory"
                     
-                    # Patch pth file to enable site-packages
+                    # site-packages を有効にするため pth ファイルをパッチ
                     $pthFiles = Get-ChildItem -Path $targetPath -Filter "*._pth"
                     foreach ($pthFile in $pthFiles) {
                         Write-Host "Patching pth file: $($pthFile.Name)"
@@ -544,28 +544,28 @@ endlocal
                         $sitePackagesAdded = $false
                         
                         foreach ($line in $pthContent) {
-                            # Skip comment lines about import site
+                            # import site に関するコメント行をスキップ
                             if ($line -match "^#.*import.*site") {
                                 continue
                             }
-                            # Skip "Uncomment to run site.main()" comment
+                            # "Uncomment to run site.main()" コメントをスキップ
                             elseif ($line -match "^#.*Uncomment.*site\.main") {
                                 continue
                             }
-                            # Skip existing import site line to add it at the end
+                            # 最後に追加するため既存の import site 行をスキップ
                             elseif ($line -match "^import\s+site") {
                                 continue
                             } else {
                                 $newContent += $line
                             }
                             
-                            # Check if site-packages is already present
+                            # site-packages が既に存在するかチェック
                             if ($line -match "Lib\\site-packages") {
                                 $sitePackagesAdded = $true
                             }
                         }
                         
-                        # Add standard library zip first
+                        # 標準ライブラリの zip を最初に追加
                         $zipFiles = Get-ChildItem -Path $targetPath -Filter "python*.zip"
                         if ($zipFiles) {
                             $zipFile = $zipFiles[0].Name
@@ -575,24 +575,24 @@ endlocal
                             }
                         }
                         
-                        # Add site-packages if not found
+                        # 見つからない場合は site-packages を追加
                         if (-not $sitePackagesAdded) {
                             $newContent += "Lib\site-packages"
                             Write-Host "  Added Lib\site-packages path"
                         }
                         
-                        # Add import site at the end (with proper comment)
+                        # 最後に import site を追加 (適切なコメント付き)
                         $newContent += ""
                         $newContent += "# Uncomment to run site.main() automatically"
                         $newContent += "import site"
                         Write-Host "  Enabled 'import site'"
                         
-                        # Write back the modified content (UTF-8 without BOM)
+                        # 変更された内容を書き戻し (BOM なし UTF-8)
                         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
                         [System.IO.File]::WriteAllText($pthFile.FullName, ($newContent -join "`r`n"), $utf8NoBom)
                     }
                     
-                    # Install pip
+                    # pip をインストール
                     Write-Host "Installing pip..."
                     $pythonExe = Join-Path $targetPath "python.exe"
                     if (Test-Path $pythonExe) {
@@ -606,7 +606,7 @@ endlocal
                         } catch {
                             Write-Host "Warning: Failed to install pip: $($_.Exception.Message)"
                         } finally {
-                            # Clean up environment variables
+                            # 環境変数をクリーンアップ
                             Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
                             Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
                         }
@@ -617,24 +617,24 @@ endlocal
                     Write-Host "Warning: get-pip.py not found, skipping pip installation"
                 }
             } else {
-                # Standard handling for other packages
+                # その他のパッケージの標準処理
                 Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
                     if ($sourcePath -eq $TempDir) {
-                        # Files are directly in temp directory
+                        # ファイルが一時ディレクトリに直接ある
                         $relativePath = $_.Name
                     } else {
-                        # Files are in a subdirectory
+                        # ファイルがサブディレクトリにある
                         $relativePath = $_.FullName.Substring($sourcePath.Length + 1)
                     }
                     
                     if ($_.PSIsContainer) {
-                        # Directory case - no renaming needed for directories
+                        # ディレクトリの場合 - ディレクトリの名前変更は不要
                         $destinationPath = Join-Path $BinDir $relativePath
                         if (!(Test-Path $destinationPath)) {
                             New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
                         }
                     } else {
-                        # File case - check for duplicates and resolve
+                        # ファイルの場合 - 重複をチェックして解決
                         $resolvedPath = Get-ResolvedFileName -OriginalPath $relativePath -PackageName $PackageName -BinDir $BinDir
                         $destinationPath = Join-Path $BinDir $resolvedPath
                         
@@ -658,7 +658,7 @@ endlocal
         Write-Host $_.Exception.Message
         return $false
     } finally {
-        # Clean up temporary directory
+        # 一時ディレクトリをクリーンアップ
         if (Test-Path $TempDir) {
             Remove-Item -Path $TempDir -Recurse -Force
             Write-Host "Temporary directory cleaned up."
@@ -666,16 +666,17 @@ endlocal
     }
 }
 
-# Main execution based on options
+# オプションに基づくメイン実行
+
 if ($Uninstall) {
-    # Uninstall: Remove directories and clean PATH
+    # アンインストール: ディレクトリを削除して PATH をクリーンアップ
     Write-Host "Starting uninstall process..."
     
-    # Remove from PATH first
+    # まず PATH から削除
     $pathDirs = Get-PathDirectories -BaseDir $InstallDir
     Remove-FromUserPath -Directories $pathDirs
     
-    # Remove installation directory
+    # インストールディレクトリを削除
     if (Test-Path $InstallDir) {
         Write-Host "Removing installation directory: $InstallDir"
         Remove-Item -Path $InstallDir -Recurse -Force
@@ -688,86 +689,86 @@ if ($Uninstall) {
     exit 0
 }
 
-# For Extract or Install, perform extraction
+# Extract または Install の場合、抽出を実行
 if ($Extract -or $Install) {
-    # Clean bin directory at startup
+    # 起動時に bin ディレクトリをクリーンアップ
     Write-Host "Cleaning installation directory: $InstallDir"
     if (Test-Path $InstallDir) {
         Remove-Item -Path $InstallDir -Recurse -Force
         Write-Host "Removed existing installation directory."
     }
     
-    # Unblock all package files first
+    # まずすべてのパッケージファイルのブロックを解除
     Write-Host "Unblocking package files..."
     $packageFiles = Get-ChildItem -Path "packages" -File
     foreach ($packageFile in $packageFiles) {
         try {
-            # Try to unblock the file directly (safer approach)
+            # ファイルを直接ブロック解除を試行 (より安全なアプローチ)
             $beforeAttribs = (Get-Item $packageFile.FullName).Attributes
             Unblock-File -Path $packageFile.FullName -ErrorAction SilentlyContinue
             $afterAttribs = (Get-Item $packageFile.FullName).Attributes
             
-            # If attributes changed, the file was likely blocked
+            # 属性が変更された場合、ファイルはブロックされていた可能性がある
             if ($beforeAttribs -ne $afterAttribs) {
                 Write-Host "Unblocked: $($packageFile.Name)"
             }
         } catch {
-            # Silently continue if unblocking fails
+            # ブロック解除に失敗した場合は静かに続行
         }
     }
     Write-Host "Package file unblocking completed."
 
-    # Extract packages
+    # パッケージを抽出
     Write-Host "Starting package extraction process..."
 
     $extractionResults = @()
 
-    # Extract Node.js
+    # Node.js を抽出
     $nodeOutput = Extract-Package -ArchiveFile "packages\node-v22.18.0-win-x64.zip" -PackageName "Node.js v22.18.0" -BinDir $InstallDir
     $extractionResults += @($nodeOutput[-1])
 
-    # Extract Pandoc  
+    # Pandoc を抽出  
     $pandocOutput = Extract-Package -ArchiveFile "packages\pandoc-3.7.0.2-windows-x86_64.zip" -PackageName "Pandoc 3.7.0.2" -BinDir $InstallDir
     $extractionResults += @($pandocOutput[-1])
 
-    # Extract pandoc-crossref
+    # pandoc-crossref を抽出
     $crossrefOutput = Extract-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref" -BinDir $InstallDir
     $extractionResults += @($crossrefOutput[-1])
 
-    # Extract Doxygen
+    # Doxygen を抽出
     $doxygenOutput = Extract-Package -ArchiveFile "packages\doxygen-1.14.0.windows.x64.bin.zip" -PackageName "Doxygen 1.14.0" -BinDir $InstallDir
     $extractionResults += @($doxygenOutput[-1])
 
-    # Extract doxybook2
+    # doxybook2 を抽出
     $doxybook2Output = Extract-Package -ArchiveFile "packages\doxybook2-windows-win64-v1.6.1.zip" -PackageName "doxybook2 v1.6.1" -BinDir $InstallDir
     $extractionResults += @($doxybook2Output[-1])
 
-    # Extract Microsoft JDK
+    # Microsoft JDK を抽出
     $jdkOutput = Extract-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8" -BinDir $InstallDir
     $extractionResults += @($jdkOutput[-1])
 
-    # Extract PlantUML
+    # PlantUML を抽出
     $plantumlOutput = Extract-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4" -BinDir $InstallDir
     $extractionResults += @($plantumlOutput[-1])
 
-    # Extract Python
+    # Python を抽出
     $pythonOutput = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7" -BinDir $InstallDir
     $extractionResults += @($pythonOutput[-1])
 
-    # Extract Portable Git
+    # Portable Git を抽出
     Write-Host "Starting Portable Git extraction..."
     $gitArchiveFile = "packages\PortableGit-2.51.0-64-bit.7z.exe"
     if (Test-Path $gitArchiveFile) {
         Write-Host "Archive file found: $gitArchiveFile"
         
-        # Create git directory in bin folder
+        # bin フォルダに git ディレクトリを作成
         $gitBinDir = "$InstallDir\git"
         if (!(Test-Path $gitBinDir)) {
             New-Item -ItemType Directory -Path $gitBinDir -Force | Out-Null
             Write-Host "Created git directory: $gitBinDir"
         }
         
-        # Extract using the self-extracting executable (wait for completion)
+        # 自己展開実行ファイルを使用して抽出 (完了まで待機)
         Write-Host "Extracting Portable Git (this may take a moment)..."
         $process = Start-Process -FilePath $gitArchiveFile -ArgumentList "-y", "-o$(Resolve-Path $gitBinDir)" -Wait -PassThru
         
@@ -784,7 +785,7 @@ if ($Extract -or $Install) {
         $extractionResults += @($false)
     }
 
-    # Check overall result
+    # 全体的な結果をチェック
     $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
     $totalPackages = $extractionResults.Count
 
@@ -794,16 +795,16 @@ if ($Extract -or $Install) {
     if ($successfulExtractions -eq $totalPackages) {
         Write-Host "`nAll packages extracted successfully."
         
-        # If Install option, add to PATH
+        # Install オプションの場合、PATH に追加
         if ($Install) {
             Write-Host "`nManaging PATH environment variables..."
             $pathDirs = Get-PathDirectories -BaseDir $InstallDir
             
-            # Remove existing entries first (for reinstall scenarios)
+            # 既存のエントリを最初に削除 (再インストールシナリオ用)
             Write-Host "Removing any existing PATH entries..."
             Remove-FromUserPath -Directories $pathDirs
             
-            # Add fresh entries
+            # 新しいエントリを追加
             Write-Host "Adding tools to PATH..."
             Add-ToUserPath -Directories $pathDirs
             Write-Host "Installation completed." -ForegroundColor Green
