@@ -5,7 +5,7 @@ REM Get current script directory
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
-powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Make-Dist.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Download.ps1"
 
 set "PS_EXIT_CODE=%errorLevel%"
 

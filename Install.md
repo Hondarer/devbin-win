@@ -26,7 +26,9 @@ install.cmd
 ```cmd
 node --version
 pandoc --version
+doxygen --version
 java -version
+plantuml --version
 python --version
 git --version
 ```
@@ -111,3 +113,45 @@ C:\ProgramData は通常ユーザーでも書き込み可能なため、管理�
 ### PATH が反映されない
 
 新しいコマンドプロンプトまたは PowerShell を開いてください。
+
+## MinGW ツール
+
+Git に含まれる MinGW ツール (awk, diff など) は、他のコマンドとの衝突を避けるため、デフォルトでは PATH に追加されません。必要に応じて以下のスクリプトを使用して有効化 / 無効化してください。
+
+### MinGW PATH の追加
+
+現在のセッションで MinGW ツールを有効化します。
+
+**コマンドプロンプト:**
+
+```cmd
+Add-MinGW-Path.cmd
+```
+
+**PowerShell:**
+
+```powershell
+.\Add-MinGW-Path.ps1
+```
+
+### MinGW PATH の削除
+
+現在のセッションで MinGW ツールを無効化します。
+
+**コマンドプロンプト:**
+
+```cmd
+Remove-MinGW-Path.cmd
+```
+
+**PowerShell:**
+
+```powershell
+.\Remove-MinGW-Path.ps1
+```
+
+### 注意事項
+
+- これらのスクリプトは有効化したセッションでのみ有効です。
+  新しいターミナルを開く際は再度実行が必要です。
+- システムに既存の同名ツールがある場合、PATH の優先順位によって動作が変わります。

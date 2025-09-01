@@ -38,9 +38,7 @@ function Get-PathDirectories {
         "$BaseDir\python-3.13",
         "$BaseDir\git",
         "$BaseDir\git\bin",
-        "$BaseDir\git\cmd",
-        "$BaseDir\git\mingw64\bin",
-        "$BaseDir\git\usr\bin"
+        "$BaseDir\git\cmd"
     )
     
     return $pathDirs
@@ -88,7 +86,7 @@ function Add-ToUserPath {
                     $shouldSkip = $true
                 }
             }
-            elseif ($dirPath -like "*git" -or $dirPath -like "*git\bin" -or $dirPath -like "*git\mingw64\bin" -or $dirPath -like "*git\usr\bin" -or $dirPath -like "*git\cmd") {
+            elseif ($dirPath -like "*git" -or $dirPath -like "*git\bin" -or $dirPath -like "*git\cmd") {
                 if (Test-CommandExists "git") {
                     Write-Host "  Skipped (git.exe already available): $dirPath"
                     $shouldSkip = $true
@@ -794,6 +792,27 @@ if ($Extract -or $Install) {
 
     if ($successfulExtractions -eq $totalPackages) {
         Write-Host "`nAll packages extracted successfully."
+        
+        # MinGW PATH 管理スクリプトを bin ディレクトリにコピー
+        Write-Host "`nCopying MinGW PATH management scripts to bin directory..."
+        $mingwScripts = @(
+            "Add-MinGW-Path.cmd",
+            "Add-MinGW-Path.ps1", 
+            "Remove-MinGW-Path.cmd",
+            "Remove-MinGW-Path.ps1"
+        )
+        
+        foreach ($scriptName in $mingwScripts) {
+            $sourcePath = "packages\$scriptName"
+            $destPath = "$InstallDir\$scriptName"
+            
+            if (Test-Path $sourcePath) {
+                Copy-Item -Path $sourcePath -Destination $destPath -Force
+                Write-Host "  Copied: $scriptName"
+            } else {
+                Write-Host "  Warning: $scriptName not found in packages folder"
+            }
+        }
         
         # Install オプションの場合、PATH に追加
         if ($Install) {

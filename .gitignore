@@ -1,5 +1,9 @@
 /.claude
-/packages
+/packages/*
+!/packages/Add-MinGW-Path.cmd
+!/packages/Add-MinGW-Path.ps1
+!/packages/Remove-MinGW-Path.cmd
+!/packages/Remove-MinGW-Path.ps1
 /bin
 /*.zip
 /temp_extract
