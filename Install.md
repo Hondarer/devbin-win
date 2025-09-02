@@ -114,6 +114,24 @@ C:\ProgramData は通常ユーザーでも書き込み可能なため、管理�
 
 新しいコマンドプロンプトまたは PowerShell を開いてください。
 
+## Git Bash プロファイル管理
+
+Windows Terminal に Git Bash プロファイルをインストール・アンインストールできます。
+
+### Git Bash プロファイルをインストール
+
+```cmd
+Install-GitBash-Profile.cmd
+```
+
+### Git Bash プロファイルをアンインストール
+
+```cmd
+Uninstall-GitBash-Profile.cmd
+```
+
+詳細については、`Update-GitBash-Profile.md` を参照してください。
+
 ## MinGW ツール
 
 Git に含まれる MinGW ツール (awk, diff など) は、他のコマンドとの衝突を避けるため、デフォルトでは PATH に追加されません。必要に応じて以下のスクリプトを使用して有効化 / 無効化してください。

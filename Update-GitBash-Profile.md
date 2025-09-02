@@ -10,13 +10,10 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ```cmd
 # Git Bash プロファイルをインストール
-.\Update-GitBash-Profile.cmd -Install
-
-# 既存プロファイルを強制的に上書き
-.\Update-GitBash-Profile.cmd -Install -Force
+.\Install-GitBash-Profile.cmd
 
 # Git Bash プロファイルをアンインストール
-.\Update-GitBash-Profile.cmd -Uninstall
+.\Uninstall-GitBash-Profile.cmd
 ```
 
 ```powershell
