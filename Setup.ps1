@@ -524,7 +524,20 @@ endlocal
                 }
                 
                 Write-Host "Python installed to: $targetPath"
-                
+
+                # python.exe のコピーを python3.exe として作成
+                $pythonExe = Join-Path $targetPath "python.exe"
+                $python3Exe = Join-Path $targetPath "python3.exe"
+
+                if ((Test-Path $pythonExe) -and !(Test-Path $python3Exe)) {
+                    try {
+                        Copy-Item -Path $pythonExe -Destination $python3Exe -Force
+                        Write-Host "Created python3.exe copy for compatibility"
+                    } catch {
+                        Write-Host "Warning: Failed to create python3.exe: $($_.Exception.Message)"
+                    }
+                }
+
                 # get-pip.py が存在する場合はコピー
                 $getPipPath = "packages\get-pip.py"
                 if (Test-Path $getPipPath) {
