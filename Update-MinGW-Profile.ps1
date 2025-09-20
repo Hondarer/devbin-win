@@ -25,7 +25,7 @@ function Show-Usage {
     Write-Host "  .\Update-MinGW-Profile.ps1 -Install -Force`n"
 }
 
-# Settings.jsonのパスを特定
+# Settings.json のパスを特定
 function Get-WindowsTerminalSettingsPath {
     $possiblePaths = @(
         "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json",
@@ -52,14 +52,14 @@ function New-SettingsBackup {
     return $backupPath
 }
 
-# JSON設定を読み込み
+# JSON 設定を読み込み
 function Get-TerminalSettings {
     param([string]$SettingsPath)
     
     $jsonContent = Get-Content -Path $SettingsPath -Raw -Encoding UTF8
     $settings = $jsonContent | ConvertFrom-Json
     
-    # profiles.listが存在するか確認・作成
+    # profiles.list が存在するか確認・作成
     if (-not $settings.profiles) {
         $settings | Add-Member -MemberType NoteProperty -Name "profiles" -Value ([PSCustomObject]@{})
     }
@@ -70,7 +70,7 @@ function Get-TerminalSettings {
     return $settings
 }
 
-# JSON設定を保存
+# JSON 設定を保存
 function Save-TerminalSettings {
     param(
         [PSCustomObject]$Settings,
@@ -92,7 +92,7 @@ function Install-MinGWProfile {
     $newProfile = @{
         guid = "{d48c104b-44a7-4180-be8d-b542db93a384}"
         name = "Windows PowerShell (w/MinGW)"
-        commandline = "powershell.exe -NoExit -Command `"& 'Add-MinGW-Path.ps1'`""
+        commandline = "powershell.exe -NoExit -ExecutionPolicy Bypass -Command `"& 'Add-MinGW-Path.ps1'`""
         startingDirectory = "%USERPROFILE%"
         icon = "ms-appx:///ProfileIcons/{61c54bbd-c2c6-5271-96e7-009a87ff44bf}.png"
     }
@@ -156,16 +156,16 @@ function Install-MinGWProfile {
         # 設定を保存
         Save-TerminalSettings -Settings $settings -SettingsPath $SettingsPath
         
-        Write-Host "MinGW PowerShell profile installation completed successfully!"
-        Write-Host "Please restart Windows Terminal to see the new profile."
+        #Write-Host "MinGW PowerShell profile installation completed successfully!"
+        #Write-Host "Please restart Windows Terminal to see the new profile."
         
         # 追加されたプロファイル情報を表示
-        Write-Host "`nInstalled profile information:"
-        Write-Host "  Name: $($newProfile.name)"
-        Write-Host "  GUID: $($newProfile.guid)"
-        Write-Host "  Command: $($newProfile.commandline)"
-        Write-Host "  Starting Directory: $($newProfile.startingDirectory)"
-        Write-Host "`nBackup file: $backupPath"
+        #Write-Host "`nInstalled profile information:"
+        #Write-Host "  Name: $($newProfile.name)"
+        #Write-Host "  GUID: $($newProfile.guid)"
+        #Write-Host "  Command: $($newProfile.commandline)"
+        #Write-Host "  Starting Directory: $($newProfile.startingDirectory)"
+        #Write-Host "`nBackup file: $backupPath"
         
         return $true
         
@@ -202,9 +202,16 @@ function Uninstall-MinGWProfile {
         }
         
         if (-not $targetProfiles) {
-            Write-Host "MinGW PowerShell profile not found. It may have already been removed or was never installed."
             return $false
         }
+        
+        # 削除対象の詳細を表示
+        #Write-Host "`nProfiles to be removed:"
+        #foreach ($profile in $targetProfiles) {
+        #    Write-Host "  Name: $($profile.name)"
+        #    Write-Host "  GUID: $($profile.guid)"
+        #    Write-Host "  Command: $($profile.commandline)"
+        #}
         
         # プロファイルを削除
         $originalCount = $settings.profiles.list.Count
@@ -222,10 +229,10 @@ function Uninstall-MinGWProfile {
         # 設定を保存
         Save-TerminalSettings -Settings $settings -SettingsPath $SettingsPath
         
-        Write-Host "MinGW PowerShell profile uninstallation completed successfully!"
-        Write-Host "Please restart Windows Terminal to see the changes."
-        Write-Host "Removed profiles: $removedCount"
-        Write-Host "Backup file: $backupPath"
+        #Write-Host "`nMinGW PowerShell profile uninstallation completed successfully!"
+        #Write-Host "Please restart Windows Terminal to see the changes."
+        #Write-Host "Removed profiles: $removedCount"
+        #Write-Host "Backup file: $backupPath"
         
         return $true
         

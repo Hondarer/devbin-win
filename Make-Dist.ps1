@@ -50,7 +50,12 @@ $itemsToInclude = @(
     "Setup-Home.cmd",
     "Update-GitBash-Profile.md",
     "Update-GitBash-Profile.ps1",
-    "Update-GitBash-Profile.cmd"
+    "Install-GitBash-Profile.cmd",
+    "Uninstall-GitBash-Profile.cmd",
+    "Update-MinGW-Profile.md",
+    "Update-MinGW-Profile.ps1",
+    "Install-MinGW-Profile.cmd",
+    "Uninstall-MinGW-Profile.cmd"
 )
 
 $addedCount = 0

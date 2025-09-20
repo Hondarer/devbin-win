@@ -1,4 +1,4 @@
-﻿# Windows Terminal プロファイル管理スクリプト
+﻿# Windows Terminal Git Bash プロファイル管理スクリプト
 param(
     [switch]$Install,      # プロファイルをインストール
     [switch]$Uninstall,    # プロファイルをアンインストール
@@ -9,23 +9,23 @@ param(
 function Show-Usage {
     Write-Host "`n=== Windows Terminal Git Bash Profile Manager ==="
     Write-Host "`nUsage:"
-    Write-Host "  .\UpdateGitBashProfile.ps1 -Install         # Install Git Bash profile"
-    Write-Host "  .\UpdateGitBashProfile.ps1 -Uninstall       # Uninstall Git Bash profile"
-    Write-Host "  .\UpdateGitBashProfile.ps1 -Install -Force  # Force overwrite existing profile"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Install         # Install Git Bash profile"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Uninstall       # Uninstall Git Bash profile"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Install -Force  # Force overwrite existing profile"
     Write-Host "`nOptions:"
     Write-Host "  -Install     Add Git Bash profile to Windows Terminal"
     Write-Host "  -Uninstall   Remove Git Bash profile from Windows Terminal" 
     Write-Host "  -Force       Force overwrite existing profile (use with -Install)"
     Write-Host "`nExamples:"
     Write-Host "  # Install profile"
-    Write-Host "  .\UpdateGitBashProfile.ps1 -Install"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Install"
     Write-Host "`n  # Remove profile"
-    Write-Host "  .\UpdateGitBashProfile.ps1 -Uninstall"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Uninstall"
     Write-Host "`n  # Force update existing profile"
-    Write-Host "  .\UpdateGitBashProfile.ps1 -Install -Force`n"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Install -Force`n"
 }
 
-# Settings.jsonのパスを特定
+# Settings.json のパスを特定
 function Get-WindowsTerminalSettingsPath {
     $possiblePaths = @(
         "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json",
@@ -35,7 +35,6 @@ function Get-WindowsTerminalSettingsPath {
     
     foreach ($path in $possiblePaths) {
         if (Test-Path $path) {
-            #Write-Host "Found settings.json: $path"
             return $path
         }
     }
@@ -50,19 +49,17 @@ function New-SettingsBackup {
     
     $backupPath = $SettingsPath + ".$(Get-Date -Format 'yyMMddHHmmss')"
     Copy-Item -Path $SettingsPath -Destination $backupPath
-    #Write-Host "Backup created: $backupPath"
     return $backupPath
 }
 
-# JSON設定を読み込み
+# JSON 設定を読み込み
 function Get-TerminalSettings {
     param([string]$SettingsPath)
     
-    #Write-Host "Loading settings.json..."
     $jsonContent = Get-Content -Path $SettingsPath -Raw -Encoding UTF8
     $settings = $jsonContent | ConvertFrom-Json
     
-    # profiles.listが存在するか確認・作成
+    # profiles.list が存在するか確認・作成
     if (-not $settings.profiles) {
         $settings | Add-Member -MemberType NoteProperty -Name "profiles" -Value ([PSCustomObject]@{})
     }
@@ -73,7 +70,7 @@ function Get-TerminalSettings {
     return $settings
 }
 
-# JSON設定を保存
+# JSON 設定を保存
 function Save-TerminalSettings {
     param(
         [PSCustomObject]$Settings,
@@ -84,7 +81,7 @@ function Save-TerminalSettings {
     [System.IO.File]::WriteAllText($SettingsPath, $jsonOutput, [System.Text.Encoding]::UTF8)
 }
 
-# プロファイルをインストール
+# Git Bash プロファイルをインストール
 function Install-GitBashProfile {
     param(
         [string]$SettingsPath,
@@ -147,15 +144,11 @@ function Install-GitBashProfile {
         if (-not (Test-Path $iconPath)) {
             Write-Warning "Warning: Icon file not found: $iconPath"
             Write-Host "Default icon will be used."
-        } else {
-            #Write-Host "Verified icon: $iconPath"
         }
         
         # 新しいプロファイルを追加
         $newProfileObject = [PSCustomObject]$newProfile
         $settings.profiles.list = @($settings.profiles.list) + @($newProfileObject)
-        
-        #Write-Host "Adding Git Bash profile..."
         
         # 設定を保存
         Save-TerminalSettings -Settings $settings -SettingsPath $SettingsPath
@@ -187,7 +180,7 @@ function Install-GitBashProfile {
     }
 }
 
-# プロファイルをアンインストール
+# Git Bash プロファイルをアンインストール
 function Uninstall-GitBashProfile {
     param([string]$SettingsPath)
     
@@ -207,7 +200,6 @@ function Uninstall-GitBashProfile {
         }
         
         if (-not $targetProfiles) {
-            #Write-Host "Git Bash profile not found. It may have already been removed or was never installed."
             return $false
         }
         
@@ -231,8 +223,6 @@ function Uninstall-GitBashProfile {
             Write-Host "No profiles were removed."
             return $false
         }
-        
-        #Write-Host "`nRemoving Git Bash profile..."
         
         # 設定を保存
         Save-TerminalSettings -Settings $settings -SettingsPath $SettingsPath

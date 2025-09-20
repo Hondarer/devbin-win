@@ -48,7 +48,62 @@ function Get-PathDirectories {
 function Test-CommandExists {
     param([string]$CommandName)
     try {
-        Get-Command $CommandName -ErrorAction Stop | Out-Null
+        $command = Get-Command $CommandName -ErrorAction Stop
+
+        # Python/Python3 の場合、Windows Store アプリのプロキシかどうかをチェック
+        if ($CommandName -match "^python3?$") {
+            $commandPath = $command.Source
+
+            # WindowsApps パスの場合、実際に実行可能かテスト
+            if ($commandPath -match "\\WindowsApps\\") {
+                Write-Host "  Detected Windows Store Python proxy: $commandPath"
+                Write-Host "  Testing if Python is actually installed..."
+
+                try {
+                    # --version オプションでテスト実行
+                    $process = Start-Process -FilePath $commandPath -ArgumentList "--version" -NoNewWindow -Wait -PassThru -RedirectStandardError "stderr_temp.txt" -RedirectStandardOutput "stdout_temp.txt"
+
+                    # 標準エラー出力をチェック
+                    $stderrContent = ""
+                    if (Test-Path "stderr_temp.txt") {
+                        $stderrContent = Get-Content "stderr_temp.txt" -Raw -ErrorAction SilentlyContinue
+                        Remove-Item "stderr_temp.txt" -ErrorAction SilentlyContinue
+                    }
+
+                    # 標準出力をチェック
+                    $stdoutContent = ""
+                    if (Test-Path "stdout_temp.txt") {
+                        $stdoutContent = Get-Content "stdout_temp.txt" -Raw -ErrorAction SilentlyContinue
+                        Remove-Item "stdout_temp.txt" -ErrorAction SilentlyContinue
+                    }
+
+                    # ストアアプリのプロキシの場合、stderr に "Python" とだけ出力される
+                    if ($stderrContent -match "^Python\s*$" -or ($stderrContent -match "Python" -and -not ($stderrContent -match "\d+\.\d+" -or $stdoutContent -match "\d+\.\d+"))) {
+                        Write-Host "  Windows Store Python proxy detected - Python not actually installed"
+                        return $false
+                    }
+
+                    # 正常なバージョン情報が出力された場合は有効
+                    if ($stdoutContent -match "\d+\.\d+" -or $stderrContent -match "\d+\.\d+") {
+                        Write-Host "  Valid Python installation detected"
+                        return $true
+                    }
+
+                    # その他のエラーの場合は無効とみなす
+                    Write-Host "  Python proxy test failed - treating as not installed"
+                    return $false
+
+                } catch {
+                    Write-Host "  Failed to test Python proxy: $($_.Exception.Message)"
+                    return $false
+                } finally {
+                    # 一時ファイルのクリーンアップ
+                    Remove-Item "stderr_temp.txt" -ErrorAction SilentlyContinue
+                    Remove-Item "stdout_temp.txt" -ErrorAction SilentlyContinue
+                }
+            }
+        }
+
         return $true
     } catch {
         return $false

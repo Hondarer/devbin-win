@@ -30,6 +30,7 @@ doxygen --version
 java -version
 plantuml --version
 python --version
+python3 --version
 git --version
 ```
 
@@ -61,8 +62,9 @@ uninstall.cmd
 
 ### Python
 
-- システムに `python.exe` が存在する場合、Python 3.13 への PATH は追加されません
-- 既存の Python インストールが優先されます
+- システムに有効な `python.exe` が存在する場合、Python 3.13 への PATH は追加されません
+- Windows Store の Python プロキシ (実際にはインストールされていない) は無視され、Python 3.13 がインストールされます
+- 有効な Python インストールが検出された場合は既存のインストールが優先されます
 
 ### Git
 
@@ -170,6 +172,6 @@ Remove-MinGW-Path.cmd
 
 ### 注意事項
 
-- これらのスクリプトは有効化したセッションでのみ有効です。
+- これらのスクリプトは有効化したセッション内でのみ有効です。
   新しいターミナルを開く際は再度実行が必要です。
 - システムに既存の同名ツールがある場合、PATH の優先順位によって動作が変わります。
