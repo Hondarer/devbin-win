@@ -26,16 +26,20 @@ function Download-File {
         return $true
     }
     
+    # 現在の設定を保存
+    $originalProgressPreference = $ProgressPreference
     try {
         Write-Host "Downloading $fileName..."
         
-        # 進捗は PowerShell の既定の進捗表示に任せる
+        # プログレスバーを無効化
+        # Invoke-WebRequest のプログレスバーは性能に問題あり
+        $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -Uri $Url -OutFile $OutputPath -UseBasicParsing -ErrorAction Stop
         
         if (Test-Path $OutputPath) {
             $fileSize = (Get-Item $OutputPath).Length
             $fileSizeMB = [math]::Round($fileSize / 1MB, 2)
-            Write-Host "$fileName download completed. (${fileSizeMB}MB)"
+            Write-Host "$fileName download completed. (${fileSizeMB} MB)"
             return $true
         } else {
             throw "Download failed"
@@ -51,6 +55,8 @@ function Download-File {
         
         return $false
     }
+    # 設定を復元
+    $ProgressPreference = $originalProgressPreference
 }
 
 # ダウンロード対象ファイルの定義
@@ -64,7 +70,8 @@ $downloads = @(
     "https://github.com/plantuml/plantuml/releases/download/v1.2025.4/plantuml-1.2025.4.jar",
     "https://www.python.org/ftp/python/3.13.7/python-3.13.7-embed-amd64.zip",
     "https://bootstrap.pypa.io/get-pip.py",
-    "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe"
+    "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe",
+    "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip"
 )
 
 # ダウンロード実行
