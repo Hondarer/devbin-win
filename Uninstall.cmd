@@ -64,10 +64,12 @@ if %PS_EXIT_CODE% equ 0 (
     echo.
     echo The following actions were performed:
     echo - Removed PATH environment variables
+    echo - Removed DOTNET_HOME environment variable
+    echo - Removed DOTNET_CLI_TELEMETRY_OPTOUT environment variable
     echo - Deleted installation directory: %INSTALL_DIR%
     echo - Removed parent directory: C:\ProgramData\devbin-win
     echo.
-    echo Please restart your terminal for PATH changes to take effect.
+    echo Please restart your terminal for environment changes to take effect.
     echo.
 ) else (
     echo.

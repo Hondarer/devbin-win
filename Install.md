@@ -31,6 +31,7 @@ java -version
 plantuml --version
 python --version
 python3 --version
+dotnet --version
 git --version
 ```
 
@@ -65,6 +66,11 @@ uninstall.cmd
 - システムに有効な `python.exe` が存在する場合、Python 3.13 への PATH は追加されません
 - Windows Store の Python プロキシ (実際にはインストールされていない) は無視され、Python 3.13 がインストールされます
 - 有効な Python インストールが検出された場合は既存のインストールが優先されます
+
+### .NET SDK
+
+- システムに `dotnet.exe` が存在する場合、.NET SDK への PATH は追加されません
+- 既存の .NET SDK インストールが優先されます
 
 ### Git
 

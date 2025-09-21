@@ -36,6 +36,7 @@ function Get-PathDirectories {
         $BaseDir,
         "$BaseDir\jdk-21\bin",
         "$BaseDir\python-3.13",
+        "$BaseDir\dotnet8sdk",
         "$BaseDir\git",
         "$BaseDir\git\bin",
         "$BaseDir\git\cmd"
@@ -141,6 +142,12 @@ function Add-ToUserPath {
                     $shouldSkip = $true
                 }
             }
+            elseif ($dirPath -like "*dotnet8sdk") {
+                if (Test-CommandExists "dotnet") {
+                    Write-Host "  Skipped (dotnet.exe already available): $dirPath"
+                    $shouldSkip = $true
+                }
+            }
             elseif ($dirPath -like "*git" -or $dirPath -like "*git\bin" -or $dirPath -like "*git\cmd") {
                 if (Test-CommandExists "git") {
                     Write-Host "  Skipped (git.exe already available): $dirPath"
@@ -157,6 +164,26 @@ function Add-ToUserPath {
                 }
                 Write-Host "  Added: $dirPath"
                 $pathChanged = $true
+
+                # dotnet8sdk パスの場合、DOTNET_HOME 環境変数を設定
+                if ($dirPath -like "*dotnet8sdk") {
+                    $currentDotnetHome = [Environment]::GetEnvironmentVariable("DOTNET_HOME", "User")
+                    if (-not $currentDotnetHome) {
+                        [Environment]::SetEnvironmentVariable("DOTNET_HOME", $dirPath, "User")
+                        Write-Host "  Set DOTNET_HOME: $dirPath"
+                    } else {
+                        Write-Host "  DOTNET_HOME already set: $currentDotnetHome"
+                    }
+
+                    # DOTNET_CLI_TELEMETRY_OPTOUT を設定してテレメトリを無効化
+                    $currentTelemetryOptout = [Environment]::GetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", "User")
+                    if (-not $currentTelemetryOptout) {
+                        [Environment]::SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", "1", "User")
+                        Write-Host "  Set DOTNET_CLI_TELEMETRY_OPTOUT: 1"
+                    } else {
+                        Write-Host "  DOTNET_CLI_TELEMETRY_OPTOUT already set: $currentTelemetryOptout"
+                    }
+                }
             }
         } else {
             Write-Host "  Directory not found: $dir"
@@ -174,26 +201,35 @@ function Add-ToUserPath {
 
 # ユーザー PATH からディレクトリを削除する
 function Remove-FromUserPath {
-    param([string[]]$Directories)
-    
-    Write-Host "Removing directories from user PATH..."
+    param(
+        [string[]]$Directories,
+        [switch]$Silent = $false
+    )
+
+    if (-not $Silent) {
+        Write-Host "Removing directories from user PATH..."
+    }
     
     $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
     if (-not $currentPath) {
-        Write-Host "User PATH is empty."
+        if (-not $Silent) {
+            Write-Host "User PATH is empty."
+        }
         return
     }
-    
+
     $pathChanged = $false
     $pathEntries = $currentPath -split ';'
     $newPathEntries = @()
-    
+
     foreach ($entry in $pathEntries) {
         $shouldRemove = $false
         foreach ($dir in $Directories) {
             $absolutePath = (Resolve-Path $dir -ErrorAction SilentlyContinue)
             if ($absolutePath -and ($entry -eq $absolutePath.Path)) {
-                Write-Host "  Removed: $entry"
+                if (-not $Silent) {
+                    Write-Host "  Removed: $entry"
+                }
                 $shouldRemove = $true
                 $pathChanged = $true
                 break
@@ -203,19 +239,193 @@ function Remove-FromUserPath {
             $newPathEntries += $entry
         }
     }
-    
+
     if ($pathChanged) {
         $newPath = $newPathEntries -join ';'
         [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
-        Write-Host "User PATH updated successfully."
+        if (-not $Silent) {
+            Write-Host "User PATH updated successfully."
+        }
     } else {
-        Write-Host "No matching directories found in PATH."
+        if (-not $Silent) {
+            Write-Host "No matching directories found in PATH."
+        }
     }
 }
 
 # 重複ファイル追跡用のグローバル キャッシュ
 $global:DuplicateFiles = @{}
 $global:PackageFileMapping = @{}
+
+# 長いパスを UNC 形式に変換する関数
+function Convert-ToLongPath {
+    param([string]$Path)
+
+    # 既に UNC 形式の場合はそのまま返す
+    if ($Path.StartsWith("\\?\")) {
+        return $Path
+    }
+
+    # 相対パスの場合は絶対パスに変換
+    if (-not [System.IO.Path]::IsPathRooted($Path)) {
+        $Path = (Resolve-Path $Path -ErrorAction SilentlyContinue).Path
+        if (-not $Path) {
+            return $null
+        }
+    }
+
+    # UNC 形式に変換
+    return "\\?\$Path"
+}
+
+# 長いパス対応のディレクトリ作成関数
+function New-LongPathDirectory {
+    param([string]$Path)
+
+    $longPath = Convert-ToLongPath $Path
+    if ($longPath -and !(Test-Path $longPath)) {
+        try {
+            New-Item -ItemType Directory -Path $longPath -Force | Out-Null
+            return $true
+        } catch {
+            Write-Host "  Warning: Failed to create directory: $Path"
+            Write-Host "  Error: $($_.Exception.Message)"
+            return $false
+        }
+    }
+    return $true
+}
+
+# 長いパス対応のファイルコピー関数
+function Copy-LongPathFile {
+    param(
+        [string]$SourcePath,
+        [string]$DestinationPath
+    )
+
+    $longSourcePath = Convert-ToLongPath $SourcePath
+    $longDestinationPath = Convert-ToLongPath $DestinationPath
+
+    if ($longSourcePath -and $longDestinationPath) {
+        try {
+            Copy-Item -Path $longSourcePath -Destination $longDestinationPath -Force
+            return $true
+        } catch {
+            Write-Host "  Warning: Failed to copy file: $(Split-Path $SourcePath -Leaf)"
+            Write-Host "  Error: $($_.Exception.Message)"
+            return $false
+        }
+    }
+    return $false
+}
+
+# 環境変数をレジストリからカレントプロセスに同期するヘルパー関数
+function Sync-EnvironmentVariable {
+    param(
+        [string]$VariableName,
+        [switch]$Silent = $false
+    )
+
+    try {
+        if ($VariableName -eq "PATH") {
+            # PATH の特別処理: User と Machine を結合
+            $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+            $machinePath = [Environment]::GetEnvironmentVariable("PATH", "Machine")
+
+            # 空の値を空文字列として扱う
+            if (-not $userPath) { $userPath = "" }
+            if (-not $machinePath) { $machinePath = "" }
+
+            # User PATH を優先して結合
+            $combinedPath = if ($userPath -and $machinePath) {
+                "$userPath;$machinePath"
+            } elseif ($userPath) {
+                $userPath
+            } elseif ($machinePath) {
+                $machinePath
+            } else {
+                ""
+            }
+
+            # 重複エントリと空エントリを除去 (順序を保持)
+            if ($combinedPath) {
+                $pathEntries = $combinedPath -split ';' | Where-Object { $_.Trim() -ne "" }
+                $uniqueEntries = @()
+                $seenEntries = @{}
+
+                foreach ($entry in $pathEntries) {
+                    $trimmedEntry = $entry.Trim()
+                    if ($trimmedEntry -and -not $seenEntries.ContainsKey($trimmedEntry.ToLower())) {
+                        $uniqueEntries += $trimmedEntry
+                        $seenEntries[$trimmedEntry.ToLower()] = $true
+                    }
+                }
+
+                $cleanPath = $uniqueEntries -join ';'
+
+                # カレントプロセスに設定
+                $env:PATH = $cleanPath
+
+                if (-not $Silent) {
+                    Write-Host "Synchronized PATH environment variable to current process"
+                }
+            }
+        } else {
+            # その他の環境変数: User を優先、なければ Machine
+            $userValue = [Environment]::GetEnvironmentVariable($VariableName, "User")
+            $machineValue = [Environment]::GetEnvironmentVariable($VariableName, "Machine")
+
+            $finalValue = if ($userValue) { $userValue } else { $machineValue }
+
+            if ($finalValue) {
+                Set-Item -Path "Env:$VariableName" -Value $finalValue
+                if (-not $Silent) {
+                    Write-Host "Synchronized $VariableName environment variable to current process"
+                }
+            } else {
+                # 値が存在しない場合はカレントプロセスからも削除
+                if (Test-Path "Env:$VariableName") {
+                    Remove-Item -Path "Env:$VariableName" -ErrorAction SilentlyContinue
+                    if (-not $Silent) {
+                        Write-Host "Removed $VariableName from current process (not set in registry)"
+                    }
+                }
+            }
+        }
+
+        return $true
+    } catch {
+        if (-not $Silent) {
+            Write-Host "Warning: Failed to sync $VariableName environment variable: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        return $false
+    }
+}
+
+# 複数の環境変数を一括同期する関数
+function Sync-EnvironmentVariables {
+    param(
+        [string[]]$VariableNames = @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT"),
+        [switch]$Silent = $false
+    )
+
+    if (-not $Silent) {
+        Write-Host "Synchronizing environment variables with current process..."
+    }
+
+    $syncCount = 0
+    foreach ($varName in $VariableNames) {
+        if (Sync-EnvironmentVariable -VariableName $varName -Silent:$Silent) {
+            $syncCount++
+        }
+    }
+
+    if (-not $Silent) {
+        Write-Host "Successfully synchronized $syncCount/$($VariableNames.Count) environment variables"
+    }
+
+    return $syncCount -eq $VariableNames.Count
+}
 
 function Get-PackageShortName {
     param([string]$PackageName)
@@ -229,6 +439,7 @@ function Get-PackageShortName {
     if ($PackageName -match "Microsoft JDK") { return "jdk" }
     if ($PackageName -match "PlantUML") { return "plantuml" }
     if ($PackageName -match "Python") { return "python" }
+    if ($PackageName -match "\.NET SDK") { return "dotnet8sdk" }
     
     # 必要に応じてパッケージ名マッピングを追加
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
@@ -245,6 +456,9 @@ function Test-SpecialPackageHandling {
         return $true
     }
     if ($PackageName -match "Python") {
+        return $true
+    }
+    if ($PackageName -match "\.NET SDK") {
         return $true
     }
     return $false
@@ -682,6 +896,48 @@ endlocal
                 } else {
                     Write-Host "Warning: get-pip.py not found, skipping pip installation"
                 }
+            }
+            elseif ($isSpecialPackage -and $PackageName -match "\.NET SDK") {
+                # .NET SDK の特別処理
+                Write-Host "Applying special .NET SDK handling..."
+
+                $targetFolderName = "dotnet8sdk"
+                $targetPath = Join-Path $BinDir $targetFolderName
+
+                Write-Host "Creating target directory: $targetFolderName"
+
+                # ターゲットディレクトリを作成
+                if (!(Test-Path $targetPath)) {
+                    New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+                }
+
+                # .NET SDK の場合、一時ディレクトリ全体の内容をコピー
+                # .NET SDK アーカイブは直下にファイルとフォルダが展開される
+                $absoluteTempDir = (Resolve-Path $TempDir).Path
+                Write-Host "Copying .NET SDK files from temp directory: $absoluteTempDir"
+                Get-ChildItem -Path $absoluteTempDir -Recurse | ForEach-Object {
+                    $relativePath = $_.FullName.Substring($absoluteTempDir.Length + 1)
+                    $destinationPath = Join-Path $targetPath $relativePath
+
+                    if ($_.PSIsContainer) {
+                        # 長いパス対応のディレクトリ作成
+                        New-LongPathDirectory -Path $destinationPath | Out-Null
+                    } else {
+                        $destinationDir = Split-Path $destinationPath -Parent
+                        if ($destinationDir) {
+                            # 長いパス対応のディレクトリ作成
+                            New-LongPathDirectory -Path $destinationDir | Out-Null
+                        }
+
+                        # 長いパス対応のファイルコピー
+                        $copyResult = Copy-LongPathFile -SourcePath $_.FullName -DestinationPath $destinationPath
+                        if (-not $copyResult) {
+                            Write-Host "  Skipped: $relativePath"
+                        }
+                    }
+                }
+
+                Write-Host ".NET SDK installed to: $targetPath"
             } else {
                 # その他のパッケージの標準処理
                 Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
@@ -732,37 +988,96 @@ endlocal
     }
 }
 
+# 完全アンインストール処理を実行する関数
+function Invoke-CompleteUninstall {
+    param(
+        [string]$InstallDirectory,
+        [switch]$Silent = $false
+    )
+
+    if (-not $Silent) {
+        Write-Host "Starting cleanup process..."
+    }
+
+    try {
+        # PATH から削除
+        $pathDirs = Get-PathDirectories -BaseDir $InstallDirectory
+        if ($pathDirs -and $pathDirs.Count -gt 0) {
+            Remove-FromUserPath -Directories $pathDirs -Silent:$Silent
+        }
+
+        # DOTNET_HOME 環境変数を削除 (dotnet8sdk インストールディレクトリと一致する場合)
+        $currentDotnetHome = [Environment]::GetEnvironmentVariable("DOTNET_HOME", "User")
+        $dotnetSdkPath = Join-Path $InstallDirectory "dotnet8sdk"
+        if ($currentDotnetHome -and ($currentDotnetHome -eq $dotnetSdkPath)) {
+            [Environment]::SetEnvironmentVariable("DOTNET_HOME", $null, "User")
+            if (-not $Silent) {
+                Write-Host "Removed DOTNET_HOME environment variable: $currentDotnetHome"
+            }
+
+            # DOTNET_CLI_TELEMETRY_OPTOUT も削除 (このスクリプトで設定したと推定される場合)
+            $currentTelemetryOptout = [Environment]::GetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", "User")
+            if ($currentTelemetryOptout -eq "1") {
+                [Environment]::SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", $null, "User")
+                if (-not $Silent) {
+                    Write-Host "Removed DOTNET_CLI_TELEMETRY_OPTOUT environment variable"
+                }
+            }
+        }
+
+        # インストールディレクトリを削除
+        if (Test-Path $InstallDirectory) {
+            if (-not $Silent) {
+                Write-Host "Removing installation directory: $InstallDirectory"
+            }
+            Remove-Item -Path $InstallDirectory -Recurse -Force -ErrorAction SilentlyContinue
+            if (-not $Silent) {
+                Write-Host "Installation directory removed."
+            }
+        } else {
+            if (-not $Silent) {
+                Write-Host "Installation directory not found: $InstallDirectory"
+            }
+        }
+
+        return $true
+    } catch {
+        if (-not $Silent) {
+            Write-Host "Warning: Some cleanup operations failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        return $false
+    }
+}
+
 # オプションに基づくメイン実行
 
 if ($Uninstall) {
     # アンインストール: ディレクトリを削除して PATH をクリーンアップ
-    Write-Host "Starting uninstall process..."
-    
-    # まず PATH から削除
-    $pathDirs = Get-PathDirectories -BaseDir $InstallDir
-    Remove-FromUserPath -Directories $pathDirs
-    
-    # インストールディレクトリを削除
-    if (Test-Path $InstallDir) {
-        Write-Host "Removing installation directory: $InstallDir"
-        Remove-Item -Path $InstallDir -Recurse -Force
-        Write-Host "Installation directory removed."
+    $uninstallResult = Invoke-CompleteUninstall -InstallDirectory $InstallDir
+
+    if ($uninstallResult) {
+        Write-Host "Uninstall completed." -ForegroundColor Green
     } else {
-        Write-Host "Installation directory not found: $InstallDir"
+        Write-Host "Uninstall completed with warnings." -ForegroundColor Yellow
     }
-    
-    Write-Host "Uninstall completed." -ForegroundColor Green
     exit 0
 }
 
 # Extract または Install の場合、抽出を実行
 if ($Extract -or $Install) {
-    # 起動時に bin ディレクトリをクリーンアップ
-    Write-Host "Cleaning installation directory: $InstallDir"
-    if (Test-Path $InstallDir) {
-        Remove-Item -Path $InstallDir -Recurse -Force
-        Write-Host "Removed existing installation directory."
+    # インストール前に完全なクリーンアップを実行
+    Write-Host "Performing pre-installation cleanup..."
+    $cleanupResult = Invoke-CompleteUninstall -InstallDirectory $InstallDir -Silent
+
+    if ($cleanupResult) {
+        Write-Host "Previous installation cleaned up successfully."
+    } else {
+        Write-Host "Cleanup completed with some warnings (this is normal for first-time installation)."
     }
+
+    # 環境変数をカレントプロセスに同期
+    Write-Host "Synchronizing environment variables..."
+    Sync-EnvironmentVariables -Silent | Out-Null
     
     # まずすべてのパッケージファイルのブロックを解除
     Write-Host "Unblocking package files..."
@@ -820,6 +1135,10 @@ if ($Extract -or $Install) {
     # Python を抽出
     $pythonOutput = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7" -BinDir $InstallDir
     $extractionResults += @($pythonOutput[-1])
+
+    # .NET SDK を抽出
+    $dotnetOutput = Extract-Package -ArchiveFile "packages\dotnet-sdk-8.0.414-win-x64.zip" -PackageName ".NET SDK 8.0.414" -BinDir $InstallDir
+    $extractionResults += @($dotnetOutput[-1])
 
     # Portable Git を抽出
     Write-Host "Starting Portable Git extraction..."

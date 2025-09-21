@@ -50,9 +50,12 @@ if %PS_EXIT_CODE% equ 0 (
     echo ================================
     echo.
     echo Tools have been installed to: %INSTALL_DIR%
-    echo PATH environment variables have been updated.
+    echo Environment variables have been updated:
+    echo - PATH ^(tools directories added^)
+    echo - DOTNET_HOME ^(for .NET SDK^)
+    echo - DOTNET_CLI_TELEMETRY_OPTOUT ^(privacy setting^)
     echo.
-    echo Please restart your terminal for PATH changes to take effect.
+    echo Please restart your terminal for environment changes to take effect.
     echo.
 ) else (
     echo.

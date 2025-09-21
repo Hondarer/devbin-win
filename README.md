@@ -62,6 +62,13 @@ from [python.org](https://www.python.org/)
 
 - [get-pip](https://bootstrap.pypa.io/get-pip.py)
 
+### .NET SDK
+
+from [.NET のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet)
+
+- [.NET 8.0 のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet/8.0)
+    - [dotnet-sdk-8.0.414-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip)
+
 ### Git
 
 from [Git](https://git-scm.com/)
