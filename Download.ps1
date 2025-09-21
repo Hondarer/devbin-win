@@ -62,8 +62,8 @@ function Download-File {
 # ダウンロード対象ファイルの定義
 $downloads = @(
     "https://nodejs.org/dist/v22.18.0/node-v22.18.0-win-x64.zip",
-    "https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-windows-x86_64.zip",
-    "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.20/pandoc-crossref-Windows-X64.7z",
+    "https://github.com/jgm/pandoc/releases/download/3.8/pandoc-3.8-windows-x86_64.zip",
+    "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.21/pandoc-crossref-Windows-X64.7z",
     "https://www.doxygen.nl/files/doxygen-1.14.0.windows.x64.bin.zip",
     "https://github.com/Antonz0/doxybook2/releases/download/v1.6.1/doxybook2-windows-win64-v1.6.1.zip",
     "https://aka.ms/download-jdk/microsoft-jdk-21.0.8-windows-x64.zip",

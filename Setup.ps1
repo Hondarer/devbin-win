@@ -1108,12 +1108,12 @@ if ($Extract -or $Install) {
     $nodeOutput = Extract-Package -ArchiveFile "packages\node-v22.18.0-win-x64.zip" -PackageName "Node.js v22.18.0" -BinDir $InstallDir
     $extractionResults += @($nodeOutput[-1])
 
-    # Pandoc を抽出  
-    $pandocOutput = Extract-Package -ArchiveFile "packages\pandoc-3.7.0.2-windows-x86_64.zip" -PackageName "Pandoc 3.7.0.2" -BinDir $InstallDir
+    # Pandoc を抽出
+    $pandocOutput = Extract-Package -ArchiveFile "packages\pandoc-3.8-windows-x86_64.zip" -PackageName "Pandoc 3.8" -BinDir $InstallDir
     $extractionResults += @($pandocOutput[-1])
 
     # pandoc-crossref を抽出
-    $crossrefOutput = Extract-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref" -BinDir $InstallDir
+    $crossrefOutput = Extract-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref v0.3.21" -BinDir $InstallDir
     $extractionResults += @($crossrefOutput[-1])
 
     # Doxygen を抽出
