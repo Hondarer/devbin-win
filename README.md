@@ -82,3 +82,7 @@ from [Visual Studio Code](https://code.visualstudio.com/)
 
 - [Download Visual Studio Code](https://code.visualstudio.com/Download)
     - [x64](https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip)
+
+## TODO
+
+- VS Code などのスタート メニュー用ショートカットの作成
