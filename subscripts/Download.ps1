@@ -1,4 +1,4 @@
-﻿# download.ps1
+﻿# Download.ps1
 # packages ディレクトリにダウンロードするスクリプト
 
 param(
@@ -101,7 +101,7 @@ Write-Host "Success: $successCount / $totalCount"
 
 if ($successCount -eq $totalCount) {
     Write-Host "`nAll files downloaded successfully." -ForegroundColor Green
-    Write-Host "Please run setup.ps1 to start the setup process."
+    Write-Host "Please run subscripts\setup.ps1 to start the setup process."
 } else {
     $failedCount = $totalCount - $successCount
     Write-Host "`n$failedCount file(s) failed to download." -ForegroundColor Yellow

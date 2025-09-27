@@ -3,11 +3,12 @@ param(
     [string]$OutputDir = "dist"
 )
 
-# スクリプトのディレクトリに移動
-Set-Location -Path $PSScriptRoot
+# ルートディレクトリ (親ディレクトリ) に移動
+$rootDir = Split-Path -Parent $PSScriptRoot
+Set-Location -Path $rootDir
 
-# プロジェクト名をスクリプトの親フォルダ名から取得
-$projectName = Split-Path -Leaf $PSScriptRoot
+# プロジェクト名をルートフォルダ名から取得
+$projectName = Split-Path -Leaf $rootDir
 
 # 現在の日付を取得 (yymmdd形式)
 $date = Get-Date -Format "yyMMdd"
@@ -41,21 +42,21 @@ New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
 $itemsToInclude = @(
     "packages",
     "README.md",
-    "Install.md",
-    "Setup.ps1",
-    "Install.cmd",
-    "Uninstall.cmd",
-    "Setup-Home.md",
-    "Setup-Home.ps1",
+    "docs-src",
+    "subscripts",
+    "Install-Bin.cmd",
+    "Uninstall-Bin.cmd",
     "Setup-Home.cmd",
-    "Update-GitBash-Profile.md",
-    "Update-GitBash-Profile.ps1",
     "Install-GitBash-Profile.cmd",
     "Uninstall-GitBash-Profile.cmd",
-    "Update-MinGW-Profile.md",
-    "Update-MinGW-Profile.ps1",
     "Install-MinGW-Profile.cmd",
     "Uninstall-MinGW-Profile.cmd"
+)
+
+# subscripts フォルダから除外するファイル一覧
+$excludeFiles = @(
+    "Make-Dist.ps1",
+    "Download.ps1"
 )
 
 $addedCount = 0
@@ -70,6 +71,17 @@ foreach ($item in $itemsToInclude) {
         }
         Copy-Item $item -Destination $dest -Recurse -Force
         $addedCount++
+    }
+}
+
+$subscriptsDestPath = Join-Path $archiveRoot "subscripts"
+if (Test-Path $subscriptsDestPath) {
+    foreach ($excludeFile in $excludeFiles) {
+        $excludePath = Join-Path $subscriptsDestPath $excludeFile
+        if (Test-Path $excludePath) {
+            Remove-Item $excludePath -Force
+            Write-Host "Excluded from subscripts: $excludeFile"
+        }
     }
 }
 

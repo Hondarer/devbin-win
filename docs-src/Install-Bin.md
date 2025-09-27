@@ -7,10 +7,10 @@
 ### かんたんインストール (推奨)
 
 1. このフォルダをダウンロードフォルダやデスクトップなどに配置
-2. `install.cmd` をダブルクリックして実行
+2. `Install-Bin.cmd` をダブルクリックして実行
 
 ```cmd
-install.cmd
+Install-Bin.cmd
 ```
 
 ### インストール内容
@@ -43,7 +43,7 @@ git --version
 2. `uninstall.cmd` をダブルクリックして実行
 
 ```cmd
-uninstall.cmd
+Uninstall-Bin.cmd
 ```
 
 ### アンインストール内容

@@ -26,9 +26,9 @@ if not exist "%INSTALL_DIR%" (
     exit /b 0
 )
 
-REM Check if setup.ps1 exists in current directory
-if not exist "%SCRIPT_DIR%\Setup.ps1" (
-    echo Error: setup.ps1 not found in current directory
+REM Check if Setup-Bin.ps1 exists in subscripts directory
+if not exist "%SCRIPT_DIR%\subscripts\Setup-Bin.ps1" (
+    echo Error: Setup-Bin.ps1 not found in subscripts directory
     echo Please run this script from the devbin-win directory
     pause
     exit /b 1
@@ -38,7 +38,7 @@ REM Execute PowerShell uninstall script with Bypass execution policy
 echo Running uninstallation...
 echo.
 
-powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\Setup.ps1" -Uninstall -InstallDir "%INSTALL_DIR%"
+powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\subscripts\Setup-Bin.ps1" -Uninstall -InstallDir "%INSTALL_DIR%"
 
 set "PS_EXIT_CODE=%errorLevel%"
 
