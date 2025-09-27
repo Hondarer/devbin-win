@@ -1,4 +1,4 @@
-﻿# Download.ps1
+﻿# Get-Packages.ps1
 # packages ディレクトリにダウンロードするスクリプト
 
 param(
