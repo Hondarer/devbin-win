@@ -75,10 +75,3 @@ from [Git](https://git-scm.com/)
 
 - [Download for Windows](https://git-scm.com/downloads/win)
     - [Portable 2.51.0](https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe)
-
-## TODO
-
-- XDG_CONFIG_HOME を設定する。`$env:XDG_CACHE_HOME="D:\ProgramData\home\{Username}\.config"`
-- XDG_CACHE_HOME を設定する。`$env:XDG_CACHE_HOME="D:\ProgramData\home\{Username}\.cache"`
-- XDG_DATA_HOME を設定する。`$env:XDG_CACHE_HOME="D:\ProgramData\home\{Username}\.local\share"`
-- XDG_STATE_HOME を設定する。`$env:XDG_CACHE_HOME="D:\ProgramData\home\{Username}\.local\state"`
