@@ -33,6 +33,7 @@ python --version
 python3 --version
 dotnet --version
 git --version
+code --version
 ```
 
 ## アンインストール
@@ -76,6 +77,11 @@ Uninstall-Bin.cmd
 
 - システムに `git.exe` が存在する場合、Portable Git への PATH は追加されません
 - 既存の Git インストールが優先されます
+
+### VS Code
+
+- システムに `code.cmd` が存在する場合、VS Code への PATH は追加されません
+- 既存の VS Code インストールが優先されます
 
 ### その他のツール
 

@@ -1,6 +1,6 @@
 # devbin-win
 
-Windows 用開発バイナリの自動展開ツールです。
+Windows 用開発バイナリの自動配置ツールです。
 
 ## インストールされるパッケージ
 
@@ -75,3 +75,10 @@ from [Git](https://git-scm.com/)
 
 - [Download for Windows](https://git-scm.com/downloads/win)
     - [Portable 2.51.0](https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe)
+
+### Visual Studio Code
+
+from [Visual Studio Code](https://code.visualstudio.com/)
+
+- [Download Visual Studio Code](https://code.visualstudio.com/Download)
+    - [x64](https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip)

@@ -39,7 +39,8 @@ function Get-PathDirectories {
         "$BaseDir\dotnet8sdk",
         "$BaseDir\git",
         "$BaseDir\git\bin",
-        "$BaseDir\git\cmd"
+        "$BaseDir\git\cmd",
+        "$BaseDir\vscode\bin"
     )
     
     return $pathDirs
@@ -151,6 +152,12 @@ function Add-ToUserPath {
             elseif ($dirPath -like "*git" -or $dirPath -like "*git\bin" -or $dirPath -like "*git\cmd") {
                 if (Test-CommandExists "git") {
                     Write-Host "  Skipped (git.exe already available): $dirPath"
+                    $shouldSkip = $true
+                }
+            }
+            elseif ($dirPath -like "*vscode") {
+                if (Test-CommandExists "code") {
+                    Write-Host "  Skipped (code.cmd already available): $dirPath"
                     $shouldSkip = $true
                 }
             }
@@ -440,6 +447,7 @@ function Get-PackageShortName {
     if ($PackageName -match "PlantUML") { return "plantuml" }
     if ($PackageName -match "Python") { return "python" }
     if ($PackageName -match "\.NET SDK") { return "dotnet8sdk" }
+    if ($PackageName -match "VS Code") { return "vscode" }
     
     # 必要に応じてパッケージ名マッピングを追加
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
@@ -459,6 +467,9 @@ function Test-SpecialPackageHandling {
         return $true
     }
     if ($PackageName -match "\.NET SDK") {
+        return $true
+    }
+    if ($PackageName -match "VS Code") {
         return $true
     }
     return $false
@@ -938,6 +949,71 @@ endlocal
                 }
 
                 Write-Host ".NET SDK installed to: $targetPath"
+            }
+            elseif ($isSpecialPackage -and $PackageName -match "VS Code") {
+                # VS Code の特別処理
+                Write-Host "Applying special VS Code handling..."
+
+                $targetFolderName = "vscode"
+                $targetPath = Join-Path $BinDir $targetFolderName
+
+                Write-Host "Creating target directory: $targetFolderName"
+
+                # ターゲットディレクトリを作成
+                if (!(Test-Path $targetPath)) {
+                    New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+                }
+
+                # VS Code の場合、zip ファイルは直下に Code.exe やその他のファイルを含む
+                # sourcePath が一時ディレクトリの場合、直下のファイルをコピー
+                Write-Host "Copying VS Code files from: $sourcePath"
+
+                if ($sourcePath -eq $TempDir) {
+                    # ファイルが一時ディレクトリに直接ある
+                    Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
+                        $relativePath = $_.FullName.Substring($sourcePath.Length + 1)
+                        $destinationPath = Join-Path $targetPath $relativePath
+
+                        if ($_.PSIsContainer) {
+                            if (!(Test-Path $destinationPath)) {
+                                New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                            }
+                        } else {
+                            $destinationDir = Split-Path $destinationPath -Parent
+                            if ($destinationDir -and !(Test-Path $destinationDir)) {
+                                New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                            }
+                            Copy-Item -Path $_.FullName -Destination $destinationPath -Force
+                        }
+                    }
+                } else {
+                    # ファイルがサブディレクトリにある場合
+                    Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
+                        $relativePath = $_.FullName.Substring($sourcePath.Length + 1)
+                        $destinationPath = Join-Path $targetPath $relativePath
+
+                        if ($_.PSIsContainer) {
+                            if (!(Test-Path $destinationPath)) {
+                                New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                            }
+                        } else {
+                            $destinationDir = Split-Path $destinationPath -Parent
+                            if ($destinationDir -and !(Test-Path $destinationDir)) {
+                                New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                            }
+                            Copy-Item -Path $_.FullName -Destination $destinationPath -Force
+                        }
+                    }
+                }
+
+                # 存在しない場合、data フォルダを作成
+                $dataPath = Join-Path $targetPath "data"
+                if (!(Test-Path $dataPath)) {
+                    New-Item -ItemType Directory -Path $dataPath -Force | Out-Null
+                    Write-Host "Created data folder: $dataPath"
+                }
+
+                Write-Host "VS Code installed to: $targetPath"
             } else {
                 # その他のパッケージの標準処理
                 Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
@@ -988,15 +1064,126 @@ endlocal
     }
 }
 
-# 完全アンインストール処理を実行する関数
-function Invoke-CompleteUninstall {
+# VS Code data フォルダをバックアップする
+function Backup-VSCodeData {
     param(
         [string]$InstallDirectory,
         [switch]$Silent = $false
     )
 
+    $vscodeDataPath = Join-Path $InstallDirectory "vscode\data"
+    if (!(Test-Path $vscodeDataPath)) {
+        if (-not $Silent) {
+            Write-Host "VS Code data folder not found, skipping backup: $vscodeDataPath"
+        }
+        return $null
+    }
+
+    # 一時バックアップディレクトリを作成
+    $tempBackupDir = Join-Path ([System.IO.Path]::GetTempPath()) "vscode_data_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+
+    try {
+        if (-not $Silent) {
+            Write-Host "Backing up VS Code data folder to: $tempBackupDir"
+        }
+
+        # data フォルダを一時ディレクトリにコピー
+        Copy-Item -Path $vscodeDataPath -Destination $tempBackupDir -Recurse -Force
+
+        if (-not $Silent) {
+            Write-Host "VS Code data backup completed successfully"
+        }
+
+        return $tempBackupDir
+    } catch {
+        if (-not $Silent) {
+            Write-Host "Warning: Failed to backup VS Code data: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+
+        # バックアップに失敗した場合、作成した一時ディレクトリをクリーンアップ
+        if (Test-Path $tempBackupDir) {
+            Remove-Item -Path $tempBackupDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+
+        return $null
+    }
+}
+
+# VS Code data フォルダを復元する関数
+function Restore-VSCodeData {
+    param(
+        [string]$InstallDirectory,
+        [string]$BackupPath,
+        [switch]$Silent = $false
+    )
+
+    if (-not $BackupPath -or !(Test-Path $BackupPath)) {
+        if (-not $Silent) {
+            Write-Host "VS Code data backup not found, skipping restore: $BackupPath"
+        }
+        return $false
+    }
+
+    $vscodeDir = Join-Path $InstallDirectory "vscode"
+    if (!(Test-Path $vscodeDir)) {
+        if (-not $Silent) {
+            Write-Host "VS Code installation directory not found, skipping restore: $vscodeDir"
+        }
+        return $false
+    }
+
+    $vscodeDataPath = Join-Path $vscodeDir "data"
+
+    try {
+        if (-not $Silent) {
+            Write-Host "Restoring VS Code data folder from backup: $BackupPath"
+        }
+
+        # 既存の data フォルダが存在する場合は削除
+        if (Test-Path $vscodeDataPath) {
+            Remove-Item -Path $vscodeDataPath -Recurse -Force
+        }
+
+        # バックアップから data フォルダを復元
+        Copy-Item -Path $BackupPath -Destination $vscodeDataPath -Recurse -Force
+
+        if (-not $Silent) {
+            Write-Host "VS Code data restoration completed successfully"
+        }
+
+        return $true
+    } catch {
+        if (-not $Silent) {
+            Write-Host "Warning: Failed to restore VS Code data: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        return $false
+    } finally {
+        # バックアップディレクトリをクリーンアップ
+        if (Test-Path $BackupPath) {
+            Remove-Item -Path $BackupPath -Recurse -Force -ErrorAction SilentlyContinue
+            if (-not $Silent) {
+                Write-Host "Cleaned up temporary backup directory"
+            }
+        }
+    }
+}
+
+# 完全アンインストール処理を実行する関数
+function Invoke-CompleteUninstall {
+    param(
+        [string]$InstallDirectory,
+        [switch]$Silent = $false,
+        [switch]$PreserveVSCodeData = $false
+    )
+
     if (-not $Silent) {
         Write-Host "Starting cleanup process..."
+    }
+
+    # VS Code data フォルダのバックアップ
+    $vscodeDataBackup = $null
+    if ($PreserveVSCodeData) {
+        $vscodeDataBackup = Backup-VSCodeData -InstallDirectory $InstallDirectory -Silent:$Silent
     }
 
     try {
@@ -1030,9 +1217,36 @@ function Invoke-CompleteUninstall {
             if (-not $Silent) {
                 Write-Host "Removing installation directory: $InstallDirectory"
             }
-            Remove-Item -Path $InstallDirectory -Recurse -Force -ErrorAction SilentlyContinue
-            if (-not $Silent) {
-                Write-Host "Installation directory removed."
+
+            if ($PreserveVSCodeData) {
+                # VS Code data フォルダを保持しながら他のファイルを削除
+                Get-ChildItem -Path $InstallDirectory | Where-Object {
+                    -not ($_.Name -eq "vscode" -and $_.PSIsContainer)
+                } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+                # VS Code ディレクトリ内で data フォルダ以外を削除
+                $vscodeDir = Join-Path $InstallDirectory "vscode"
+                if (Test-Path $vscodeDir) {
+                    Get-ChildItem -Path $vscodeDir | Where-Object {
+                        -not ($_.Name -eq "data" -and $_.PSIsContainer)
+                    } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+                    if (-not $Silent) {
+                        Write-Host "Installation directory removed (VS Code data folder preserved)"
+                    }
+                } else {
+                    # vscode ディレクトリが存在しない場合は通常の削除
+                    Remove-Item -Path $InstallDirectory -Recurse -Force -ErrorAction SilentlyContinue
+                    if (-not $Silent) {
+                        Write-Host "Installation directory removed."
+                    }
+                }
+            } else {
+                # 通常の完全削除
+                Remove-Item -Path $InstallDirectory -Recurse -Force -ErrorAction SilentlyContinue
+                if (-not $Silent) {
+                    Write-Host "Installation directory removed."
+                }
             }
         } else {
             if (-not $Silent) {
@@ -1045,6 +1259,15 @@ function Invoke-CompleteUninstall {
         if (-not $Silent) {
             Write-Host "Warning: Some cleanup operations failed: $($_.Exception.Message)" -ForegroundColor Yellow
         }
+
+        # エラーが発生した場合もバックアップをクリーンアップ
+        if ($vscodeDataBackup -and (Test-Path $vscodeDataBackup)) {
+            Remove-Item -Path $vscodeDataBackup -Recurse -Force -ErrorAction SilentlyContinue
+            if (-not $Silent) {
+                Write-Host "Cleaned up VS Code data backup due to error"
+            }
+        }
+
         return $false
     }
 }
@@ -1053,7 +1276,7 @@ function Invoke-CompleteUninstall {
 
 if ($Uninstall) {
     # アンインストール: ディレクトリを削除して PATH をクリーンアップ
-    $uninstallResult = Invoke-CompleteUninstall -InstallDirectory $InstallDir
+    $uninstallResult = Invoke-CompleteUninstall -InstallDirectory $InstallDir -PreserveVSCodeData
 
     if ($uninstallResult) {
         Write-Host "Uninstall completed." -ForegroundColor Green
@@ -1065,9 +1288,9 @@ if ($Uninstall) {
 
 # Extract または Install の場合、抽出を実行
 if ($Extract -or $Install) {
-    # インストール前に完全なクリーンアップを実行
+    # インストール前にクリーンアップを実行
     Write-Host "Performing pre-installation cleanup..."
-    $cleanupResult = Invoke-CompleteUninstall -InstallDirectory $InstallDir -Silent
+    $cleanupResult = Invoke-CompleteUninstall -InstallDirectory $InstallDir -Silent -PreserveVSCodeData
 
     if ($cleanupResult) {
         Write-Host "Previous installation cleaned up successfully."
@@ -1140,6 +1363,21 @@ if ($Extract -or $Install) {
     $dotnetOutput = Expand-Package -ArchiveFile "packages\dotnet-sdk-8.0.414-win-x64.zip" -PackageName ".NET SDK 8.0.414" -BinDir $InstallDir
     $extractionResults += @($dotnetOutput[-1])
 
+    # VS Code を抽出
+    $vscodeOutput = Expand-Package -ArchiveFile "packages\VSCode-win32-x64-1.104.2.zip" -PackageName "VS Code 1.104.2" -BinDir $InstallDir
+    $extractionResults += @($vscodeOutput[-1])
+
+    # VS Code data フォルダの状態確認
+    $vscodeDataPath = Join-Path $InstallDir "vscode\data"
+    if (Test-Path $vscodeDataPath) {
+        $dataItems = Get-ChildItem -Path $vscodeDataPath -ErrorAction SilentlyContinue
+        if ($dataItems -and $dataItems.Count -gt 0) {
+            Write-Host "VS Code data folder found with existing settings and extensions"
+        } else {
+            Write-Host "VS Code data folder created (new installation)"
+        }
+    }
+
     # Portable Git を抽出
     Write-Host "Starting Portable Git extraction..."
     $gitArchiveFile = "packages\PortableGit-2.51.0-64-bit.7z.exe"
@@ -1170,7 +1408,7 @@ if ($Extract -or $Install) {
         $extractionResults += @($false)
     }
 
-    # 全体的な結果をチェック
+    # 最終的な結果をチェック
     $successfulExtractions = ($extractionResults | Where-Object { $_ -eq $true }).Count
     $totalPackages = $extractionResults.Count
 

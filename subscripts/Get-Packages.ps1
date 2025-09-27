@@ -71,7 +71,8 @@ $downloads = @(
     "https://www.python.org/ftp/python/3.13.7/python-3.13.7-embed-amd64.zip",
     "https://bootstrap.pypa.io/get-pip.py",
     "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe",
-    "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip"
+    "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip",
+    "https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip"
 )
 
 # ダウンロード実行
