@@ -53,10 +53,10 @@ $itemsToInclude = @(
     "Uninstall-MinGW-Profile.cmd"
 )
 
-# subscripts フォルダから除外するファイル一覧
+# 除外対象のファイル一覧
 $excludeFiles = @(
-    "Make-Dist.ps1",
-    "Get-Packages.ps1"
+    "subscripts\Make-Dist.ps1",
+    "subscripts\Get-Packages.ps1"
 )
 
 $addedCount = 0
@@ -74,14 +74,12 @@ foreach ($item in $itemsToInclude) {
     }
 }
 
-$subscriptsDestPath = Join-Path $archiveRoot "subscripts"
-if (Test-Path $subscriptsDestPath) {
-    foreach ($excludeFile in $excludeFiles) {
-        $excludePath = Join-Path $subscriptsDestPath $excludeFile
-        if (Test-Path $excludePath) {
-            Remove-Item $excludePath -Force
-            Write-Host "Excluded from subscripts: $excludeFile"
-        }
+# 除外対象のファイルを削除
+foreach ($excludeFile in $excludeFiles) {
+    $excludePath = Join-Path $archiveRoot $excludeFile
+    if (Test-Path $excludePath) {
+        Remove-Item $excludePath -Force
+        Write-Host "Excluded: $excludeFile"
     }
 }
 

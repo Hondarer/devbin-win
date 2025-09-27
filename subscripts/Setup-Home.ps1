@@ -235,7 +235,6 @@ if ([string]::IsNullOrEmpty($homeEnvVar)) {
     if ($needsSetup) {
         $continuePath = "$homeEnvVar\.continue"
 
-        Write-Host "  Missing environment variables detected"
         Write-Host ""
         Write-Host "Planned Actions:"
 
