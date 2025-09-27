@@ -12,7 +12,7 @@ if (-not (Test-Path "packages")) {
 }
 
 # 共通のダウンロード関数
-function Download-File {
+function Get-File {
     param(
         [string]$Url,
         [string]$OutputPath
@@ -89,7 +89,7 @@ foreach ($url in $downloads) {
     $fileName = [System.IO.Path]::GetFileName(([Uri]$url).AbsolutePath)
     $outputPath = Join-Path "packages" $fileName
     
-    if (Download-File -Url $url -OutputPath $outputPath) {
+    if (Get-File -Url $url -OutputPath $outputPath) {
         $successCount++
     }
     

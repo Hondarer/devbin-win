@@ -62,7 +62,7 @@ function Test-CommandExists {
 
                 try {
                     # --version オプションでテスト実行
-                    $process = Start-Process -FilePath $commandPath -ArgumentList "--version" -NoNewWindow -Wait -PassThru -RedirectStandardError "stderr_temp.txt" -RedirectStandardOutput "stdout_temp.txt"
+                    _ = Start-Process -FilePath $commandPath -ArgumentList "--version" -NoNewWindow -Wait -PassThru -RedirectStandardError "stderr_temp.txt" -RedirectStandardOutput "stdout_temp.txt"
 
                     # 標準エラー出力をチェック
                     $stderrContent = ""
@@ -527,7 +527,7 @@ function Get-ResolvedFileName {
     }
 }
 
-function Extract-Package {
+function Expand-Package {
     param(
         [string]$ArchiveFile,
         [string]$PackageName,
@@ -1105,39 +1105,39 @@ if ($Extract -or $Install) {
     $extractionResults = @()
 
     # Node.js を抽出
-    $nodeOutput = Extract-Package -ArchiveFile "packages\node-v22.18.0-win-x64.zip" -PackageName "Node.js v22.18.0" -BinDir $InstallDir
+    $nodeOutput = Expand-Package -ArchiveFile "packages\node-v22.18.0-win-x64.zip" -PackageName "Node.js v22.18.0" -BinDir $InstallDir
     $extractionResults += @($nodeOutput[-1])
 
     # Pandoc を抽出
-    $pandocOutput = Extract-Package -ArchiveFile "packages\pandoc-3.8-windows-x86_64.zip" -PackageName "Pandoc 3.8" -BinDir $InstallDir
+    $pandocOutput = Expand-Package -ArchiveFile "packages\pandoc-3.8-windows-x86_64.zip" -PackageName "Pandoc 3.8" -BinDir $InstallDir
     $extractionResults += @($pandocOutput[-1])
 
     # pandoc-crossref を抽出
-    $crossrefOutput = Extract-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref v0.3.21" -BinDir $InstallDir
+    $crossrefOutput = Expand-Package -ArchiveFile "packages\pandoc-crossref-Windows-X64.7z" -PackageName "pandoc-crossref v0.3.21" -BinDir $InstallDir
     $extractionResults += @($crossrefOutput[-1])
 
     # Doxygen を抽出
-    $doxygenOutput = Extract-Package -ArchiveFile "packages\doxygen-1.14.0.windows.x64.bin.zip" -PackageName "Doxygen 1.14.0" -BinDir $InstallDir
+    $doxygenOutput = Expand-Package -ArchiveFile "packages\doxygen-1.14.0.windows.x64.bin.zip" -PackageName "Doxygen 1.14.0" -BinDir $InstallDir
     $extractionResults += @($doxygenOutput[-1])
 
     # doxybook2 を抽出
-    $doxybook2Output = Extract-Package -ArchiveFile "packages\doxybook2-windows-win64-v1.6.1.zip" -PackageName "doxybook2 v1.6.1" -BinDir $InstallDir
+    $doxybook2Output = Expand-Package -ArchiveFile "packages\doxybook2-windows-win64-v1.6.1.zip" -PackageName "doxybook2 v1.6.1" -BinDir $InstallDir
     $extractionResults += @($doxybook2Output[-1])
 
     # Microsoft JDK を抽出
-    $jdkOutput = Extract-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8" -BinDir $InstallDir
+    $jdkOutput = Expand-Package -ArchiveFile "packages\microsoft-jdk-21.0.8-windows-x64.zip" -PackageName "Microsoft JDK 21.0.8" -BinDir $InstallDir
     $extractionResults += @($jdkOutput[-1])
 
     # PlantUML を抽出
-    $plantumlOutput = Extract-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4" -BinDir $InstallDir
+    $plantumlOutput = Expand-Package -ArchiveFile "packages\plantuml-1.2025.4.jar" -PackageName "PlantUML 1.2025.4" -BinDir $InstallDir
     $extractionResults += @($plantumlOutput[-1])
 
     # Python を抽出
-    $pythonOutput = Extract-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7" -BinDir $InstallDir
+    $pythonOutput = Expand-Package -ArchiveFile "packages\python-3.13.7-embed-amd64.zip" -PackageName "Python 3.13.7" -BinDir $InstallDir
     $extractionResults += @($pythonOutput[-1])
 
     # .NET SDK を抽出
-    $dotnetOutput = Extract-Package -ArchiveFile "packages\dotnet-sdk-8.0.414-win-x64.zip" -PackageName ".NET SDK 8.0.414" -BinDir $InstallDir
+    $dotnetOutput = Expand-Package -ArchiveFile "packages\dotnet-sdk-8.0.414-win-x64.zip" -PackageName ".NET SDK 8.0.414" -BinDir $InstallDir
     $extractionResults += @($dotnetOutput[-1])
 
     # Portable Git を抽出
