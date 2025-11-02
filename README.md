@@ -83,6 +83,18 @@ from [Visual Studio Code](https://code.visualstudio.com/)
 - [Download Visual Studio Code](https://code.visualstudio.com/Download)
     - [x64](https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip)
 
+### GNU Make for Windows
+
+from [Make for Windows](https://gnuwin32.sourceforge.net/packages/make.htm)
+
+- [Download]
+    - Binaries
+        - [make-3.81-bin.zip](https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-bin.zip/download)
+    - Dependencies
+        - [make-3.81-dep.zip](https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download)
+
 ## TODO
 
 - VS Code などのスタート メニュー用ショートカットの作成
+- HTTP_PROXY の設定
+- nuget.exe

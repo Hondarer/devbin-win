@@ -11,31 +11,69 @@ if (-not (Test-Path "packages")) {
     New-Item -ItemType Directory -Path "packages" | Out-Null
 }
 
+# SourceForge の実際のダウンロード URL を取得
+function Get-SourceForgeDownloadUrl {
+    param([string]$Url)
+
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -ErrorAction Stop
+
+        # meta refresh タグから実際のダウンロード URL を抽出
+        if ($response.Content -match '<meta[^>]+http-equiv="refresh"[^>]+content="\d+;\s*url=([^"]+)"') {
+            $downloadUrl = $matches[1]
+            # HTML エンティティをデコード (&amp; -> &)
+            $downloadUrl = $downloadUrl -replace '&amp;', '&'
+            return $downloadUrl
+        }
+
+        # ダイレクトダウンロード URL を構築
+        if ($Url -match 'sourceforge\.net/projects/([^/]+)/files/(.+)/download') {
+            $project = $matches[1]
+            $filePath = $matches[2]
+            return "https://downloads.sourceforge.net/project/$project/$filePath"
+        }
+
+        return $Url
+    }
+    catch {
+        return $Url
+    }
+}
+
 # 共通のダウンロード関数
 function Get-File {
     param(
         [string]$Url,
         [string]$OutputPath
     )
-    
+
     $fileName = Split-Path $OutputPath -Leaf
-    
+
     # ファイルが既に存在する場合はスキップ (-Force オプションが指定されていない場合)
     if ((Test-Path $OutputPath) -and -not $Force) {
         Write-Host "$fileName already exists. Skipping."
         return $true
     }
-    
+
     # 現在の設定を保存
     $originalProgressPreference = $ProgressPreference
     try {
         Write-Host "Downloading $fileName..."
-        
+
         # プログレスバーを無効化
         # Invoke-WebRequest のプログレスバーは性能に問題あり
         $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -Uri $Url -OutFile $OutputPath -UseBasicParsing -ErrorAction Stop
-        
+
+        # SourceForge の URL の場合は実際のダウンロード URL を取得
+        $downloadUrl = $Url
+        if ($Url -match 'sourceforge\.net/projects/.+/files/.+/download') {
+            $downloadUrl = Get-SourceForgeDownloadUrl -Url $Url
+            Write-Host "  Resolved to: $downloadUrl"
+        }
+
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $OutputPath -UseBasicParsing -ErrorAction Stop
+
         if (Test-Path $OutputPath) {
             $fileSize = (Get-Item $OutputPath).Length
             $fileSizeMB = [math]::Round($fileSize / 1MB, 2)
@@ -47,16 +85,18 @@ function Get-File {
     }
     catch {
         Write-Host "$fileName download failed: $($_.Exception.Message)" -ForegroundColor Red
-        
+
         # 失敗した場合は部分的にダウンロードされたファイルを削除
         if (Test-Path $OutputPath) {
             Remove-Item $OutputPath -Force
         }
-        
+
         return $false
     }
-    # 設定を復元
-    $ProgressPreference = $originalProgressPreference
+    finally {
+        # 設定を復元
+        $ProgressPreference = $originalProgressPreference
+    }
 }
 
 # ダウンロード対象ファイルの定義
@@ -72,7 +112,9 @@ $downloads = @(
     "https://bootstrap.pypa.io/get-pip.py",
     "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe",
     "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip",
-    "https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip"
+    "https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip",
+    "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-bin.zip/download",
+    "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download"
 )
 
 # ダウンロード実行
@@ -87,13 +129,21 @@ $successCount = 0
 $totalCount = $downloads.Count
 
 foreach ($url in $downloads) {
-    $fileName = [System.IO.Path]::GetFileName(([Uri]$url).AbsolutePath)
+    $uri = [Uri]$url
+    $fileName = [System.IO.Path]::GetFileName($uri.AbsolutePath)
+
+    # SourceForge の /download で終わる URL の場合、その前のセグメントを使用
+    if ($fileName -eq "download" -and $uri.Host -like "*sourceforge.net*") {
+        $pathSegments = $uri.AbsolutePath.Split('/', [StringSplitOptions]::RemoveEmptyEntries)
+        $fileName = $pathSegments[-2]  # /download の前のセグメント
+    }
+
     $outputPath = Join-Path "packages" $fileName
-    
+
     if (Get-File -Url $url -OutputPath $outputPath) {
         $successCount++
     }
-    
+
     Start-Sleep -Milliseconds 500
 }
 

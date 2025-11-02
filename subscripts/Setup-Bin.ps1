@@ -63,7 +63,7 @@ function Test-CommandExists {
 
                 try {
                     # --version オプションでテスト実行
-                    _ = Start-Process -FilePath $commandPath -ArgumentList "--version" -NoNewWindow -Wait -PassThru -RedirectStandardError "stderr_temp.txt" -RedirectStandardOutput "stdout_temp.txt"
+                    $null = Start-Process -FilePath $commandPath -ArgumentList "--version" -NoNewWindow -Wait -PassThru -RedirectStandardError "stderr_temp.txt" -RedirectStandardOutput "stdout_temp.txt"
 
                     # 標準エラー出力をチェック
                     $stderrContent = ""
@@ -436,7 +436,7 @@ function Sync-EnvironmentVariables {
 
 function Get-PackageShortName {
     param([string]$PackageName)
-    
+
     # パッケージ名から短縮名を抽出
     if ($PackageName -match "Node\.js") { return "nodejs" }
     if ($PackageName -match "Pandoc") { return "pandoc" }
@@ -448,7 +448,8 @@ function Get-PackageShortName {
     if ($PackageName -match "Python") { return "python" }
     if ($PackageName -match "\.NET SDK") { return "dotnet8sdk" }
     if ($PackageName -match "VS Code") { return "vscode" }
-    
+    if ($PackageName -match "GNU Make") { return "make" }
+
     # 必要に応じてパッケージ名マッピングを追加
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
 }
@@ -456,7 +457,7 @@ function Get-PackageShortName {
 # パッケージが特別な処理を必要とするかチェック
 function Test-SpecialPackageHandling {
     param([string]$PackageName)
-    
+
     if ($PackageName -match "Microsoft JDK") {
         return $true
     }
@@ -470,6 +471,9 @@ function Test-SpecialPackageHandling {
         return $true
     }
     if ($PackageName -match "VS Code") {
+        return $true
+    }
+    if ($PackageName -match "GNU Make") {
         return $true
     }
     return $false
@@ -1014,6 +1018,73 @@ endlocal
                 }
 
                 Write-Host "VS Code installed to: $targetPath"
+            }
+            elseif ($isSpecialPackage -and $PackageName -match "GNU Make") {
+                # GNU Make の特別処理
+                Write-Host "Applying special GNU Make handling..."
+
+                # GNU Make の場合、bin/ ディレクトリの内容だけをコピー
+                # アーカイブには bin/, contrib/, manifest/, share/ などが含まれるが、bin/ のみが必要
+
+                # bin ディレクトリを検索または特定
+                $binFolder = $null
+
+                # sourcePath 自体が bin フォルダかチェック
+                $sourcePathName = Split-Path $sourcePath -Leaf
+                if ($sourcePathName -eq "bin") {
+                    $binFolder = Get-Item $sourcePath
+                }
+                elseif ($sourcePath -eq $TempDir) {
+                    # 一時ディレクトリに直接展開された場合
+                    $possibleBinFolder = Join-Path $TempDir "bin"
+                    if (Test-Path $possibleBinFolder) {
+                        $binFolder = Get-Item $possibleBinFolder
+                    }
+                } else {
+                    # サブディレクトリに展開された場合
+                    $possibleBinFolder = Join-Path $sourcePath "bin"
+                    if (Test-Path $possibleBinFolder) {
+                        $binFolder = Get-Item $possibleBinFolder
+                    }
+                }
+
+                if ($binFolder) {
+                    # bin/ ディレクトリの内容を BinDir に直接コピー
+                    $allItems = Get-ChildItem -Path $binFolder.FullName -Recurse
+
+                    foreach ($item in $allItems) {
+                        # 相対パスを安全に計算
+                        $relativePath = $item.FullName.Substring($binFolder.FullName.Length).TrimStart('\', '/')
+
+                        # 相対パスが空の場合はスキップ (bin フォルダ自体)
+                        if ([string]::IsNullOrWhiteSpace($relativePath)) {
+                            continue
+                        }
+
+                        $destinationPath = Join-Path $BinDir $relativePath
+
+                        if ($item.PSIsContainer) {
+                            if (!(Test-Path $destinationPath)) {
+                                New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                            }
+                        } else {
+                            $destinationDir = Split-Path $destinationPath -Parent
+                            if ($destinationDir -and !(Test-Path $destinationDir)) {
+                                New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                            }
+
+                            try {
+                                Copy-Item -Path $item.FullName -Destination $destinationPath -Force
+                            } catch {
+                                Write-Host "  Error copying $relativePath : $($_.Exception.Message)" -ForegroundColor Red
+                            }
+                        }
+                    }
+
+                    Write-Host "GNU Make installed to: $BinDir"
+                } else {
+                    Write-Host "Warning: bin folder not found in GNU Make archive" -ForegroundColor Yellow
+                }
             } else {
                 # その他のパッケージの標準処理
                 Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
@@ -1377,6 +1448,14 @@ if ($Extract -or $Install) {
             Write-Host "VS Code data folder created (new installation)"
         }
     }
+
+    # GNU Make を抽出
+    $makeOutput = Expand-Package -ArchiveFile "packages\make-3.81-bin.zip" -PackageName "GNU Make 3.81" -BinDir $InstallDir
+    $extractionResults += @($makeOutput[-1])
+
+    # GNU Make Dependencies を抽出
+    $makeDepOutput = Expand-Package -ArchiveFile "packages\make-3.81-dep.zip" -PackageName "GNU Make 3.81 Dependencies" -BinDir $InstallDir
+    $extractionResults += @($makeDepOutput[-1])
 
     # Portable Git を抽出
     Write-Host "Starting Portable Git extraction..."
