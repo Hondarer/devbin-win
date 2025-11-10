@@ -87,14 +87,31 @@ from [Visual Studio Code](https://code.visualstudio.com/)
 
 from [Make for Windows](https://gnuwin32.sourceforge.net/packages/make.htm)
 
-- [Download]
+- Download
     - Binaries
         - [make-3.81-bin.zip](https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-bin.zip/download)
     - Dependencies
         - [make-3.81-dep.zip](https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download)
 
+### CMake
+
+from [CMake](https://cmake.org/)
+
+- [Download](https://cmake.org/download/)
+    - Latest Release (4.1.2)
+        - Binary distributions
+            - Windows x64 ZIP
+                - [cmake-4.1.2-windows-x86_64.zip](https://github.com/Kitware/CMake/releases/download/v4.1.2/cmake-4.1.2-windows-x86_64.zip)
+
+### NuGet
+
+from [NuGet](https://www.nuget.org/)
+
+- [Available NuGet Distribution Versions](https://www.nuget.org/downloads)
+    - [nuget.exe - recommended latest v6.14.0](https://dist.nuget.org/win-x86-commandline/latest/nuget.exe)
+
 ## TODO
 
 - VS Code などのスタート メニュー用ショートカットの作成
 - HTTP_PROXY の設定
-- nuget.exe
+- Visual Studio Build Tools (ライセンス条項的に、Repo は分けておいたほうがいいか)

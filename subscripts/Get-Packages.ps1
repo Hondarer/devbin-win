@@ -114,7 +114,9 @@ $downloads = @(
     "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip",
     "https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip",
     "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-bin.zip/download",
-    "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download"
+    "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download",
+    "https://github.com/Kitware/CMake/releases/download/v4.1.2/cmake-4.1.2-windows-x86_64.zip",
+    "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
 )
 
 # ダウンロード実行
@@ -152,7 +154,26 @@ Write-Host "Success: $successCount / $totalCount"
 
 if ($successCount -eq $totalCount) {
     Write-Host "`nAll files downloaded successfully." -ForegroundColor Green
-    Write-Host "Please run subscripts\setup.ps1 to start the setup process."
+
+    # .exe ファイルのブロック解除
+    Write-Host "`nUnblocking .exe files..."
+    $exeFiles = Get-ChildItem -Path "packages" -Filter "*.exe" -ErrorAction SilentlyContinue
+    $unblockedCount = 0
+    foreach ($exeFile in $exeFiles) {
+        try {
+            Unblock-File -Path $exeFile.FullName -ErrorAction Stop
+            Write-Host "  Unblocked: $($exeFile.Name)"
+            $unblockedCount++
+        } catch {
+            Write-Host "  Warning: Failed to unblock $($exeFile.Name): $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+
+    if ($unblockedCount -gt 0) {
+        Write-Host "Unblocked $unblockedCount .exe file(s)." -ForegroundColor Green
+    }
+
+    Write-Host "`nPlease run subscripts\setup.ps1 to start the setup process."
 } else {
     $failedCount = $totalCount - $successCount
     Write-Host "`n$failedCount file(s) failed to download." -ForegroundColor Yellow

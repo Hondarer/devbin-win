@@ -449,6 +449,8 @@ function Get-PackageShortName {
     if ($PackageName -match "\.NET SDK") { return "dotnet8sdk" }
     if ($PackageName -match "VS Code") { return "vscode" }
     if ($PackageName -match "GNU Make") { return "make" }
+    if ($PackageName -match "CMake") { return "cmake" }
+    if ($PackageName -match "NuGet") { return "nuget" }
 
     # 必要に応じてパッケージ名マッピングを追加
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
@@ -474,6 +476,12 @@ function Test-SpecialPackageHandling {
         return $true
     }
     if ($PackageName -match "GNU Make") {
+        return $true
+    }
+    if ($PackageName -match "CMake") {
+        return $true
+    }
+    if ($PackageName -match "NuGet") {
         return $true
     }
     return $false
@@ -571,22 +579,22 @@ function Expand-Package {
     # PlantUML JAR ファイルの特別処理
     if ($PackageName -match "PlantUML" -and $ArchiveFile -match "\.jar$") {
         Write-Host "Detected PlantUML JAR file, applying special handling..."
-        
+
         # bin ディレクトリが存在しない場合は作成
         if (!(Test-Path $BinDir)) {
             New-Item -ItemType Directory -Path $BinDir
             Write-Host "Created bin directory."
         }
-        
+
         # JAR ファイル名を抽出
         $jarFileName = Split-Path $ArchiveFile -Leaf
         Write-Host "PlantUML JAR file: $jarFileName"
-        
+
         # JAR ファイルを汎用名で bin ディレクトリにコピー
         $jarDestination = Join-Path $BinDir "plantuml.jar"
         Copy-Item -Path $ArchiveFile -Destination $jarDestination -Force
         Write-Host "Copied $jarFileName to bin directory as plantuml.jar"
-        
+
         # plantuml.cmd バッチファイルを作成
         $cmdContent = @"
 @echo off
@@ -598,12 +606,51 @@ set "JAVA_HOME=%SCRIPT_DIR%jdk-21"
 
 endlocal
 "@
-        
+
         $cmdPath = Join-Path $BinDir "plantuml.cmd"
         $cmdContent | Out-File -FilePath $cmdPath -Encoding ASCII
         Write-Host "Created plantuml.cmd wrapper script"
         Write-Host "PlantUML can be run with: plantuml.cmd"
-        
+
+        Write-Host "$PackageName binary extraction completed."
+        return $true
+    }
+
+    # NuGet EXE ファイルの特別処理
+    if ($PackageName -match "NuGet" -and $ArchiveFile -match "\.exe$") {
+        Write-Host "Detected NuGet EXE file, applying special handling..."
+
+        # bin ディレクトリが存在しない場合は作成
+        if (!(Test-Path $BinDir)) {
+            New-Item -ItemType Directory -Path $BinDir
+            Write-Host "Created bin directory."
+        }
+
+        # EXE ファイル名を抽出
+        $exeFileName = Split-Path $ArchiveFile -Leaf
+        Write-Host "NuGet EXE file: $exeFileName"
+
+        # EXE ファイルを bin ディレクトリにコピー
+        $exeDestination = Join-Path $BinDir "nuget.exe"
+
+        # ファイルのブロックを解除
+        try {
+            Unblock-File -Path $ArchiveFile -ErrorAction SilentlyContinue
+            Write-Host "Unblocked $exeFileName"
+        } catch {
+            # ブロック解除に失敗した場合は続行
+        }
+
+        Copy-Item -Path $ArchiveFile -Destination $exeDestination -Force
+        Write-Host "Copied $exeFileName to bin directory as nuget.exe"
+
+        # コピー後もブロック解除
+        try {
+            Unblock-File -Path $exeDestination -ErrorAction SilentlyContinue
+        } catch {
+            # ブロック解除に失敗した場合は続行
+        }
+
         Write-Host "$PackageName binary extraction completed."
         return $true
     }
@@ -1085,6 +1132,73 @@ endlocal
                 } else {
                     Write-Host "Warning: bin folder not found in GNU Make archive" -ForegroundColor Yellow
                 }
+            }
+            elseif ($isSpecialPackage -and $PackageName -match "CMake") {
+                # CMake の特別処理
+                Write-Host "Applying special CMake handling..."
+
+                # CMake の場合、bin/ ディレクトリの内容だけをコピー
+                # アーカイブには bin/, doc/, man/, share/ などが含まれるが、bin/ のみが必要
+
+                # bin ディレクトリを検索または特定
+                $binFolder = $null
+
+                # sourcePath 自体が bin フォルダかチェック
+                $sourcePathName = Split-Path $sourcePath -Leaf
+                if ($sourcePathName -eq "bin") {
+                    $binFolder = Get-Item $sourcePath
+                }
+                elseif ($sourcePath -eq $TempDir) {
+                    # 一時ディレクトリに直接展開された場合
+                    $possibleBinFolder = Join-Path $TempDir "bin"
+                    if (Test-Path $possibleBinFolder) {
+                        $binFolder = Get-Item $possibleBinFolder
+                    }
+                } else {
+                    # サブディレクトリに展開された場合 (通常は cmake-x.x.x-windows-x86_64/bin)
+                    $possibleBinFolder = Join-Path $sourcePath "bin"
+                    if (Test-Path $possibleBinFolder) {
+                        $binFolder = Get-Item $possibleBinFolder
+                    }
+                }
+
+                if ($binFolder) {
+                    # bin/ ディレクトリの内容を BinDir に直接コピー
+                    $allItems = Get-ChildItem -Path $binFolder.FullName -Recurse
+
+                    foreach ($item in $allItems) {
+                        # 相対パスを安全に計算
+                        $relativePath = $item.FullName.Substring($binFolder.FullName.Length).TrimStart('\', '/')
+
+                        # 相対パスが空の場合はスキップ (bin フォルダ自体)
+                        if ([string]::IsNullOrWhiteSpace($relativePath)) {
+                            continue
+                        }
+
+                        $destinationPath = Join-Path $BinDir $relativePath
+
+                        if ($item.PSIsContainer) {
+                            if (!(Test-Path $destinationPath)) {
+                                New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                            }
+                        } else {
+                            $destinationDir = Split-Path $destinationPath -Parent
+                            if ($destinationDir -and !(Test-Path $destinationDir)) {
+                                New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                            }
+
+                            try {
+                                Copy-Item -Path $item.FullName -Destination $destinationPath -Force
+                            } catch {
+                                Write-Host "  Error copying $relativePath : $($_.Exception.Message)" -ForegroundColor Red
+                            }
+                        }
+                    }
+
+                    Write-Host "CMake installed to: $BinDir"
+                } else {
+                    Write-Host "Warning: bin folder not found in CMake archive" -ForegroundColor Yellow
+                }
             } else {
                 # その他のパッケージの標準処理
                 Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
@@ -1456,6 +1570,14 @@ if ($Extract -or $Install) {
     # GNU Make Dependencies を抽出
     $makeDepOutput = Expand-Package -ArchiveFile "packages\make-3.81-dep.zip" -PackageName "GNU Make 3.81 Dependencies" -BinDir $InstallDir
     $extractionResults += @($makeDepOutput[-1])
+
+    # CMake を抽出
+    $cmakeOutput = Expand-Package -ArchiveFile "packages\cmake-4.1.2-windows-x86_64.zip" -PackageName "CMake 4.1.2" -BinDir $InstallDir
+    $extractionResults += @($cmakeOutput[-1])
+
+    # NuGet を抽出
+    $nugetOutput = Expand-Package -ArchiveFile "packages\nuget.exe" -PackageName "NuGet" -BinDir $InstallDir
+    $extractionResults += @($nugetOutput[-1])
 
     # Portable Git を抽出
     Write-Host "Starting Portable Git extraction..."
