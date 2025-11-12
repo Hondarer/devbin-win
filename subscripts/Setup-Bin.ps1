@@ -451,6 +451,7 @@ function Get-PackageShortName {
     if ($PackageName -match "GNU Make") { return "make" }
     if ($PackageName -match "CMake") { return "cmake" }
     if ($PackageName -match "NuGet") { return "nuget" }
+    if ($PackageName -match "nkf") { return "nkf" }
 
     # 必要に応じてパッケージ名マッピングを追加
     return $PackageName.ToLower() -replace '[^a-z0-9]', ''
@@ -482,6 +483,9 @@ function Test-SpecialPackageHandling {
         return $true
     }
     if ($PackageName -match "NuGet") {
+        return $true
+    }
+    if ($PackageName -match "nkf") {
         return $true
     }
     return $false
@@ -1199,6 +1203,69 @@ endlocal
                 } else {
                     Write-Host "Warning: bin folder not found in CMake archive" -ForegroundColor Yellow
                 }
+            }
+            elseif ($isSpecialPackage -and $PackageName -match "nkf") {
+                # nkf の特別処理
+                Write-Host "Applying special nkf handling..."
+
+                # nkf の場合、bin/mingw64/ ディレクトリの内容だけをコピー
+                # アーカイブには bin/mingw64/ が含まれる
+
+                # bin/mingw64 ディレクトリを検索
+                $nkfBinFolder = $null
+
+                # sourcePath 以下で bin/mingw64 を探す
+                if ($sourcePath -eq $TempDir) {
+                    # 一時ディレクトリに直接展開された場合
+                    $possibleBinFolder = Join-Path $TempDir "bin\mingw64"
+                    if (Test-Path $possibleBinFolder) {
+                        $nkfBinFolder = Get-Item $possibleBinFolder
+                    }
+                } else {
+                    # サブディレクトリに展開された場合 (通常は nkf-bin-2.1.5-96c3371/bin/mingw64)
+                    $possibleBinFolder = Join-Path $sourcePath "bin\mingw64"
+                    if (Test-Path $possibleBinFolder) {
+                        $nkfBinFolder = Get-Item $possibleBinFolder
+                    }
+                }
+
+                if ($nkfBinFolder) {
+                    # bin/mingw64/ ディレクトリの内容を BinDir に直接コピー
+                    $allItems = Get-ChildItem -Path $nkfBinFolder.FullName -Recurse
+
+                    foreach ($item in $allItems) {
+                        # 相対パスを安全に計算
+                        $relativePath = $item.FullName.Substring($nkfBinFolder.FullName.Length).TrimStart('\', '/')
+
+                        # 相対パスが空の場合はスキップ (bin/mingw64 フォルダ自体)
+                        if ([string]::IsNullOrWhiteSpace($relativePath)) {
+                            continue
+                        }
+
+                        $destinationPath = Join-Path $BinDir $relativePath
+
+                        if ($item.PSIsContainer) {
+                            if (!(Test-Path $destinationPath)) {
+                                New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+                            }
+                        } else {
+                            $destinationDir = Split-Path $destinationPath -Parent
+                            if ($destinationDir -and !(Test-Path $destinationDir)) {
+                                New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+                            }
+
+                            try {
+                                Copy-Item -Path $item.FullName -Destination $destinationPath -Force
+                            } catch {
+                                Write-Host "  Error copying $relativePath : $($_.Exception.Message)" -ForegroundColor Red
+                            }
+                        }
+                    }
+
+                    Write-Host "nkf installed to: $BinDir"
+                } else {
+                    Write-Host "Warning: bin/mingw64 folder not found in nkf archive" -ForegroundColor Yellow
+                }
             } else {
                 # その他のパッケージの標準処理
                 Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
@@ -1578,6 +1645,10 @@ if ($Extract -or $Install) {
     # NuGet を抽出
     $nugetOutput = Expand-Package -ArchiveFile "packages\nuget.exe" -PackageName "NuGet" -BinDir $InstallDir
     $extractionResults += @($nugetOutput[-1])
+
+    # nkf を抽出
+    $nkfOutput = Expand-Package -ArchiveFile "packages\nkf-bin-2.1.5-96c3371.zip" -PackageName "nkf 2.1.5" -BinDir $InstallDir
+    $extractionResults += @($nkfOutput[-1])
 
     # Portable Git を抽出
     Write-Host "Starting Portable Git extraction..."

@@ -116,7 +116,8 @@ $downloads = @(
     "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-bin.zip/download",
     "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download",
     "https://github.com/Kitware/CMake/releases/download/v4.1.2/cmake-4.1.2-windows-x86_64.zip",
-    "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+    "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe",
+    "https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip"
 )
 
 # ダウンロード実行
@@ -138,6 +139,15 @@ foreach ($url in $downloads) {
     if ($fileName -eq "download" -and $uri.Host -like "*sourceforge.net*") {
         $pathSegments = $uri.AbsolutePath.Split('/', [StringSplitOptions]::RemoveEmptyEntries)
         $fileName = $pathSegments[-2]  # /download の前のセグメント
+    }
+    # GitHub の /archive/refs/tags/ URL の場合、リポジトリ名を含むファイル名を生成
+    elseif ($uri.Host -eq "github.com" -and $uri.AbsolutePath -match '/([^/]+)/([^/]+)/archive/refs/tags/(.+)$') {
+        $repoName = $matches[2]
+        $tagName = [System.IO.Path]::GetFileNameWithoutExtension($matches[3])
+        $extension = [System.IO.Path]::GetExtension($matches[3])
+        # タグ名の先頭が "v" で始まる場合は除去
+        $tagName = $tagName -replace '^v', ''
+        $fileName = "$repoName-$tagName$extension"
     }
 
     $outputPath = Join-Path "packages" $fileName

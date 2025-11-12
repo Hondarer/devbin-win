@@ -110,6 +110,13 @@ from [NuGet](https://www.nuget.org/)
 - [Available NuGet Distribution Versions](https://www.nuget.org/downloads)
     - [nuget.exe - recommended latest v6.14.0](https://dist.nuget.org/win-x86-commandline/latest/nuget.exe)
 
+### nkf
+
+from [nkf-bin](https://github.com/Hondarer/nkf-bin)
+
+- [/releases/tag/v2.1.5-96c3371](https://github.com/Hondarer/nkf-bin/releases/tag/v2.1.5-96c3371)
+    - [nkf-bin-2.1.5-96c3371.zip](https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip)
+
 ## TODO
 
 - VS Code などのスタート メニュー用ショートカットの作成
