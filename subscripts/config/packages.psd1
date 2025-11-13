@@ -1,0 +1,193 @@
+@{
+    Packages = @(
+        # Node.js - Standard extraction
+        @{
+            Name = "Node.js"
+            ShortName = "nodejs"
+            ArchivePattern = "node-v.*-win-x64\.zip$"
+            ExtractStrategy = "Standard"
+            DownloadUrl = "https://nodejs.org/dist/v22.18.0/node-v22.18.0-win-x64.zip"
+        },
+
+        # Pandoc - Standard extraction
+        @{
+            Name = "Pandoc"
+            ShortName = "pandoc"
+            ArchivePattern = "pandoc-.*-windows-x86_64\.zip$"
+            ExtractStrategy = "Standard"
+            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.8/pandoc-3.8-windows-x86_64.zip"
+        },
+
+        # pandoc-crossref - Standard extraction
+        @{
+            Name = "pandoc-crossref"
+            ShortName = "pandoc-crossref"
+            ArchivePattern = "pandoc-crossref-Windows-X64\.7z$"
+            ExtractStrategy = "Standard"
+            DownloadUrl = "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.21/pandoc-crossref-Windows-X64.7z"
+        },
+
+        # Doxygen - Standard extraction
+        @{
+            Name = "Doxygen"
+            ShortName = "doxygen"
+            ArchivePattern = "doxygen-.*\.windows\.x64\.bin\.zip$"
+            ExtractStrategy = "Standard"
+            DownloadUrl = "https://www.doxygen.nl/files/doxygen-1.14.0.windows.x64.bin.zip"
+        },
+
+        # doxybook2 - Subdirectory extraction
+        @{
+            Name = "doxybook2"
+            ShortName = "doxybook2"
+            ArchivePattern = "doxybook2-windows-win64-v.*\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            DownloadUrl = "https://github.com/Antonz0/doxybook2/releases/download/v1.6.1/doxybook2-windows-win64-v1.6.1.zip"
+        },
+
+        # Microsoft JDK - VersionNormalized extraction
+        @{
+            Name = "Microsoft JDK"
+            ShortName = "jdk"
+            ArchivePattern = "microsoft-jdk-.*-windows-x64\.zip$"
+            ExtractStrategy = "VersionNormalized"
+            VersionPattern = "^jdk-(\d+)"
+            TargetDirectory = "jdk-{0}"
+            DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-21.0.8-windows-x64.zip"
+        },
+
+        # PlantUML - JarWithWrapper extraction
+        @{
+            Name = "PlantUML"
+            ShortName = "plantuml"
+            ArchivePattern = "plantuml-.*\.jar$"
+            ExtractStrategy = "JarWithWrapper"
+            JarName = "plantuml.jar"
+            WrapperName = "plantuml.cmd"
+            WrapperContent = @"
+@echo off
+setlocal
+
+set "SCRIPT_DIR=%~dp0"
+set "JAVA_HOME=%SCRIPT_DIR%jdk-21"
+"%JAVA_HOME%\bin\java.exe" -jar "%SCRIPT_DIR%plantuml.jar" %*
+
+endlocal
+"@
+            DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2025.4/plantuml-1.2025.4.jar"
+        },
+
+        # Python - TargetDirectory extraction with PostSetupScript
+        @{
+            Name = "Python"
+            ShortName = "python"
+            ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
+            ExtractStrategy = "TargetDirectory"
+            TargetDirectory = "python-3.13"
+            PostSetupScript = "python-setup.ps1"
+            DownloadUrl = "https://www.python.org/ftp/python/3.13.7/python-3.13.7-embed-amd64.zip"
+        },
+
+        # get-pip.py (Python に関連するが独立したダウンロード)
+        @{
+            Name = "get-pip.py"
+            ShortName = "get-pip"
+            ArchivePattern = "get-pip\.py$"
+            ExtractStrategy = "CopyToPackages"
+            DownloadUrl = "https://bootstrap.pypa.io/get-pip.py"
+        },
+
+        # .NET SDK - TargetDirectory extraction
+        @{
+            Name = ".NET SDK"
+            ShortName = "dotnet8sdk"
+            ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
+            ExtractStrategy = "TargetDirectory"
+            TargetDirectory = "dotnet8sdk"
+            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip"
+        },
+
+        # Portable Git - SelfExtractingArchive extraction
+        @{
+            Name = "Portable Git"
+            ShortName = "git"
+            ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
+            ExtractStrategy = "SelfExtractingArchive"
+            TargetDirectory = "git"
+            ExtractArgs = @("-y", "-o{TargetPath}")
+            DownloadUrl = "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe"
+            PostExtract = @{
+                CopyFiles = @(
+                    @{ Source = "packages\Add-MinGW-Path.cmd"; Destination = "Add-MinGW-Path.cmd" },
+                    @{ Source = "packages\Add-MinGW-Path.ps1"; Destination = "Add-MinGW-Path.ps1" },
+                    @{ Source = "packages\Remove-MinGW-Path.cmd"; Destination = "Remove-MinGW-Path.cmd" },
+                    @{ Source = "packages\Remove-MinGW-Path.ps1"; Destination = "Remove-MinGW-Path.ps1" }
+                )
+            }
+        },
+
+        # VS Code - TargetDirectory extraction
+        @{
+            Name = "VS Code"
+            ShortName = "vscode"
+            ArchivePattern = "VSCode-win32-x64-.*\.zip$"
+            ExtractStrategy = "TargetDirectory"
+            TargetDirectory = "vscode"
+            DownloadUrl = "https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip"
+            PostExtract = @{
+                CreateDirectories = @("data")
+            }
+        },
+
+        # GNU Make (bin) - Subdirectory extraction
+        @{
+            Name = "GNU Make (bin)"
+            ShortName = "make"
+            ArchivePattern = "make-.*-bin\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            DownloadUrl = "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-bin.zip/download"
+        },
+
+        # GNU Make (dep) - Subdirectory extraction
+        @{
+            Name = "GNU Make (dep)"
+            ShortName = "make"
+            ArchivePattern = "make-.*-dep\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            DownloadUrl = "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download"
+        },
+
+        # CMake - Subdirectory extraction
+        @{
+            Name = "CMake"
+            ShortName = "cmake"
+            ArchivePattern = "cmake-.*-windows-x86_64\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            DownloadUrl = "https://github.com/Kitware/CMake/releases/download/v4.1.2/cmake-4.1.2-windows-x86_64.zip"
+        },
+
+        # NuGet - SingleExecutable extraction
+        @{
+            Name = "NuGet"
+            ShortName = "nuget"
+            ArchivePattern = "nuget\.exe$"
+            ExtractStrategy = "SingleExecutable"
+            TargetName = "nuget.exe"
+            DownloadUrl = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+        },
+
+        # nkf - Subdirectory extraction
+        @{
+            Name = "nkf"
+            ShortName = "nkf"
+            ArchivePattern = "nkf-bin-.*\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin\mingw64"
+            DownloadUrl = "https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip"
+        }
+    )
+}
