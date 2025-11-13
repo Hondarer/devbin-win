@@ -179,20 +179,14 @@ if ($successCount -eq $totalCount) {
 
     # packages フォルダ内のすべてのファイルのブロック解除
     Write-Host "`nUnblocking downloaded files..."
-    $allFiles = Get-ChildItem -Path "packages" -File -ErrorAction SilentlyContinue
-    $unblockedCount = 0
-    foreach ($file in $allFiles) {
-        try {
-            Unblock-File -Path $file.FullName -ErrorAction Stop
-            Write-Host "  Unblocked: $($file.Name)"
-            $unblockedCount++
-        } catch {
-            Write-Host "  Warning: Failed to unblock $($file.Name): $($_.Exception.Message)" -ForegroundColor Yellow
+    try {
+        $allFiles = Get-ChildItem -Path "packages" -File -ErrorAction SilentlyContinue
+        if ($allFiles) {
+            $allFiles | Unblock-File -ErrorAction SilentlyContinue
+            Write-Host "Unblocked $($allFiles.Count) file(s)."
         }
-    }
-
-    if ($unblockedCount -gt 0) {
-        Write-Host "`nUnblocked $unblockedCount file(s)." -ForegroundColor Green
+    } catch {
+        Write-Host "  Warning: Failed to unblock some files: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 } else {
     $failedCount = $totalCount - $successCount

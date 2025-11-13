@@ -378,6 +378,15 @@ function Backup-VSCodeData {
         return $null
     }
 
+    # Data フォルダ内にファイルが存在するかチェック
+    $filesInData = Get-ChildItem -Path $vscodeDataPath -Recurse -File -ErrorAction SilentlyContinue
+    if (-not $filesInData -or $filesInData.Count -eq 0) {
+        if (-not $Silent) {
+            Write-Host "VS Code data folder is empty, skipping backup: $vscodeDataPath"
+        }
+        return $null
+    }
+
     $tempBackupDir = Join-Path ([System.IO.Path]::GetTempPath()) "vscode_data_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 
     try {
