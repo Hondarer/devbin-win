@@ -462,6 +462,57 @@ function Invoke-SelfExtractingArchiveExtract {
     }
 }
 
+# VSBuildTools 戦略: Setup-VSBT.ps1 を実行
+function Invoke-VSBuildToolsExtract {
+    param(
+        [string]$BinDir,
+        [string]$ScriptDir,
+        [hashtable]$Config
+    )
+
+    Write-Host "Processing: $($Config.DisplayName)"
+
+    $vsbtScript = Join-Path $ScriptDir "Setup-VSBT.ps1"
+
+    if (-not (Test-Path $vsbtScript)) {
+        Write-Host "  Error: Setup-VSBT.ps1 not found at: $vsbtScript" -ForegroundColor Red
+        return $false
+    }
+
+    $vsbtConfig = $Config.VSBTConfig
+    $outputPath = Join-Path $BinDir $Config.ExtractedName
+
+    $params = @{
+        MSVCVersion = $vsbtConfig.MSVCVersion
+        SDKVersion = $vsbtConfig.SDKVersion
+        Target = $vsbtConfig.Target
+        HostArch = $vsbtConfig.HostArch
+        OutputPath = $outputPath
+        AcceptLicense = $true
+    }
+
+    Write-Host "  Executing Setup-VSBT.ps1..."
+    Write-Host "    MSVC: $($params.MSVCVersion)"
+    Write-Host "    SDK: $($params.SDKVersion)"
+    Write-Host "    Target: $($params.Target)"
+    Write-Host "    Output: $outputPath`n"
+
+    try {
+        & $vsbtScript @params
+
+        if ($LASTEXITCODE -eq 0 -or $null -eq $LASTEXITCODE) {
+            Write-Host "  $($Config.DisplayName) setup completed" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "  Setup-VSBT.ps1 exited with code $LASTEXITCODE" -ForegroundColor Yellow
+            return $false
+        }
+    } catch {
+        Write-Host "  Error executing Setup-VSBT.ps1: $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    }
+}
+
 # メイン関数: 抽出戦略を実行
 function Invoke-ExtractStrategy {
     [CmdletBinding()]
@@ -469,8 +520,8 @@ function Invoke-ExtractStrategy {
         [Parameter(Mandatory)]
         [hashtable]$PackageConfig,
 
-        [Parameter(Mandatory)]
-        [string]$ArchiveFile,
+        [Parameter(Mandatory=$false)]
+        [string]$ArchiveFile = "",
 
         [Parameter(Mandatory)]
         [string]$BinDir,
@@ -514,6 +565,9 @@ function Invoke-ExtractStrategy {
             }
             "SelfExtractingArchive" {
                 $targetPath = Invoke-SelfExtractingArchiveExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -Config $PackageConfig
+            }
+            "VSBuildTools" {
+                return Invoke-VSBuildToolsExtract -BinDir $BinDir -ScriptDir $ScriptDir -Config $PackageConfig
             }
             default {
                 Write-Host "Unknown strategy: $strategy" -ForegroundColor Red

@@ -188,6 +188,22 @@ endlocal
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin\mingw64"
             DownloadUrl = "https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip"
+        },
+
+        # Visual Studio Build Tools - VSBuildTools extraction
+        @{
+            Name = "Visual Studio Build Tools"
+            DisplayName = "VS 2022 C++ toolset 14.44 & Windows SDK v26100"
+            ShortName = "vsbt"
+            ArchivePattern = "^vsbt$"
+            ExtractStrategy = "VSBuildTools"
+            ExtractedName = "vsbt"
+            VSBTConfig = @{
+                MSVCVersion = "14.44"
+                SDKVersion = "26100"
+                Target = "x64"
+                HostArch = "x64"
+            }
         }
     )
 }

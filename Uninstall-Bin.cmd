@@ -42,21 +42,25 @@ powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\subscripts\Setup-Bin.
 
 set "PS_EXIT_CODE=%errorLevel%"
 
-if %PS_EXIT_CODE% equ 0 (
+if !PS_EXIT_CODE! equ 0 (
     echo.
     echo Removing parent directory if empty...
     set "PARENT_DIR=C:\ProgramData\devbin-win"
+    set "PARENT_REMOVED=0"
     if exist "!PARENT_DIR!" (
         rmdir "!PARENT_DIR!" 2>nul
-        if %errorLevel% equ 0 (
+        if !errorLevel! equ 0 (
             echo Parent directory removed: !PARENT_DIR!
+            set "PARENT_REMOVED=1"
         ) else (
             echo Parent directory not empty or in use: !PARENT_DIR!
+            echo (This is normal if VS Code data was preserved^)
         )
     ) else (
         echo Parent directory already removed: !PARENT_DIR!
+        set "PARENT_REMOVED=1"
     )
-    
+
     echo.
     echo ================================
     echo Uninstallation completed successfully!
@@ -67,7 +71,11 @@ if %PS_EXIT_CODE% equ 0 (
     echo - Removed DOTNET_HOME environment variable
     echo - Removed DOTNET_CLI_TELEMETRY_OPTOUT environment variable
     echo - Deleted installation directory: %INSTALL_DIR%
-    echo - Removed parent directory: C:\ProgramData\devbin-win
+    if !PARENT_REMOVED! equ 1 (
+        echo - Removed parent directory: C:\ProgramData\devbin-win
+    ) else (
+        echo - Parent directory preserved (contains VS Code data or other files^)
+    )
     echo.
     echo Please restart your terminal for environment changes to take effect.
     echo.
@@ -77,7 +85,7 @@ if %PS_EXIT_CODE% equ 0 (
     echo Uninstallation failed!
     echo ================================
     echo.
-    echo PowerShell script exited with code: %PS_EXIT_CODE%
+    echo PowerShell script exited with code: !PS_EXIT_CODE!
     echo Please check the output above for error details.
     echo.
 )

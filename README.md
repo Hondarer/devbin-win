@@ -117,8 +117,9 @@ from [nkf-bin](https://github.com/Hondarer/nkf-bin)
 - [/releases/tag/v2.1.5-96c3371](https://github.com/Hondarer/nkf-bin/releases/tag/v2.1.5-96c3371)
     - [nkf-bin-2.1.5-96c3371.zip](https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip)
 
+### Visual Studio BUild Tools (VS 2022 C++ toolset 14.44 & Windows SDK v26100)
+
 ## TODO
 
 - VS Code などのスタート メニュー用ショートカットの作成
 - HTTP_PROXY の設定
-- Visual Studio Build Tools (ライセンス条項的に、Repo は分けておいたほうがいいか)

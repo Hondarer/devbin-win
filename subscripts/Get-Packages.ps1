@@ -118,6 +118,45 @@ function Get-File {
     }
 }
 
+# Visual Studio Build Tools のダウンロード処理
+$vsbtPackage = $Packages | Where-Object { $_.ExtractStrategy -eq "VSBuildTools" }
+if ($vsbtPackage) {
+    Write-Host ""
+    Write-Host "=== Visual Studio Build Tools Download ===" -ForegroundColor Cyan
+    Write-Host ""
+
+    $vsbtScript = Join-Path $ScriptDir "Setup-VSBT.ps1"
+    if (-not (Test-Path $vsbtScript)) {
+        Write-Host "Error: Setup-VSBT.ps1 not found at: $vsbtScript" -ForegroundColor Red
+        exit 1
+    }
+
+    $vsbtConfig = $vsbtPackage.VSBTConfig
+    $params = @{
+        MSVCVersion = $vsbtConfig.MSVCVersion
+        SDKVersion = $vsbtConfig.SDKVersion
+        Target = $vsbtConfig.Target
+        HostArch = $vsbtConfig.HostArch
+        DownloadOnly = $true
+        AcceptLicense = $true
+    }
+
+    Write-Host "Executing Setup-VSBT.ps1 with parameters:"
+    Write-Host "  MSVCVersion: $($params.MSVCVersion)"
+    Write-Host "  SDKVersion: $($params.SDKVersion)"
+    Write-Host "  Target: $($params.Target)"
+    Write-Host "  HostArch: $($params.HostArch)"
+    Write-Host ""
+
+    & $vsbtScript @params
+
+    if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+        Write-Host "Warning: Setup-VSBT.ps1 exited with code $LASTEXITCODE" -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+}
+
 # ダウンロード対象ファイルを packages.psd1 から取得
 $downloads = @()
 foreach ($package in $Packages) {
@@ -126,7 +165,7 @@ foreach ($package in $Packages) {
     }
 }
 
-if ($downloads.Count -eq 0) {
+if ($downloads.Count -eq 0 -and -not $vsbtPackage) {
     Write-Host "Error: No download URLs found in package configuration." -ForegroundColor Red
     exit 1
 }

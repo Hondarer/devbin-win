@@ -102,7 +102,7 @@ function Add-ToUserPath {
                     $shouldSkip = $true
                 }
             }
-            elseif ($dirPath -like "*vscode") {
+            elseif ($dirPath -like "*vscode\bin") {
                 if (Test-CommandExists "code") {
                     Write-Host "  Skipped (code.cmd already available): $dirPath"
                     $shouldSkip = $true
@@ -486,6 +486,9 @@ function Invoke-CompleteUninstall {
     $vscodeDataBackup = $null
     if ($PreserveVSCodeData) {
         $vscodeDataBackup = Backup-VSCodeData -InstallDirectory $InstallDirectory -Silent:$Silent
+        if (-not $vscodeDataBackup) {
+            $PreserveVSCodeData = $false
+        }
     }
 
     try {
@@ -565,6 +568,11 @@ function Invoke-CompleteUninstall {
         if ($vscodeDataBackup) {
             if (-not $Silent) {
                 Write-Host "Restoring VS Code data from backup..."
+            }
+
+            # bin ディレクトリを作成 (削除されている場合)
+            if (!(Test-Path $InstallDirectory)) {
+                New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
             }
 
             # vscode ディレクトリを作成

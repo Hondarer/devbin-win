@@ -124,10 +124,10 @@ if ($Uninstall) {
     Write-Host "  Removed DOTNET_CLI_TELEMETRY_OPTOUT"
 
     # 環境変数を現在のプロセスに同期
-    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT")
+    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT") | Out-Null
 
     # 完全アンインストールの確認
-    Invoke-CompleteUninstall -InstallDirectory $InstallDir
+    Invoke-CompleteUninstall -InstallDirectory $InstallDir | Out-Null
 
     Write-Host ""
     Write-Host "Uninstallation completed." -ForegroundColor Green
@@ -154,9 +154,43 @@ Write-Host ""
 # packages ディレクトリをチェック
 $packagesDir = "packages"
 if (!(Test-Path $packagesDir)) {
-    Write-Host "Error: packages directory not found."
-    Write-Host "Please run subscripts\Get-Packages.ps1 first to download required packages."
-    exit 1
+    New-Item -ItemType Directory -Path $packagesDir | Out-Null
+    Write-Host "Created packages directory."
+}
+
+# 必要なパッケージファイルが存在するかチェック
+$missingPackages = @()
+foreach ($packageConfig in $Packages) {
+    # VSBuildTools は戦略内でダウンロードされるためスキップ
+    if ($packageConfig.ExtractStrategy -eq "VSBuildTools") {
+        continue
+    }
+
+    $archivePattern = $packageConfig.ArchivePattern
+    $archiveFiles = Get-ChildItem -Path $packagesDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $archivePattern }
+
+    if ($archiveFiles.Count -eq 0 -and $packageConfig.DownloadUrl) {
+        $missingPackages += $packageConfig
+    }
+}
+
+# 不足しているパッケージがある場合はダウンロードを試みる
+if ($missingPackages.Count -gt 0) {
+    Write-Host "Missing $($missingPackages.Count) package(s). Attempting to download..."
+    Write-Host ""
+
+    $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
+    if (Test-Path $getPackagesScript) {
+        & $getPackagesScript
+        if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+            Write-Host "Warning: Package download completed with errors." -ForegroundColor Yellow
+        }
+        Write-Host ""
+    } else {
+        Write-Host "Error: Get-Packages.ps1 not found at: $getPackagesScript" -ForegroundColor Red
+        Write-Host "Please download required packages manually." -ForegroundColor Red
+        exit 1
+    }
 }
 
 # インストール前にクリーンアップを実行
@@ -190,6 +224,26 @@ $totalCount = 0
 foreach ($packageConfig in $Packages) {
     $packageName = $packageConfig.Name
     $archivePattern = $packageConfig.ArchivePattern
+    $strategy = $packageConfig.ExtractStrategy
+
+    # VSBuildTools 戦略の場合は Setup-VSBT.ps1 に処理を委譲
+    if ($strategy -eq "VSBuildTools") {
+        $totalCount++
+
+        # パッケージを抽出 (ArchiveFile パラメーターはダミー)
+        $result = Invoke-ExtractStrategy `
+            -PackageConfig $packageConfig `
+            -ArchiveFile "" `
+            -BinDir $InstallDir `
+            -ScriptDir $ScriptDir
+
+        if ($result) {
+            $successCount++
+        }
+
+        Write-Host ""
+        continue
+    }
 
     # packages フォルダ内でアーカイブファイルを検索
     $archiveFiles = Get-ChildItem -Path $packagesDir -File | Where-Object { $_.Name -match $archivePattern }
@@ -203,6 +257,12 @@ foreach ($packageConfig in $Packages) {
     # 最初にマッチしたファイルを使用
     $archiveFile = $archiveFiles[0].FullName
     $totalCount++
+
+    # CopyToPackages 戦略の場合は、抽出処理は対象外
+    if ($strategy -eq "CopyToPackages") {
+        $successCount++
+        continue
+    }
 
     # パッケージを抽出
     $result = Invoke-ExtractStrategy `

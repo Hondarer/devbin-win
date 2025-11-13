@@ -20,7 +20,7 @@
 6. ZIP および MSI 形式のパッケージを `packages\vsbt` から読み込み、最終出力先 (`bin\vsbt`) に展開
 7. 不要なファイルを削除してサイズを最適化
 8. DIA SDK のフォルダ名を正規化 (`DIA%20SDK` → `DIA SDK`)
-9. 環境設定用のスクリプト (`Add-VSBT-Path-x64.cmd` と `Add-VSBT-Path-x64.ps1` など) を bin ディレクトリに生成
+9. 環境設定用のスクリプト (`Add-VSBT-Env-x64.cmd` と `Add-VSBT-Env-x64.ps1` など) を bin ディレクトリに生成
 10. `temp_extract` フォルダを削除 (キャッシュは `packages\vsbt` に保持)
 
 ### ディレクトリ構造
@@ -32,7 +32,7 @@
   - `{target}/SDK/{version}/`: キャッシュされた SDK パッケージ (MSI, CAB)
 - `temp_extract/`: ダウンロード中の一時ファイル置き場 (処理完了後に自動削除)
 - `bin/`: 環境設定用スクリプトと最終出力先
-  - `Add-VSBT-Path-x64.cmd`, `Add-VSBT-Path-x64.ps1` など (CMD と PowerShell 両対応)
+  - `Add-VSBT-Env-x64.cmd`, `Add-VSBT-Env-x64.ps1` など (CMD と PowerShell 両対応)
   - `vsbt/`: MSVC と Windows SDK の展開先 (デフォルト、変更可能)
 
 複数のターゲット (例: x64, arm64) を指定した場合、パッケージが各ターゲットフォルダに重複してキャッシュされます。

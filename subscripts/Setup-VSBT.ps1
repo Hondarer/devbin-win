@@ -204,7 +204,7 @@ try {
                 $batchDir = "."
             }
             if (Test-Path $batchDir) {
-                $scriptFiles = Get-ChildItem -Path $batchDir -Filter "Add-VSBT-Path-*.*" -File -ErrorAction SilentlyContinue
+                $scriptFiles = Get-ChildItem -Path $batchDir -Filter "Add-VSBT-Env-*.*" -File -ErrorAction SilentlyContinue
                 if ($scriptFiles) {
                     Write-ColorMessage "`nCleaning up existing script files..."
                     foreach ($script in $scriptFiles) {
@@ -799,10 +799,10 @@ if %PATH_CHANGED%==1 (
 endlocal & set "PATH=%PATH%" & set "INCLUDE=%INCLUDE%" & set "LIB=%LIB%" & set "VSCMD_ARG_HOST_ARCH=%VSCMD_ARG_HOST_ARCH%" & set "VSCMD_ARG_TGT_ARCH=%VSCMD_ARG_TGT_ARCH%" & set "VCToolsVersion=%VCToolsVersion%" & set "WindowsSDKVersion=%WindowsSDKVersion%" & set "VCToolsInstallDir=%VCToolsInstallDir%" & set "WindowsSdkBinPath=%WindowsSdkBinPath%"
 "@
 
-        $cmdPath = Join-Path $scriptDir "Add-VSBT-Path-$t.cmd"
+        $cmdPath = Join-Path $scriptDir "Add-VSBT-Env-$t.cmd"
         $shiftJis = [System.Text.Encoding]::GetEncoding(932)
         [System.IO.File]::WriteAllText($cmdPath, $cmdContent, $shiftJis)
-        Write-Host "  Generated: Add-VSBT-Path-$t.cmd"
+        Write-Host "  Generated: Add-VSBT-Env-$t.cmd"
 
         # Generate PowerShell script
         $ps1Content = @"
@@ -872,19 +872,19 @@ if (`$pathChanged) {
 }
 "@
 
-        $ps1Path = Join-Path $scriptDir "Add-VSBT-Path-$t.ps1"
+        $ps1Path = Join-Path $scriptDir "Add-VSBT-Env-$t.ps1"
         # BOM 付き UTF-8 で保存
         $utf8BOM = New-Object System.Text.UTF8Encoding $true
         [System.IO.File]::WriteAllText($ps1Path, $ps1Content, $utf8BOM)
-        Write-Host "  Generated: Add-VSBT-Path-$t.ps1"
+        Write-Host "  Generated: Add-VSBT-Env-$t.ps1"
     }
 
     # Show statistics
     $downloadMB = [math]::Round($script:TotalDownload / 1MB, 2)
     Write-ColorMessage "`nCompleted."
     Write-ColorMessage "Total downloaded: $downloadMB MB"
-    $cmdExample = Join-Path $scriptDir "Add-VSBT-Path-x64.cmd"
-    $ps1Example = Join-Path $scriptDir "Add-VSBT-Path-x64.ps1"
+    $cmdExample = Join-Path $scriptDir "Add-VSBT-Env-x64.cmd"
+    $ps1Example = Join-Path $scriptDir "Add-VSBT-Env-x64.ps1"
     Write-ColorMessage "`nTo set up environment:"
     Write-ColorMessage "  CMD: $cmdExample"
     Write-ColorMessage "  PowerShell: $ps1Example"
