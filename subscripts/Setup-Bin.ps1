@@ -320,7 +320,7 @@ if ($Install) {
     Write-Host "  Set DOTNET_CLI_TELEMETRY_OPTOUT=1"
 
     # 環境変数を現在のプロセスに同期
-    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT")
+    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT") | Out-Null
 
     Write-Host ""
     Write-Host "Installation completed successfully!" -ForegroundColor Green
