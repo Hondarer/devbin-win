@@ -45,6 +45,13 @@ from [Download the Microsoft Build of OpenJDK](https://learn.microsoft.com/en-us
 - [OpenJDK 21.0.8 LTS](https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-2108-lts--see-previous-releases)
     - [microsoft-jdk-21.0.8-windows-x64.zip](https://aka.ms/download-jdk/microsoft-jdk-21.0.8-windows-x64.zip)
 
+### Graphviz
+
+from [Graphviz](https://graphviz.org/)
+
+- [Download](https://graphviz.org/download/)
+    - [graphviz-14.0.2 (64-bit) ZIP archive](https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.2/windows_10_cmake_Release_Graphviz-14.0.2-win64.zip)
+
 ### PlantUML
 
 from [plantuml](https://github.com/plantuml/plantuml)

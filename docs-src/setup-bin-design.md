@@ -108,6 +108,20 @@ strategies --> bin : ファイル展開
 }
 ```
 
+#### サブディレクトリをターゲットディレクトリに抽出 (SubdirectoryToTarget)
+
+```powershell
+@{
+    Name = "Graphviz"
+    ShortName = "graphviz"
+    ArchivePattern = "windows_10_cmake_Release_Graphviz-.*-win64\.zip$"
+    ExtractStrategy = "SubdirectoryToTarget"
+    ExtractPath = "bin"
+    TargetDirectory = "graphviz"
+    DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.2/windows_10_cmake_Release_Graphviz-14.0.2-win64.zip"
+}
+```
+
 #### バージョン正規化 (VersionNormalized)
 
 ```powershell
@@ -134,6 +148,7 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 |--------|------|---------------|
 | Standard | ZIP を展開し、すべてを bin に配置 | Node.js, Pandoc, Doxygen |
 | Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make |
+| SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
@@ -166,6 +181,24 @@ ZIP を展開後、指定されたサブディレクトリの内容のみを bin
 3. そのサブディレクトリの内容のみを bin ディレクトリにコピー
 
 **使用例**: nkf (bin/mingw64 のみ抽出), CMake (bin のみ抽出)
+
+### SubdirectoryToTarget 戦略
+
+ZIP を展開後、指定されたサブディレクトリの内容を指定のターゲットディレクトリに配置します。Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin 内の特定のサブディレクトリになる点です。
+
+**パラメータ**:
+
+- `ExtractPath`: 抽出するサブディレクトリのパス
+- `TargetDirectory`: 配置先のディレクトリ名 (bin からの相対パス)
+
+**処理フロー**:
+
+1. ZIP を一時ディレクトリに展開
+2. ExtractPath で指定されたサブディレクトリを特定
+3. bin 内に TargetDirectory を作成
+4. そのサブディレクトリの内容を TargetDirectory にコピー
+
+**使用例**: Graphviz (アーカイブ内の bin フォルダを bin/graphviz に配置)
 
 ### VersionNormalized 戦略
 

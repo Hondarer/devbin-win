@@ -57,6 +57,17 @@
             DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-21.0.8-windows-x64.zip"
         },
 
+        # Graphviz - SubdirectoryToTarget extraction
+        @{
+            Name = "Graphviz"
+            ShortName = "graphviz"
+            ArchivePattern = "windows_10_cmake_Release_Graphviz-.*-win64\.zip$"
+            ExtractStrategy = "SubdirectoryToTarget"
+            ExtractPath = "bin"
+            TargetDirectory = "graphviz"
+            DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.2/windows_10_cmake_Release_Graphviz-14.0.2-win64.zip"
+        },
+
         # PlantUML - JarWithWrapper extraction
         @{
             Name = "PlantUML"

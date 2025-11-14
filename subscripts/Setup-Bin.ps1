@@ -78,6 +78,7 @@ function Get-PathDirectories {
     $pathDirs = @(
         $BaseDir,
         "$BaseDir\jdk-21\bin",
+        "$BaseDir\graphviz",
         "$BaseDir\python-3.13",
         "$BaseDir\dotnet8sdk",
         "$BaseDir\git",
@@ -123,8 +124,15 @@ if ($Uninstall) {
     [Environment]::SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", $null, "User")
     Write-Host "  Removed DOTNET_CLI_TELEMETRY_OPTOUT"
 
+    # PlantUML 環境変数を削除
+    Write-Host ""
+    Write-Host "Removing PlantUML environment variables..."
+
+    [Environment]::SetEnvironmentVariable("PLANTUML_HOME", $null, "User")
+    Write-Host "  Removed PLANTUML_HOME"
+
     # 環境変数を現在のプロセスに同期
-    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT") | Out-Null
+    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME") | Out-Null
 
     # 完全アンインストールの確認
     Invoke-CompleteUninstall -InstallDirectory $InstallDir | Out-Null
@@ -141,7 +149,7 @@ Write-Host ""
 
 # 環境変数をレジストリからカレントプロセスに同期
 Write-Host "Synchronizing environment variables..."
-Sync-EnvironmentVariables -VariableNames @("PATH", "PYTHONHOME", "PYTHONPATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT") | Out-Null
+Sync-EnvironmentVariables -VariableNames @("PATH", "PYTHONHOME", "PYTHONPATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME") | Out-Null
 Write-Host ""
 
 # 絶対パスに変換
@@ -319,8 +327,16 @@ if ($Install) {
     [Environment]::SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", "1", "User")
     Write-Host "  Set DOTNET_CLI_TELEMETRY_OPTOUT=1"
 
+    # PlantUML 環境変数を設定
+    Write-Host ""
+    Write-Host "Setting PlantUML environment variables..."
+
+    $plantumlHome = $InstallDir
+    [Environment]::SetEnvironmentVariable("PLANTUML_HOME", $plantumlHome, "User")
+    Write-Host "  Set PLANTUML_HOME=$plantumlHome"
+
     # 環境変数を現在のプロセスに同期
-    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT") | Out-Null
+    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME") | Out-Null
 
     Write-Host ""
     Write-Host "Installation completed successfully!" -ForegroundColor Green
