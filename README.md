@@ -69,6 +69,8 @@ from [python.org](https://www.python.org/)
 
 - [get-pip](https://bootstrap.pypa.io/get-pip.py)
 
+完全オフライン環境での pip インストールに対応しています。pip wheel ファイルは Get-Packages.ps1 実行時に自動的に packages/pip-packages フォルダにダウンロードされます。詳細は [offline-pip-design.md](./docs-src/offline-pip-design.md) を参照してください。
+
 ### .NET SDK
 
 from [.NET のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet)

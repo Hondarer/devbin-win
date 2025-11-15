@@ -92,7 +92,37 @@ if (Test-Path $getPipPath) {
     $pythonExe = Join-Path $TargetPath "python.exe"
     if (Test-Path $pythonExe) {
         try {
-            & $pythonExe $getPipDestination --no-warn-script-location
+            # pip-packages フォルダが存在する場合はオフラインインストール
+            $pipPackagesDir = "packages\pip-packages"
+            $offlineMode = Test-Path $pipPackagesDir
+
+            if ($offlineMode) {
+                Write-Host "Using offline installation with local wheel files..."
+                $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
+                & $pythonExe $getPipDestination --no-warn-script-location `
+                    --no-index --find-links=$pipPackagesAbsPath
+            } else {
+                Write-Host "Using online installation (downloading from PyPI)..."
+
+                # 一時ディレクトリに wheel をダウンロード
+                $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
+                New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+                # pip download で wheel ファイルを取得
+                & $pythonExe -m pip download pip setuptools wheel --dest $tempDir --no-deps 2>$null
+
+                # get-pip.py で通常インストール
+                & $pythonExe $getPipDestination --no-warn-script-location
+
+                # ダウンロードした wheel を packages/pip-packages に保存
+                if (Test-Path $tempDir) {
+                    New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
+                    Copy-Item -Path "$tempDir\*.whl" -Destination $pipPackagesDir -Force
+                    Write-Host "Saved wheel files to $pipPackagesDir for future offline use"
+                    Remove-Item -Path $tempDir -Recurse -Force
+                }
+            }
+
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "pip installed successfully"
             } else {

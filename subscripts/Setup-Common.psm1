@@ -542,6 +542,15 @@ function Invoke-CompleteUninstall {
             }
         }
 
+        # PLANTUML_HOME 環境変数を削除
+        $currentPlantumlHome = [Environment]::GetEnvironmentVariable("PLANTUML_HOME", "User")
+        if ($currentPlantumlHome -and ($currentPlantumlHome -eq $InstallDirectory)) {
+            [Environment]::SetEnvironmentVariable("PLANTUML_HOME", $null, "User")
+            if (-not $Silent) {
+                Write-Host "Removed PLANTUML_HOME environment variable: $currentPlantumlHome"
+            }
+        }
+
         # インストールディレクトリを削除
         if (Test-Path $InstallDirectory) {
             if (-not $Silent) {
@@ -554,8 +563,19 @@ function Invoke-CompleteUninstall {
                     Write-Host "Installation directory removed."
                 }
             } catch {
-                if (-not $Silent) {
-                    Write-Host "Warning: Failed to remove installation directory: $($_.Exception.Message)" -ForegroundColor Yellow
+                # ファイルが使用中 (busy) かどうかをチェック
+                $isBusy = $_.Exception.Message -match "(使用中|being used|in use|access.*denied|cannot access|プロセスで使用|別のプロセス)"
+
+                if ($isBusy) {
+                    Write-Host ""
+                    Write-Host "Error: Some files are currently in use and cannot be removed." -ForegroundColor Red
+                    Write-Host "Please restart your PC and run this operation again." -ForegroundColor Yellow
+                    Write-Host ""
+                    throw "Installation directory cleanup failed: Files are in use"
+                } else {
+                    if (-not $Silent) {
+                        Write-Host "Warning: Failed to remove installation directory: $($_.Exception.Message)" -ForegroundColor Yellow
+                    }
                 }
             }
         } else {

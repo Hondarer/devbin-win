@@ -154,6 +154,7 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
+| VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 
 ### Standard 戦略
 
@@ -289,6 +290,27 @@ JAR ファイルをコピーし、実行用の cmd ラッパースクリプト�
 3. PostExtract 処理を実行 (指定されている場合)
 
 **使用例**: Portable Git
+
+### VSBuildTools 戦略
+
+Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアップします。
+
+**パラメータ**:
+
+- `DisplayName`: 表示名
+- `ExtractedName`: 展開先ディレクトリ名
+- `VSBTConfig`: VSBT の設定
+  - `MSVCVersion`: MSVC バージョン
+  - `SDKVersion`: Windows SDK バージョン
+  - `Target`: ターゲットアーキテクチャ
+  - `HostArch`: ホストアーキテクチャ
+
+**処理フロー**:
+
+1. Setup-VSBT.ps1 を実行
+2. 指定されたバージョンの MSVC と SDK をダウンロード・展開
+
+**使用例**: Visual Studio Build Tools
 
 ## 共通関数モジュール (Setup-Common.psm1)
 

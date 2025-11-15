@@ -135,12 +135,18 @@ if ($Uninstall) {
     Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME") | Out-Null
 
     # 完全アンインストールの確認
-    Invoke-CompleteUninstall -InstallDirectory $InstallDir | Out-Null
-
-    Write-Host ""
-    Write-Host "Uninstallation completed." -ForegroundColor Green
-    Write-Host "Note: To apply PATH changes, restart your terminal."
-    exit 0
+    try {
+        Invoke-CompleteUninstall -InstallDirectory $InstallDir | Out-Null
+        Write-Host ""
+        Write-Host "Uninstallation completed." -ForegroundColor Green
+        Write-Host "Note: To apply PATH changes, restart your terminal."
+        exit 0
+    } catch {
+        Write-Host ""
+        Write-Host "Error: Uninstallation failed." -ForegroundColor Red
+        Write-Host "$($_.Exception.Message)" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 # Extract または Install 処理
@@ -203,17 +209,24 @@ if ($missingPackages.Count -gt 0) {
 
 # インストール前にクリーンアップを実行
 Write-Host "Performing pre-installation cleanup..."
-$cleanupResult = Invoke-CompleteUninstall `
-    -InstallDirectory $InstallDir `
-    -PreserveVSCodeData `
-    -PackagesConfigPath $PackagesConfigPath
+try {
+    $cleanupResult = Invoke-CompleteUninstall `
+        -InstallDirectory $InstallDir `
+        -PreserveVSCodeData `
+        -PackagesConfigPath $PackagesConfigPath
 
-if ($cleanupResult) {
-    Write-Host "Previous installation cleaned up successfully."
-} else {
-    Write-Host "Cleanup completed with some warnings (this is normal for first-time installation)."
+    if ($cleanupResult) {
+        Write-Host "Previous installation cleaned up successfully."
+    } else {
+        Write-Host "Cleanup completed with some warnings (this is normal for first-time installation)."
+    }
+    Write-Host ""
+} catch {
+    Write-Host ""
+    Write-Host "Error: Pre-installation cleanup failed." -ForegroundColor Red
+    Write-Host "$($_.Exception.Message)" -ForegroundColor Yellow
+    exit 1
 }
-Write-Host ""
 
 # bin ディレクトリを作成
 if (!(Test-Path $InstallDir)) {

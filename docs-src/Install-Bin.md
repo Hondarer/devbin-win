@@ -87,6 +87,38 @@ Uninstall-Bin.cmd
 
 - Node.js、Pandoc、Doxygen、PlantUML は常に PATH に追加されます
 
+## オフライン環境での pip インストール
+
+完全オフライン環境での pip インストールに対応しています。
+
+### 自動対応の仕組み
+
+`Get-Packages.ps1` の実行により、pip インストールに必要な wheel ファイルが自動的に準備されます。
+
+#### Python がインストール済みの環境
+
+1. `Get-Packages.ps1` を実行すると、pip、setuptools、wheel の wheel ファイルが `packages\pip-packages` に自動ダウンロードされます
+2. その後、オフライン環境に移行しても `Install-Bin.cmd` で pip が正常にインストールされます
+
+#### Python が未インストールの環境
+
+1. `Get-Packages.ps1` 実行時は wheel ファイルのダウンロードをスキップします (Python がないため)
+2. `Install-Bin.cmd` で Python をインストールします
+3. 初回インストール時にオンライン接続があれば、wheel ファイルを自動的に `packages\pip-packages` に保存します
+4. 次回以降はオフラインでも pip インストールが可能になります
+
+### オフライン環境への移行手順
+
+インターネット接続のある環境で以下を実行してください。
+
+1. `Get-Packages.ps1` を実行して、全パッケージと wheel ファイルをダウンロード
+2. リポジトリ全体 (特に `packages` フォルダ) をオフライン環境にコピー
+3. オフライン環境で `Install-Bin.cmd` を実行
+
+これにより、完全オフライン環境でも pip を含む全ツールがインストールされます。
+
+詳細な設計や内部動作については、[offline-pip-design.md](./offline-pip-design.md) を参照してください。
+
 ## 高度な使用方法
 
 ### setup.ps1 直接実行

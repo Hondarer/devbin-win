@@ -233,3 +233,34 @@ if ($successCount -eq $totalCount) {
     Write-Host "Please check your network connection and try again."
     Write-Host "Use the -Force option to forcefully re-download existing files."
 }
+
+# pip wheel ファイルの自動ダウンロード
+Write-Host ""
+Write-Host "=== Pip Wheel Download ===" -ForegroundColor Cyan
+Write-Host ""
+
+$pythonExe = Get-Command python.exe -ErrorAction SilentlyContinue
+if (-not $pythonExe) {
+    Write-Host "Python not found. Skipping wheel download."
+    Write-Host "Wheel files will be downloaded during Setup-Bin.ps1 execution."
+} else {
+    Write-Host "Python found. Downloading pip wheel files..."
+
+    $pipPackagesDir = "packages\pip-packages"
+    if (!(Test-Path $pipPackagesDir)) {
+        New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
+    }
+
+    try {
+        # pip download で wheel ファイルを取得
+        & $pythonExe -m pip download pip setuptools wheel --dest $pipPackagesDir --no-deps
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Successfully downloaded wheel files to $pipPackagesDir"
+        } else {
+            Write-Host "Warning: Failed to download some wheel files (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "Warning: Failed to download wheel files: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
