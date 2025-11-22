@@ -126,6 +126,20 @@ from [nkf-bin](https://github.com/Hondarer/nkf-bin)
 - [/releases/tag/v2.1.5-96c3371](https://github.com/Hondarer/nkf-bin/releases/tag/v2.1.5-96c3371)
     - [nkf-bin-2.1.5-96c3371.zip](https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip)
 
+### innoextract
+
+from [innoextract](https://github.com/dscharrer/innoextract)
+
+- [/releases/tag/1.9](https://github.com/dscharrer/innoextract/releases/tag/1.9)
+    - [innoextract-1.9-windows.zip](https://github.com/dscharrer/innoextract/releases/download/1.9/innoextract-1.9-windows.zip)
+
+### OpenCppCoverage
+
+from [OpenCppCoverage](https://github.com/OpenCppCoverage/OpenCppCoverage)
+
+- [/releases/tag/release-0.9.9.0](https://github.com/OpenCppCoverage/OpenCppCoverage/releases/tag/release-0.9.9.0)
+    - [OpenCppCoverageSetup-x64-0.9.9.0.exe](https://github.com/OpenCppCoverage/OpenCppCoverage/releases/download/release-0.9.9.0/OpenCppCoverageSetup-x64-0.9.9.0.exe)
+
 ### Visual Studio BUild Tools (VS 2022 C++ toolset 14.44 & Windows SDK v26100)
 
 ## TODO

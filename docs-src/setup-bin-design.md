@@ -147,13 +147,14 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 | 戦略名 | 説明 | 対象パッケージ |
 |--------|------|---------------|
 | Standard | ZIP を展開し、すべてを bin に配置 | Node.js, Pandoc, Doxygen |
-| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make |
+| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract |
 | SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
+| InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 
 ### Standard 戦略
@@ -174,14 +175,16 @@ ZIP を展開後、指定されたサブディレクトリの内容のみを bin
 **パラメータ**:
 
 - `ExtractPath`: 抽出するサブディレクトリのパス
+- `FilePattern`: 抽出するファイル名のパターン (正規表現、オプション)
 
 **処理フロー**:
 
 1. ZIP を一時ディレクトリに展開
 2. ExtractPath で指定されたサブディレクトリを特定
-3. そのサブディレクトリの内容のみを bin ディレクトリにコピー
+3. FilePattern が指定されている場合、パターンに一致するファイルのみをフィルタリング
+4. そのサブディレクトリの内容を bin ディレクトリにコピー
 
-**使用例**: nkf (bin/mingw64 のみ抽出), CMake (bin のみ抽出)
+**使用例**: nkf (bin/mingw64 のみ抽出), CMake (bin のみ抽出), innoextract (innoextract.exe のみ抽出)
 
 ### SubdirectoryToTarget 戦略
 
@@ -290,6 +293,25 @@ JAR ファイルをコピーし、実行用の cmd ラッパースクリプト�
 3. PostExtract 処理を実行 (指定されている場合)
 
 **使用例**: Portable Git
+
+### InnoSetup 戦略
+
+innoextract を使用して Inno Setup インストーラを解凍します。
+
+**パラメータ**:
+
+- `ExtractPath`: 解凍後に抽出するサブディレクトリのパス
+- `TargetDirectory`: 配置先のディレクトリ名 (bin からの相対パス)
+
+**処理フロー**:
+
+1. bin ディレクトリ内の innoextract.exe を使用してインストーラを解凍
+2. ExtractPath で指定されたサブディレクトリを特定
+3. TargetDirectory で指定された名前のディレクトリとして bin に配置
+
+**依存関係**: innoextract パッケージが先にインストールされている必要があります。packages.psd1 での定義順序により、この依存関係は自動的に満たされます。
+
+**使用例**: OpenCppCoverage (app フォルダを bin/OpenCppCoverage に配置)
 
 ### VSBuildTools 戦略
 

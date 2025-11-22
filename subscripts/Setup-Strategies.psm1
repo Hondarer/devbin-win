@@ -125,7 +125,8 @@ function Invoke-SubdirectoryExtract {
         [string]$ArchiveFile,
         [string]$BinDir,
         [string]$TempDir,
-        [string]$ExtractPath
+        [string]$ExtractPath,
+        [string]$FilePattern = $null
     )
 
     Unblock-ArchiveFile $ArchiveFile
@@ -162,6 +163,12 @@ function Invoke-SubdirectoryExtract {
     Write-Host "Extracting from subdirectory: $subDirPath"
 
     $allItems = Get-ChildItem -Path $subDirPath -Recurse
+
+    # FilePattern が指定されている場合はフィルタリング
+    if ($FilePattern) {
+        $allItems = $allItems | Where-Object { -not $_.PSIsContainer -and $_.Name -match $FilePattern }
+        Write-Host "Filtering files with pattern: $FilePattern"
+    }
 
     foreach ($item in $allItems) {
         # 相対パスを安全に計算 (絶対パス同士で計算)
@@ -553,6 +560,60 @@ function Invoke-SelfExtractingArchiveExtract {
     }
 }
 
+# InnoSetup 戦略: innoextract を使用して Inno Setup インストーラを解凍
+function Invoke-InnoSetupExtract {
+    param(
+        [string]$ArchiveFile,
+        [string]$BinDir,
+        [string]$TempDir,
+        [hashtable]$Config
+    )
+
+    # innoextract.exe のパスを確認
+    $innoextractPath = Join-Path $BinDir "innoextract.exe"
+    if (-not (Test-Path $innoextractPath)) {
+        throw "innoextract.exe not found at: $innoextractPath. Please ensure innoextract is extracted first."
+    }
+
+    # 一時ディレクトリを作成
+    if (Test-Path $TempDir) {
+        Remove-Item $TempDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+
+    # innoextract で解凍
+    Write-Host "  Extracting with innoextract..."
+    $process = Start-Process -FilePath $innoextractPath -ArgumentList "-d", $TempDir, $ArchiveFile -Wait -PassThru -NoNewWindow
+
+    if ($process.ExitCode -ne 0) {
+        throw "innoextract failed with exit code: $($process.ExitCode)"
+    }
+
+    # ExtractPath で指定されたサブディレクトリを TargetDirectory に配置
+    $sourcePath = Join-Path $TempDir $Config.ExtractPath
+    if (-not (Test-Path $sourcePath)) {
+        throw "Source path not found: $sourcePath"
+    }
+
+    $targetPath = Join-Path $BinDir $Config.TargetDirectory
+
+    # ターゲットディレクトリが存在する場合は削除
+    if (Test-Path $targetPath) {
+        Remove-Item $targetPath -Recurse -Force
+    }
+
+    # サブディレクトリを移動
+    Move-Item -Path $sourcePath -Destination $targetPath -Force
+    Write-Host "  Extracted to: $targetPath"
+
+    # 一時ディレクトリを削除
+    if (Test-Path $TempDir) {
+        Remove-Item $TempDir -Recurse -Force
+    }
+
+    return $targetPath
+}
+
 # VSBuildTools 戦略: Setup-VSBT.ps1 を実行
 function Invoke-VSBuildToolsExtract {
     param(
@@ -640,7 +701,7 @@ function Invoke-ExtractStrategy {
                 Invoke-StandardExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir
             }
             "Subdirectory" {
-                Invoke-SubdirectoryExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir -ExtractPath $PackageConfig.ExtractPath
+                Invoke-SubdirectoryExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir -ExtractPath $PackageConfig.ExtractPath -FilePattern $PackageConfig.FilePattern
             }
             "SubdirectoryToTarget" {
                 Invoke-SubdirectoryToTargetExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir -ExtractPath $PackageConfig.ExtractPath -TargetDirectory $PackageConfig.TargetDirectory
@@ -659,6 +720,9 @@ function Invoke-ExtractStrategy {
             }
             "SelfExtractingArchive" {
                 $targetPath = Invoke-SelfExtractingArchiveExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -Config $PackageConfig
+            }
+            "InnoSetup" {
+                $targetPath = Invoke-InnoSetupExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir -Config $PackageConfig
             }
             "VSBuildTools" {
                 return Invoke-VSBuildToolsExtract -BinDir $BinDir -ScriptDir $ScriptDir -Config $PackageConfig

@@ -201,6 +201,28 @@ endlocal
             DownloadUrl = "https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip"
         },
 
+        # innoextract - Subdirectory extraction
+        @{
+            Name = "innoextract"
+            ShortName = "innoextract"
+            ArchivePattern = "innoextract-.*-windows\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = ""
+            FilePattern = "^innoextract\.exe$"
+            DownloadUrl = "https://github.com/dscharrer/innoextract/releases/download/1.9/innoextract-1.9-windows.zip"
+        },
+
+        # OpenCppCoverage - InnoSetup extraction (requires innoextract)
+        @{
+            Name = "OpenCppCoverage"
+            ShortName = "opencppcoverage"
+            ArchivePattern = "OpenCppCoverageSetup-x64-.*\.exe$"
+            ExtractStrategy = "InnoSetup"
+            ExtractPath = "app"
+            TargetDirectory = "OpenCppCoverage"
+            DownloadUrl = "https://github.com/OpenCppCoverage/OpenCppCoverage/releases/download/release-0.9.9.0/OpenCppCoverageSetup-x64-0.9.9.0.exe"
+        },
+
         # Visual Studio Build Tools - VSBuildTools extraction
         @{
             Name = "Visual Studio Build Tools"

@@ -84,7 +84,8 @@ function Get-PathDirectories {
         "$BaseDir\git",
         "$BaseDir\git\bin",
         "$BaseDir\git\cmd",
-        "$BaseDir\vscode\bin"
+        "$BaseDir\vscode\bin",
+        "$BaseDir\OpenCppCoverage"
     )
 
     return $pathDirs
