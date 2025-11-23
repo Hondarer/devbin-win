@@ -140,6 +140,13 @@ from [OpenCppCoverage](https://github.com/OpenCppCoverage/OpenCppCoverage)
 - [/releases/tag/release-0.9.9.0](https://github.com/OpenCppCoverage/OpenCppCoverage/releases/tag/release-0.9.9.0)
     - [OpenCppCoverageSetup-x64-0.9.9.0.exe](https://github.com/OpenCppCoverage/OpenCppCoverage/releases/download/release-0.9.9.0/OpenCppCoverageSetup-x64-0.9.9.0.exe)
 
+### ReportGenerator
+
+from [ReportGenerator](https://github.com/danielpalme/ReportGenerator)
+
+- [/releases/tag/v5.5.0](https://github.com/danielpalme/ReportGenerator/releases/tag/v5.5.0)
+    - [ReportGenerator_5.5.0.zip](https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.0/ReportGenerator_5.5.0.zip)
+
 ### Visual Studio BUild Tools (VS 2022 C++ toolset 14.44 & Windows SDK v26100)
 
 ## TODO

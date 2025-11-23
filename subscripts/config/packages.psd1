@@ -223,6 +223,17 @@ endlocal
             DownloadUrl = "https://github.com/OpenCppCoverage/OpenCppCoverage/releases/download/release-0.9.9.0/OpenCppCoverageSetup-x64-0.9.9.0.exe"
         },
 
+        # ReportGenerator - SubdirectoryToTarget extraction
+        @{
+            Name = "ReportGenerator"
+            ShortName = "reportgenerator"
+            ArchivePattern = "ReportGenerator_.*\.zip$"
+            ExtractStrategy = "SubdirectoryToTarget"
+            ExtractPath = "net47"
+            TargetDirectory = "ReportGenerator"
+            DownloadUrl = "https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.0/ReportGenerator_5.5.0.zip"
+        },
+
         # Visual Studio Build Tools - VSBuildTools extraction
         @{
             Name = "Visual Studio Build Tools"
