@@ -800,8 +800,8 @@ endlocal & set "PATH=%PATH%" & set "INCLUDE=%INCLUDE%" & set "LIB=%LIB%" & set "
 "@
 
         $cmdPath = Join-Path $scriptDir "Add-VSBT-Env-$t.cmd"
-        $shiftJis = [System.Text.Encoding]::GetEncoding(932)
-        [System.IO.File]::WriteAllText($cmdPath, $cmdContent, $shiftJis)
+        $utf8 = New-Object System.Text.UTF8Encoding $false
+        [System.IO.File]::WriteAllText($cmdPath, $cmdContent, $utf8)
         Write-Host "  Generated: Add-VSBT-Env-$t.cmd"
 
         # Generate PowerShell script
