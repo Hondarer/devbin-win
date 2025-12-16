@@ -13,6 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 詳細な設計情報やガイドは、[docs-src](./docs-src) フォルダを参照してください。
 
 + [Setup-Bin.ps1 設計書](./docs-src/setup-bin-design.md) - 定義駆動アーキテクチャの説明
++ [packages.psd1 仕様書](./docs-src/packages-psd1-specification.md) - パッケージ定義ファイルの仕様
++ [Extract Strategies 仕様書](./docs-src/extract-strategies-specification.md) - 抽出戦略の仕様
 + [Setup-VSBT.ps1 仕様書](./docs-src/Setup-VSBT-Specification.md) - MSVC と Windows SDK のポータブルセットアップ
 + [Development Tools Installation Guide](./docs-src/Install-Bin.md) - インストール・アンインストール手順
 + [Setup-Home](./docs-src/Setup-Home.md) - HOME 環境変数とホームディレクトリのセットアップ

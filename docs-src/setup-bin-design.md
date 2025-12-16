@@ -50,93 +50,15 @@ strategies --> bin : ファイル展開
 
 ## パッケージ定義ファイル (packages.psd1)
 
+パッケージ定義ファイルの詳細については、[packages-psd1-specification.md](./packages-psd1-specification.md) を参照してください。
+
 ### 概要
 
-すべてのパッケージ情報を PowerShell データファイル (.psd1) 形式で一元管理します。
-
-### 基本構造
-
-```powershell
-@{
-    Packages = @(
-        @{
-            Name = "パッケージ名"
-            ShortName = "短縮名"
-            ArchivePattern = "アーカイブファイル名のパターン (正規表現)"
-            ExtractStrategy = "抽出戦略名"
-            DownloadUrl = "ダウンロード URL"
-            # その他、戦略固有のパラメータ
-        }
-    )
-}
-```
-
-### 共通プロパティ
-
-| プロパティ | 説明 | 必須 |
-|-----------|------|------|
-| Name | パッケージの表示名 | ✅ |
-| ShortName | パッケージの短縮名 (識別子) | ✅ |
-| ArchivePattern | アーカイブファイルのパターン (正規表現) | ✅ |
-| ExtractStrategy | 抽出戦略 (Standard, Subdirectory など) | ✅ |
-| DownloadUrl | パッケージのダウンロード URL | ✅ |
-
-### 実装例
-
-#### 標準展開 (Standard)
-
-```powershell
-@{
-    Name = "Node.js"
-    ShortName = "nodejs"
-    ArchivePattern = "node-v.*-win-x64\.zip$"
-    ExtractStrategy = "Standard"
-    DownloadUrl = "https://nodejs.org/dist/v22.18.0/node-v22.18.0-win-x64.zip"
-}
-```
-
-#### サブディレクトリ抽出 (Subdirectory)
-
-```powershell
-@{
-    Name = "nkf"
-    ShortName = "nkf"
-    ArchivePattern = "nkf-bin-.*\.zip$"
-    ExtractStrategy = "Subdirectory"
-    ExtractPath = "bin\mingw64"
-    DownloadUrl = "https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip"
-}
-```
-
-#### サブディレクトリをターゲットディレクトリに抽出 (SubdirectoryToTarget)
-
-```powershell
-@{
-    Name = "Graphviz"
-    ShortName = "graphviz"
-    ArchivePattern = "windows_10_cmake_Release_Graphviz-.*-win64\.zip$"
-    ExtractStrategy = "SubdirectoryToTarget"
-    ExtractPath = "bin"
-    TargetDirectory = "graphviz"
-    DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.2/windows_10_cmake_Release_Graphviz-14.0.2-win64.zip"
-}
-```
-
-#### バージョン正規化 (VersionNormalized)
-
-```powershell
-@{
-    Name = "Microsoft JDK"
-    ShortName = "jdk"
-    ArchivePattern = "microsoft-jdk-.*-windows-x64\.zip$"
-    ExtractStrategy = "VersionNormalized"
-    VersionPattern = "^jdk-(\d+)"
-    TargetDirectory = "jdk-{0}"
-    DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-21.0.8-windows-x64.zip"
-}
-```
+すべてのパッケージ情報を PowerShell データファイル (.psd1) 形式で一元管理します。パッケージの定義情報を宣言的に記述することで、コードを変更せずに新しいパッケージを追加できます。
 
 ## 抽出戦略 (Extract Strategy)
+
+抽出戦略の詳細については、[extract-strategies-specification.md](./extract-strategies-specification.md) を参照してください。
 
 ### 概要
 
@@ -156,183 +78,6 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
 | InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
-
-### Standard 戦略
-
-ZIP を展開し、すべてのファイルを bin ディレクトリに配置します。
-
-**パラメータ**: なし
-
-**処理フロー**:
-
-1. ZIP を一時ディレクトリに展開
-2. すべてのファイルを bin ディレクトリにコピー
-
-### Subdirectory 戦略
-
-ZIP を展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。
-
-**パラメータ**:
-
-- `ExtractPath`: 抽出するサブディレクトリのパス
-- `FilePattern`: 抽出するファイル名のパターン (正規表現、オプション)
-
-**処理フロー**:
-
-1. ZIP を一時ディレクトリに展開
-2. ExtractPath で指定されたサブディレクトリを特定
-3. FilePattern が指定されている場合、パターンに一致するファイルのみをフィルタリング
-4. そのサブディレクトリの内容を bin ディレクトリにコピー
-
-**使用例**: nkf (bin/mingw64 のみ抽出), CMake (bin のみ抽出), innoextract (innoextract.exe のみ抽出)
-
-### SubdirectoryToTarget 戦略
-
-ZIP を展開後、指定されたサブディレクトリの内容を指定のターゲットディレクトリに配置します。Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin 内の特定のサブディレクトリになる点です。
-
-**パラメータ**:
-
-- `ExtractPath`: 抽出するサブディレクトリのパス
-- `TargetDirectory`: 配置先のディレクトリ名 (bin からの相対パス)
-
-**処理フロー**:
-
-1. ZIP を一時ディレクトリに展開
-2. ExtractPath で指定されたサブディレクトリを特定
-3. bin 内に TargetDirectory を作成
-4. そのサブディレクトリの内容を TargetDirectory にコピー
-
-**使用例**: Graphviz (アーカイブ内の bin フォルダを bin/graphviz に配置)
-
-### VersionNormalized 戦略
-
-ZIP を展開後、バージョン番号を含むディレクトリ名を正規化します。
-
-**パラメータ**:
-
-- `VersionPattern`: バージョン番号を抽出する正規表現
-- `TargetDirectory`: ターゲットディレクトリ名 (プレースホルダー {0} にバージョンが埋め込まれる)
-
-**処理フロー**:
-
-1. ZIP を一時ディレクトリに展開
-2. VersionPattern でバージョン番号を抽出
-3. TargetDirectory のプレースホルダーを置換
-4. 正規化されたディレクトリ名で bin に配置
-
-**使用例**: JDK (jdk-21.0.8+9 → jdk-21)
-
-### TargetDirectory 戦略
-
-ZIP を展開後、指定されたディレクトリ名で配置します。
-
-**パラメータ**:
-
-- `TargetDirectory`: ターゲットディレクトリ名
-- `UseLongPathSupport`: 長いパス対応 (オプション)
-- `PostExtract`: 後処理の定義 (オプション)
-
-**処理フロー**:
-
-1. ZIP を一時ディレクトリに展開
-2. TargetDirectory で指定された名前のディレクトリを bin に作成
-3. すべてのファイルをそのディレクトリにコピー
-4. PostExtract 処理を実行 (指定されている場合)
-
-**PostExtract サポート**:
-
-- `CreateDirectories`: ディレクトリ作成
-- `CopyFiles`: 追加ファイルのコピー
-
-### JarWithWrapper 戦略
-
-JAR ファイルをコピーし、実行用の cmd ラッパースクリプトを生成します。
-
-**パラメータ**:
-
-- `JarName`: JAR ファイル名
-- `WrapperName`: ラッパースクリプト名
-- `WrapperContent`: ラッパースクリプトの内容
-
-**処理フロー**:
-
-1. JAR ファイルを bin ディレクトリにコピー
-2. WrapperContent の内容でラッパースクリプトを生成
-
-**使用例**: PlantUML (plantuml.jar + plantuml.cmd)
-
-### SingleExecutable 戦略
-
-実行ファイルを直接 bin ディレクトリにコピーします。
-
-**パラメータ**:
-
-- `TargetName`: コピー先のファイル名 (オプション)
-
-**処理フロー**:
-
-1. 実行ファイルを bin ディレクトリにコピー
-2. ブロック解除
-
-**使用例**: NuGet
-
-### SelfExtractingArchive 戦略
-
-自己解凍実行ファイルを実行して展開します。
-
-**パラメータ**:
-
-- `TargetDirectory`: 展開先ディレクトリ名
-- `ExtractArgs`: 実行時の引数
-- `PostExtract`: 後処理の定義 (オプション)
-
-**処理フロー**:
-
-1. ターゲットディレクトリを作成
-2. 自己解凍実行ファイルを実行
-3. PostExtract 処理を実行 (指定されている場合)
-
-**使用例**: Portable Git
-
-### InnoSetup 戦略
-
-innoextract を使用して Inno Setup インストーラを解凍します。
-
-**パラメータ**:
-
-- `ExtractPath`: 解凍後に抽出するサブディレクトリのパス
-- `TargetDirectory`: 配置先のディレクトリ名 (bin からの相対パス)
-
-**処理フロー**:
-
-1. bin ディレクトリ内の innoextract.exe を使用してインストーラを解凍
-2. ExtractPath で指定されたサブディレクトリを特定
-3. TargetDirectory で指定された名前のディレクトリとして bin に配置
-
-**依存関係**: innoextract パッケージが先にインストールされている必要があります。packages.psd1 での定義順序により、この依存関係は自動的に満たされます。
-
-**使用例**: OpenCppCoverage (app フォルダを bin/OpenCppCoverage に配置)
-
-### VSBuildTools 戦略
-
-Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアップします。
-
-**パラメータ**:
-
-- `DisplayName`: 表示名
-- `ExtractedName`: 展開先ディレクトリ名
-- `VSBTConfig`: VSBT の設定
-  - `MSVCVersion`: MSVC バージョン
-  - `SDKVersion`: Windows SDK バージョン
-  - `Target`: ターゲットアーキテクチャ
-  - `HostArch`: ホストアーキテクチャ
-
-**処理フロー**:
-
-1. Setup-VSBT.ps1 を実行
-2. 指定されたバージョンの MSVC と SDK をダウンロード・展開
-
-**使用例**: Visual Studio Build Tools
 
 ## 共通関数モジュール (Setup-Common.psm1)
 
@@ -463,22 +208,11 @@ SourceForge の URL は自動的に実際のダウンロード URL に変換さ�
 
 ## 新規パッケージの追加手順
 
+新規パッケージの追加手順の詳細については、[packages-psd1-specification.md](./packages-psd1-specification.md) および [extract-strategies-specification.md](./extract-strategies-specification.md) を参照してください。
+
 ### ケース1: 既存の戦略で対応できる場合
 
-packages.psd1 に定義を追加するだけで完了します。
-
-```powershell
-# 例: 新しい CLI ツールを追加 (Standard 戦略)
-@{
-    Name = "New Tool"
-    ShortName = "newtool"
-    ArchivePattern = "newtool-.*-win-x64\.zip$"
-    ExtractStrategy = "Standard"
-    DownloadUrl = "https://example.com/newtool.zip"
-}
-```
-
-コードの変更は不要です。
+packages.psd1 に定義を追加するだけで完了します。コードの変更は不要です。
 
 ### ケース2: 新しい戦略が必要な場合
 
