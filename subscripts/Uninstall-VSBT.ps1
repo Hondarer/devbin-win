@@ -32,8 +32,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Fixed Instance ID for vswhere registration
-$INSTANCE_ID = "devbin-win"
+# Fixed Instance ID for vswhere registration (8-character hash)
+$INSTANCE_ID = "8f3e5d42"
 
 function Write-ColorMessage {
     param(

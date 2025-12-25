@@ -151,8 +151,8 @@ powershell -ExecutionPolicy Bypass -File .\subscripts\Setup-VSBT.ps1 -ShowVersio
 
 Setup-VSBT.ps1 は、インストール完了時に自動的に vswhere に登録されます。
 
-- **登録先**: `%ProgramData%\Microsoft\VisualStudio\Packages\_Instances\devbin-win\state.json`
-- **インスタンス ID**: `devbin-win` (固定値)
+- **登録先**: `%ProgramData%\Microsoft\VisualStudio\Packages\_Instances\8f3e5d42\state.json`
+- **インスタンス ID**: `8f3e5d42` (固定値、8文字ハッシュ形式)
 - **製品情報**: `Microsoft.VisualStudio.Product.BuildTools`
 - **コンポーネント**: `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` など
 
