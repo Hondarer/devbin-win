@@ -81,12 +81,104 @@ $MANIFEST_URL = if ($Preview) {
 
 $script:TotalDownload = 0
 
+# Fixed Instance ID for vswhere registration
+$INSTANCE_ID = "devbin-win"
+
 function Write-ColorMessage {
     param(
         [string]$Message,
         [ConsoleColor]$Color = [ConsoleColor]::White
     )
     Write-Host $Message -ForegroundColor $Color
+}
+
+function Register-VswhereInstance {
+    param(
+        [string]$InstallPath,
+        [string]$MsvcVersion,
+        [string]$SdkVersion,
+        [string[]]$Targets
+    )
+
+    try {
+        $instancesPath = Join-Path $env:ProgramData "Microsoft\VisualStudio\Packages\_Instances"
+        $instancePath = Join-Path $instancesPath $INSTANCE_ID
+
+        # Create instance directory
+        if (-not (Test-Path $instancePath)) {
+            New-Item -ItemType Directory -Path $instancePath -Force -ErrorAction Stop | Out-Null
+        }
+
+        # Get absolute path
+        $absolutePath = (Resolve-Path $InstallPath -ErrorAction Stop).Path
+
+        # Build packages array based on targets
+        $packagesArray = @(
+            @{
+                id = "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+                version = $MsvcVersion
+            }
+        )
+
+        foreach ($target in $Targets) {
+            $packagesArray += @{
+                id = "Microsoft.VisualStudio.Component.VC.Tools.$target"
+                version = $MsvcVersion
+            }
+        }
+
+        # Create state.json
+        $stateJson = @{
+            installationPath = $absolutePath
+            installationVersion = $MsvcVersion
+            installDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            displayName = "Visual Studio Build Tools (devbin-win)"
+            description = "Portable MSVC and Windows SDK"
+            channelId = "VisualStudio.17.Release"
+            channelUri = "https://aka.ms/vs/17/release/channel"
+            enginePath = $absolutePath
+            installChannelUri = "https://aka.ms/vs/17/release/channel"
+            releaseNotes = "https://docs.microsoft.com/en-us/visualstudio/releases/2022/release-notes"
+            thirdPartyNotices = "https://go.microsoft.com/fwlink/?LinkId=660909"
+            product = @{
+                id = "Microsoft.VisualStudio.Product.BuildTools"
+                version = $MsvcVersion
+                localizedResources = @(
+                    @{
+                        language = "en-US"
+                        title = "Visual Studio Build Tools (devbin-win)"
+                        description = "Portable MSVC and Windows SDK"
+                    }
+                )
+            }
+            packages = $packagesArray
+        } | ConvertTo-Json -Depth 10
+
+        $stateJsonPath = Join-Path $instancePath "state.json"
+        [System.IO.File]::WriteAllText($stateJsonPath, $stateJson, [System.Text.Encoding]::UTF8)
+
+        Write-ColorMessage "Registered to vswhere: $instancePath" -Color Green
+    }
+    catch {
+        Write-Warning "Failed to register vswhere instance: $_"
+        Write-ColorMessage "Continuing without vswhere registration..." -Color Yellow
+    }
+}
+
+function Unregister-VswhereInstance {
+    try {
+        $instancesPath = Join-Path $env:ProgramData "Microsoft\VisualStudio\Packages\_Instances"
+        $instancePath = Join-Path $instancesPath $INSTANCE_ID
+
+        if (Test-Path $instancePath) {
+            Remove-Item -Path $instancePath -Recurse -Force -ErrorAction Stop
+            Write-ColorMessage "Unregistered from vswhere: $instancePath" -Color Green
+        }
+    }
+    catch {
+        Write-Warning "Failed to unregister vswhere instance: $_"
+        Write-ColorMessage "Continuing anyway..." -Color Yellow
+    }
 }
 
 function Get-FileHash256 {
@@ -190,6 +282,12 @@ try {
 
     # Skip cleanup and directory creation for ShowVersions mode
     if (-not $ShowVersions) {
+        # Unregister existing vswhere instance (for reinstall)
+        if (-not $DownloadOnly) {
+            Write-ColorMessage "`nUnregistering existing vswhere instance..."
+            Unregister-VswhereInstance
+        }
+
         # Clean up temp_extract, batch files, and final output
         if (Test-Path $TempExtractPath) {
             Write-ColorMessage "`nCleaning up temporary download folder..."
@@ -808,26 +906,118 @@ endlocal & set "PATH=%PATH%" & set "INCLUDE=%INCLUDE%" & set "LIB=%LIB%" & set "
         $ps1Content = @"
 # VSBT PATH 動的追加スクリプト (PowerShell)
 # MSVC と Windows SDK を現在のセッションの環境変数に追加します
+# vswhere を使用してインスタンスを自動検出します
 
-`$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
-`$vsbtBase = Join-Path `$scriptDir "vsbt"
+`$ErrorActionPreference = "Stop"
+`$TargetArch = "$t"
+`$HostArch = "$HostArch"
 
-`$msvcBin = Join-Path `$vsbtBase "VC\Tools\MSVC\$msvcVersionPath\bin\Host$HostArch\$t"
-`$sdkBin = Join-Path `$vsbtBase "Windows Kits\10\bin\$sdkVersionPath\$HostArch"
-`$sdkUcrtBin = Join-Path `$vsbtBase "Windows Kits\10\bin\$sdkVersionPath\$HostArch\ucrt"
+# vswhere.exe を探す
+`$vswherePaths = @(
+    "`${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe",
+    (Join-Path (Split-Path -Parent `$MyInvocation.MyCommand.Path) "vswhere.exe"),
+    "vswhere.exe"
+)
+
+`$vswhere = `$null
+foreach (`$path in `$vswherePaths) {
+    if (Test-Path `$path -ErrorAction SilentlyContinue) {
+        `$vswhere = `$path
+        break
+    }
+    # PATH 上の vswhere を試す
+    if (`$path -eq "vswhere.exe") {
+        try {
+            `$null = Get-Command vswhere.exe -ErrorAction Stop
+            `$vswhere = "vswhere.exe"
+            break
+        } catch { }
+    }
+}
+
+`$vsbtBase = `$null
+`$msvcVersionPath = `$null
+`$sdkVersionPath = `$null
+
+# vswhere でインスタンスを検索
+if (`$vswhere) {
+    try {
+        `$instances = & `$vswhere -products Microsoft.VisualStudio.Product.BuildTools ``
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 ``
+            -format json | ConvertFrom-Json
+
+        if (`$instances -and `$instances.Count -gt 0) {
+            # 最初に見つかったインスタンスを使用
+            `$instance = if (`$instances -is [Array]) { `$instances[0] } else { `$instances }
+            `$vsbtBase = `$instance.installationPath
+
+            # MSVC バージョンを検出
+            `$msvcToolsPath = Join-Path `$vsbtBase "VC\Tools\MSVC"
+            if (Test-Path `$msvcToolsPath) {
+                `$msvcVersionPath = Get-ChildItem `$msvcToolsPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
+            }
+
+            # Windows SDK バージョンを検出
+            `$sdkBinPath = Join-Path `$vsbtBase "Windows Kits\10\bin"
+            if (Test-Path `$sdkBinPath) {
+                `$sdkVersionPath = Get-ChildItem `$sdkBinPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
+            }
+        }
+    } catch {
+        Write-Warning "vswhere failed: `$_"
+    }
+}
+
+# フォールバック: スクリプトと同じディレクトリの vsbt フォルダを使用
+if (-not `$vsbtBase) {
+    `$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
+    `$vsbtBase = Join-Path `$scriptDir "vsbt"
+
+    if (-not (Test-Path `$vsbtBase)) {
+        Write-Host "Error: VSBT installation not found"
+        exit 1
+    }
+
+    # MSVC バージョンを検出
+    `$msvcToolsPath = Join-Path `$vsbtBase "VC\Tools\MSVC"
+    if (Test-Path `$msvcToolsPath) {
+        `$msvcVersionPath = Get-ChildItem `$msvcToolsPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
+    }
+
+    # Windows SDK バージョンを検出
+    `$sdkBinPath = Join-Path `$vsbtBase "Windows Kits\10\bin"
+    if (Test-Path `$sdkBinPath) {
+        `$sdkVersionPath = Get-ChildItem `$sdkBinPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
+    }
+}
+
+# バージョン検証
+if (-not `$msvcVersionPath) {
+    Write-Host "Error: MSVC version not detected"
+    exit 1
+}
+if (-not `$sdkVersionPath) {
+    Write-Host "Error: Windows SDK version not detected"
+    exit 1
+}
+
+# パスを構築
+`$msvcBin = Join-Path `$vsbtBase "VC\Tools\MSVC\`$msvcVersionPath\bin\Host`$HostArch\`$TargetArch"
+`$sdkBin = Join-Path `$vsbtBase "Windows Kits\10\bin\`$sdkVersionPath\`$HostArch"
+`$sdkUcrtBin = Join-Path `$vsbtBase "Windows Kits\10\bin\`$sdkVersionPath\`$HostArch\ucrt"
 `$diaBin = Join-Path `$vsbtBase "DIA SDK\bin"
 
-`$msvcInclude = Join-Path `$vsbtBase "VC\Tools\MSVC\$msvcVersionPath\include"
-`$sdkUcrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\ucrt"
-`$sdkSharedInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\shared"
-`$sdkUmInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\um"
-`$sdkWinrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\winrt"
-`$sdkCppWinrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\cppwinrt"
+`$msvcInclude = Join-Path `$vsbtBase "VC\Tools\MSVC\`$msvcVersionPath\include"
+`$sdkUcrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\`$sdkVersionPath\ucrt"
+`$sdkSharedInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\`$sdkVersionPath\shared"
+`$sdkUmInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\`$sdkVersionPath\um"
+`$sdkWinrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\`$sdkVersionPath\winrt"
+`$sdkCppWinrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\`$sdkVersionPath\cppwinrt"
 `$diaInclude = Join-Path `$vsbtBase "DIA SDK\include"
 
-`$msvcLib = Join-Path `$vsbtBase "VC\Tools\MSVC\$msvcVersionPath\lib\$t"
-`$sdkUcrtLib = Join-Path `$vsbtBase "Windows Kits\10\Lib\$sdkVersionPath\ucrt\$t"
-`$sdkUmLib = Join-Path `$vsbtBase "Windows Kits\10\Lib\$sdkVersionPath\um\$t"
+`$msvcLib = Join-Path `$vsbtBase "VC\Tools\MSVC\`$msvcVersionPath\lib\`$TargetArch"
+`$sdkUcrtLib = Join-Path `$vsbtBase "Windows Kits\10\Lib\`$sdkVersionPath\ucrt\`$TargetArch"
+`$sdkUmLib = Join-Path `$vsbtBase "Windows Kits\10\Lib\`$sdkVersionPath\um\`$TargetArch"
 `$diaLib = Join-Path `$vsbtBase "DIA SDK\lib"
 
 # MSVC パスの存在確認
@@ -837,11 +1027,11 @@ if (-not (Test-Path `$msvcBin)) {
 }
 
 # 環境変数を設定 (常に上書き)
-`$env:VSCMD_ARG_HOST_ARCH = "$HostArch"
-`$env:VSCMD_ARG_TGT_ARCH = "$t"
-`$env:VCToolsVersion = "$msvcVersionPath"
-`$env:WindowsSDKVersion = "$sdkVersionPath"
-`$env:VCToolsInstallDir = Join-Path `$vsbtBase "VC\Tools\MSVC\$msvcVersionPath"
+`$env:VSCMD_ARG_HOST_ARCH = `$HostArch
+`$env:VSCMD_ARG_TGT_ARCH = `$TargetArch
+`$env:VCToolsVersion = `$msvcVersionPath
+`$env:WindowsSDKVersion = `$sdkVersionPath
+`$env:VCToolsInstallDir = Join-Path `$vsbtBase "VC\Tools\MSVC\`$msvcVersionPath"
 `$env:WindowsSdkBinPath = Join-Path `$vsbtBase "Windows Kits\10\bin"
 
 `$pathsToAdd = @(`$msvcBin, `$sdkBin, `$sdkUcrtBin, `$diaBin)
@@ -888,6 +1078,10 @@ if (`$pathChanged) {
     Write-ColorMessage "`nTo set up environment:"
     Write-ColorMessage "  CMD: $cmdExample"
     Write-ColorMessage "  PowerShell: $ps1Example"
+
+    # Register to vswhere
+    Write-ColorMessage "`nRegistering to vswhere..."
+    Register-VswhereInstance -InstallPath $OutputPath -MsvcVersion $msvcFullVer -SdkVersion $selectedSdkVer -Targets $targets
 
 } catch {
     Write-Error "An error occurred: $_"
