@@ -191,6 +191,16 @@ endlocal
             DownloadUrl = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
         },
 
+        # vswhere - SingleExecutable extraction
+        @{
+            Name = "vswhere"
+            ShortName = "vswhere"
+            ArchivePattern = "vswhere\.exe$"
+            ExtractStrategy = "SingleExecutable"
+            TargetName = "vswhere.exe"
+            DownloadUrl = "https://github.com/microsoft/vswhere/releases/download/3.1.7/vswhere.exe"
+        },
+
         # nkf - Subdirectory extraction
         @{
             Name = "nkf"

@@ -34,7 +34,17 @@ python3 --version
 dotnet --version
 git --version
 code --version
+vswhere -?
 ```
+
+#### vswhere について
+
+vswhere は Visual Studio インスタンスを検出するための Microsoft 公式ツールです。
+
+- **用途**: Visual Studio Build Tools (VSBT) の環境スクリプト (`Add-VSBT-Env-*.ps1`) で使用
+- **配置場所**: `bin\vswhere.exe`
+- **バージョン**: 3.1.7
+- **プロジェクト**: [microsoft/vswhere](https://github.com/microsoft/vswhere)
 
 ## アンインストール
 
@@ -85,7 +95,7 @@ Uninstall-Bin.cmd
 
 ### その他のツール
 
-- Node.js、Pandoc、Doxygen、PlantUML は常に PATH に追加されます
+- Node.js、Pandoc、Doxygen、PlantUML、vswhere などは常に PATH に追加されます
 
 ## オフライン環境での pip インストール
 

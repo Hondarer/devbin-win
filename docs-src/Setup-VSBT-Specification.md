@@ -10,18 +10,20 @@
 
 単一の PowerShell スクリプトとして実装されており、以下の処理フローで動作します。
 
-1. 一時ダウンロードフォルダ (`temp_extract`) と既存の出力フォルダ (`OutputPath`) をクリーンアップ (常に実行)
-2. Visual Studio のマニフェストをダウンロード (`https://aka.ms/vs/17/release/channel` または preview、`packages\vsbt` にキャッシュ)
-3. 利用可能な MSVC と Windows SDK のバージョンを解析
-4. 指定されたバージョン (またはデフォルトで最新) のパッケージ一覧を構築
-5. 各パッケージを SHA256 検証付きでダウンロード
+1. **vswhere 登録の解除** (再インストール時のクリーンアップ)
+2. 一時ダウンロードフォルダ (`temp_extract`) と既存の出力フォルダ (`OutputPath`) をクリーンアップ (常に実行)
+3. Visual Studio のマニフェストをダウンロード (`https://aka.ms/vs/17/release/channel` または preview、`packages\vsbt` にキャッシュ)
+4. 利用可能な MSVC と Windows SDK のバージョンを解析
+5. 指定されたバージョン (またはデフォルトで最新) のパッケージ一覧を構築
+6. 各パッケージを SHA256 検証付きでダウンロード
    - キャッシュ (`packages\vsbt`) を確認し、存在すれば再利用
    - 存在しなければ `temp_extract` にダウンロードし、検証後に `packages\vsbt` に移動
-6. ZIP および MSI 形式のパッケージを `packages\vsbt` から読み込み、最終出力先 (`bin\vsbt`) に展開
-7. 不要なファイルを削除してサイズを最適化
-8. DIA SDK のフォルダ名を正規化 (`DIA%20SDK` → `DIA SDK`)
-9. 環境設定用のスクリプト (`Add-VSBT-Env-x64.cmd` と `Add-VSBT-Env-x64.ps1` など) を bin ディレクトリに生成
-10. `temp_extract` フォルダを削除 (キャッシュは `packages\vsbt` に保持)
+7. ZIP および MSI 形式のパッケージを `packages\vsbt` から読み込み、最終出力先 (`bin\vsbt`) に展開
+8. 不要なファイルを削除してサイズを最適化
+9. DIA SDK のフォルダ名を正規化 (`DIA%20SDK` → `DIA SDK`)
+10. 環境設定用のスクリプト (`Add-VSBT-Env-x64.cmd` と `Add-VSBT-Env-x64.ps1` など) を bin ディレクトリに生成
+11. **vswhere への登録** (`%ProgramData%\Microsoft\VisualStudio\Packages\_Instances\devbin-win\state.json` を作成)
+12. `temp_extract` フォルダを削除 (キャッシュは `packages\vsbt` に保持)
 
 ### ディレクトリ構造
 
@@ -143,6 +145,59 @@ powershell -ExecutionPolicy Bypass -File .\subscripts\Setup-VSBT.ps1 -ShowVersio
 インターネット接続が利用できない場合、スクリプトは自動的にキャッシュの利用を試みます。
 同じバージョン、同じターゲットであれば、2 回目以降の実行は完全にオフラインで実行可能です。
 
+## vswhere 統合
+
+### 自動登録とアンインストール
+
+Setup-VSBT.ps1 は、インストール完了時に自動的に vswhere に登録されます。アンインストール時には、Setup-Bin.ps1 を通じて自動的に削除されます。
+
+- **登録先**: `%ProgramData%\Microsoft\VisualStudio\Packages\_Instances\8f3e5d42\state.json`
+- **インスタンス ID**: `8f3e5d42` (固定値、8文字ハッシュ形式)
+- **製品情報**: `Microsoft.VisualStudio.Product.BuildTools`
+- **コンポーネント**: `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` など
+
+vswhere インスタンスの登録と削除は、Setup-Common.psm1 の `Register-VswhereInstance` および `Unregister-VswhereInstance` 関数で管理されます。Setup-Bin.ps1 の `-Uninstall` オプション実行時、または `Invoke-CompleteUninstall` 関数呼び出し時に自動的に削除されます。
+
+#### 管理者権限の要件
+
+vswhere への登録と削除には、`%ProgramData%\Microsoft\VisualStudio\Packages\_Instances` への書き込み権限が必要です。
+
+Windows のデフォルト設定では、`%ProgramData%\Microsoft` フォルダにおいて Users や Everyone の書き込み権限が削除されているため、通常のユーザー権限ではインスタンス情報 (`state.json`) を作成できません。
+
+- **推奨**: PowerShell を管理者として実行
+- **権限がない場合**: vswhere 登録は失敗しますが、フォールバック機能により環境スクリプト (`Add-VSBT-Env-*.ps1`) は正常に動作します
+- **エラーメッセージ**: アクセス拒否エラーが発生した場合、管理者権限で実行するように案内メッセージが表示されます
+
+### 環境スクリプトの vswhere 対応
+
+生成される `Add-VSBT-Env-*.ps1` スクリプトは vswhere を使用してインスタンスを自動検出します。
+
+devbin-win では vswhere.exe を `bin` ディレクトリにインストールするため、環境スクリプトから容易にアクセスできます。
+
+1. **vswhere.exe の検索順序**:
+   - `%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe` (Visual Studio インストーラー)
+   - スクリプトと同じディレクトリの `vswhere.exe` (devbin-win でインストールされた vswhere)
+   - PATH 上の `vswhere.exe`
+
+2. **独立したコンポーネント検出とバージョンチェック** (柔軟性向上):
+   - **MSVC 検出**:
+     - インストール時の目標バージョン (例: `14.44.35207`) を埋め込み
+     - `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` を持つインスタンスを検索
+     - 各インスタンスで目標バージョンの major.minor (例: `14.44`) に一致するバージョンが存在するかチェック
+     - 一致するバージョンを持つインスタンスが見つかるまで、次のインスタンスを検索
+     - フォールバック時も目標バージョンを優先、見つからない場合は最新版を使用
+   - **Windows SDK 検出**:
+     - インストール時の目標バージョン (例: `26100`) を埋め込み
+     - 全インスタンスを検索し、`Windows Kits\10\bin\{目標バージョン}` が存在するインスタンスを探す
+     - 目標バージョンを持つインスタンスが見つかるまで、次のインスタンスを検索
+     - フォールバック時も目標バージョンを優先、見つからない場合は最新版を使用
+   - **DIA SDK**: MSVC と同じインスタンスから自動検出
+   - MSVC と Windows SDK は別々のインスタンスから検出可能であり、異なる場所にインストールされている場合でも対応
+
+3. **フォールバック**:
+   - vswhere が見つからない場合、または検出に失敗した場合、スクリプトと同じディレクトリの `vsbt` フォルダを使用
+   - MSVC と Windows SDK は個別にフォールバック処理が実行される
+
 ## 注意事項
 
 1. **出力フォルダのクリーンアップ**: スクリプト実行時に既存の出力フォルダ (`OutputPath`) と一時ダウンロードフォルダ (`temp_extract`) は常に削除されます。前回の実行結果を保持したい場合は、別のフォルダにコピーしてください
@@ -151,3 +206,4 @@ powershell -ExecutionPolicy Bypass -File .\subscripts\Setup-VSBT.ps1 -ShowVersio
 4. パッケージ ID やパスの処理では、大文字小文字を区別しない比較 (`.ToLower()`) を使用しています
 5. マニフェストは `packages\vsbt\` にキャッシュされ、オフライン動作が可能です
 6. マニフェストキャッシュファイル (`channel_*.json`, `manifest_*.json`) は自動削除されないため、完全にクリーンアップしたい場合は `packages\vsbt` フォルダごと手動で削除してください
+7. **vswhere 登録**: vswhere への登録には管理者権限が必要です。権限がない場合は警告が表示されますが、フォールバック機能により環境スクリプトは正常に動作します

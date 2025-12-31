@@ -69,6 +69,27 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = 'SilentlyContinue' # Disable progress bar for performance
 
+# スクリプトのディレクトリを取得
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# 共通モジュールをインポート (まだロードされていない場合のみ)
+$commonModulePath = Join-Path $ScriptDir "Setup-Common.psm1"
+$moduleLoaded = Get-Module -Name "Setup-Common" -ErrorAction SilentlyContinue
+
+if (-not $moduleLoaded) {
+    if (-not (Test-Path $commonModulePath)) {
+        Write-Host "Error: Setup-Common.psm1 not found at: $commonModulePath" -ForegroundColor Red
+        exit 1
+    }
+
+    try {
+        Import-Module $commonModulePath -Force -ErrorAction Stop
+    } catch {
+        Write-Host "Error importing Setup-Common: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
+}
+
 # Temporary download directory
 $TempExtractPath = "temp_extract"
 
@@ -190,6 +211,12 @@ try {
 
     # Skip cleanup and directory creation for ShowVersions mode
     if (-not $ShowVersions) {
+        # Unregister existing vswhere instance (for reinstall)
+        if (-not $DownloadOnly) {
+            Write-ColorMessage "`nUnregistering existing vswhere instance..."
+            Unregister-VswhereInstance
+        }
+
         # Clean up temp_extract, batch files, and final output
         if (Test-Path $TempExtractPath) {
             Write-ColorMessage "`nCleaning up temporary download folder..."
@@ -713,35 +740,138 @@ try {
     }
 
     foreach ($t in $targets) {
+        # MSVC major.minor を抽出
+        $msvcMajorMinor = if ($msvcFullVer -match '^(\d+\.\d+)') { $matches[1] } else { "" }
+
         # Generate batch file (CMD)
         $cmdContent = @"
 @echo off
 setlocal enabledelayedexpansion
 
-REM VSBT PATH 動的追加スクリプト
+REM VSBT PATH 動的追加スクリプト (CMD)
 REM MSVC と Windows SDK を現在のセッションの環境変数に追加します
+REM vswhere を使用してインスタンスを自動検出します
+
+set "TARGET_ARCH=$t"
+set "HOST_ARCH=$HostArch"
+set "TARGET_MSVC_VERSION=$msvcFullVer"
+set "TARGET_MSVC_MAJOR_MINOR=$msvcMajorMinor"
+set "TARGET_SDK_VERSION=$selectedSdkVer"
 
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
-set "VSBT_BASE=%SCRIPT_DIR%\vsbt"
 
-set "MSVC_BIN=%VSBT_BASE%\VC\Tools\MSVC\$msvcVersionPath\bin\Host$HostArch\$t"
-set "SDK_BIN=%VSBT_BASE%\Windows Kits\10\bin\$sdkVersionPath\$HostArch"
-set "SDK_UCRT_BIN=%VSBT_BASE%\Windows Kits\10\bin\$sdkVersionPath\$HostArch\ucrt"
-set "DIA_BIN=%VSBT_BASE%\DIA SDK\bin"
+REM vswhere.exe を探す（スクリプトと同じディレクトリ、またはPATH上）
+set "VSWHERE=%SCRIPT_DIR%\vswhere.exe"
+if not exist "%VSWHERE%" (
+    where vswhere.exe >nul 2>&1
+    if !ERRORLEVEL! equ 0 (
+        set "VSWHERE=vswhere.exe"
+    ) else (
+        set "VSWHERE="
+    )
+)
 
-set "MSVC_INCLUDE=%VSBT_BASE%\VC\Tools\MSVC\$msvcVersionPath\include"
-set "SDK_UCRT_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\$sdkVersionPath\ucrt"
-set "SDK_SHARED_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\$sdkVersionPath\shared"
-set "SDK_UM_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\$sdkVersionPath\um"
-set "SDK_WINRT_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\$sdkVersionPath\winrt"
-set "SDK_CPPWINRT_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\$sdkVersionPath\cppwinrt"
-set "DIA_INCLUDE=%VSBT_BASE%\DIA SDK\include"
+set "MSVC_BASE="
+set "MSVC_VERSION_PATH="
+set "SDK_BASE="
+set "SDK_VERSION_PATH="
 
-set "MSVC_LIB=%VSBT_BASE%\VC\Tools\MSVC\$msvcVersionPath\lib\$t"
-set "SDK_UCRT_LIB=%VSBT_BASE%\Windows Kits\10\Lib\$sdkVersionPath\ucrt\$t"
-set "SDK_UM_LIB=%VSBT_BASE%\Windows Kits\10\Lib\$sdkVersionPath\um\$t"
-set "DIA_LIB=%VSBT_BASE%\DIA SDK\lib"
+REM vswhere で MSVC インスタンスを検索
+if defined VSWHERE (
+    for /f "delims=" %%i in ('"%VSWHERE%" -products Microsoft.VisualStudio.Product.BuildTools -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath -format value 2^>nul') do (
+        set "INSTANCE_PATH=%%i"
+        set "MSVC_TOOLS_PATH=!INSTANCE_PATH!\VC\Tools\MSVC"
+        if exist "!MSVC_TOOLS_PATH!" (
+            REM 目標バージョンをチェック
+            for /d %%v in ("!MSVC_TOOLS_PATH!\%TARGET_MSVC_MAJOR_MINOR%*") do (
+                set "MSVC_BASE=!INSTANCE_PATH!"
+                set "MSVC_VERSION_PATH=%%~nxv"
+                goto :msvc_found
+            )
+        )
+    )
+)
+
+REM フォールバック: ローカルの vsbt フォルダを使用
+if not defined MSVC_BASE (
+    set "MSVC_BASE=%SCRIPT_DIR%\vsbt"
+    set "MSVC_TOOLS_PATH=!MSVC_BASE!\VC\Tools\MSVC"
+    if exist "!MSVC_TOOLS_PATH!" (
+        REM 目標バージョンをチェック
+        for /d %%v in ("!MSVC_TOOLS_PATH!\%TARGET_MSVC_MAJOR_MINOR%*") do (
+            set "MSVC_VERSION_PATH=%%~nxv"
+            goto :msvc_found
+        )
+        REM 目標バージョンがない場合は最新版を使用
+        for /f "delims=" %%v in ('dir /b /ad /o-n "!MSVC_TOOLS_PATH!" 2^>nul') do (
+            set "MSVC_VERSION_PATH=%%v"
+            goto :msvc_found
+        )
+    )
+)
+:msvc_found
+
+REM vswhere で Windows SDK インスタンスを検索
+if defined VSWHERE (
+    for /f "delims=" %%i in ('"%VSWHERE%" -products Microsoft.VisualStudio.Product.BuildTools -property installationPath -format value 2^>nul') do (
+        set "INSTANCE_PATH=%%i"
+        set "SDK_BIN_PATH=!INSTANCE_PATH!\Windows Kits\10\bin"
+        if exist "!SDK_BIN_PATH!\%TARGET_SDK_VERSION%" (
+            set "SDK_BASE=!INSTANCE_PATH!"
+            set "SDK_VERSION_PATH=%TARGET_SDK_VERSION%"
+            goto :sdk_found
+        )
+    )
+)
+
+REM フォールバック: ローカルの vsbt フォルダを使用
+if not defined SDK_BASE (
+    set "SDK_BASE=%SCRIPT_DIR%\vsbt"
+    set "SDK_BIN_PATH=!SDK_BASE!\Windows Kits\10\bin"
+    if exist "!SDK_BIN_PATH!" (
+        REM 目標バージョンをチェック
+        if exist "!SDK_BIN_PATH!\%TARGET_SDK_VERSION%" (
+            set "SDK_VERSION_PATH=%TARGET_SDK_VERSION%"
+            goto :sdk_found
+        )
+        REM 目標バージョンがない場合は最新版を使用
+        for /f "delims=" %%v in ('dir /b /ad /o-n "!SDK_BIN_PATH!" 2^>nul') do (
+            set "SDK_VERSION_PATH=%%v"
+            goto :sdk_found
+        )
+    )
+)
+:sdk_found
+
+REM バージョン検証
+if "%MSVC_VERSION_PATH%"=="" (
+    echo Error: MSVC version not detected
+    exit /b 1
+)
+if "%SDK_VERSION_PATH%"=="" (
+    echo Error: Windows SDK version not detected
+    exit /b 1
+)
+
+REM パスを構築
+set "MSVC_BIN=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\bin\Host%HOST_ARCH%\%TARGET_ARCH%"
+set "SDK_BIN=%SDK_BASE%\Windows Kits\10\bin\%SDK_VERSION_PATH%\%HOST_ARCH%"
+set "SDK_UCRT_BIN=%SDK_BASE%\Windows Kits\10\bin\%SDK_VERSION_PATH%\%HOST_ARCH%\ucrt"
+set "DIA_BIN=%MSVC_BASE%\DIA SDK\bin"
+
+set "MSVC_INCLUDE=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\include"
+set "SDK_UCRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\ucrt"
+set "SDK_SHARED_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\shared"
+set "SDK_UM_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\um"
+set "SDK_WINRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\winrt"
+set "SDK_CPPWINRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\cppwinrt"
+set "DIA_INCLUDE=%MSVC_BASE%\DIA SDK\include"
+
+set "MSVC_LIB=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\lib\%TARGET_ARCH%"
+set "SDK_UCRT_LIB=%SDK_BASE%\Windows Kits\10\Lib\%SDK_VERSION_PATH%\ucrt\%TARGET_ARCH%"
+set "SDK_UM_LIB=%SDK_BASE%\Windows Kits\10\Lib\%SDK_VERSION_PATH%\um\%TARGET_ARCH%"
+set "DIA_LIB=%MSVC_BASE%\DIA SDK\lib"
 
 REM MSVC パスの存在確認
 if not exist "%MSVC_BIN%" (
@@ -750,12 +880,12 @@ if not exist "%MSVC_BIN%" (
 )
 
 REM 環境変数を設定 (常に上書き)
-set "VSCMD_ARG_HOST_ARCH=$HostArch"
-set "VSCMD_ARG_TGT_ARCH=$t"
-set "VCToolsVersion=$msvcVersionPath"
-set "WindowsSDKVersion=$sdkVersionPath"
-set "VCToolsInstallDir=%VSBT_BASE%\VC\Tools\MSVC\$msvcVersionPath"
-set "WindowsSdkBinPath=%VSBT_BASE%\Windows Kits\10\bin"
+set "VSCMD_ARG_HOST_ARCH=%HOST_ARCH%"
+set "VSCMD_ARG_TGT_ARCH=%TARGET_ARCH%"
+set "VCToolsVersion=%MSVC_VERSION_PATH%"
+set "WindowsSDKVersion=%SDK_VERSION_PATH%"
+set "VCToolsInstallDir=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%"
+set "WindowsSdkBinPath=%SDK_BASE%\Windows Kits\10\bin"
 
 set "PATH_CHANGED=0"
 
@@ -808,27 +938,167 @@ endlocal & set "PATH=%PATH%" & set "INCLUDE=%INCLUDE%" & set "LIB=%LIB%" & set "
         $ps1Content = @"
 # VSBT PATH 動的追加スクリプト (PowerShell)
 # MSVC と Windows SDK を現在のセッションの環境変数に追加します
+# vswhere を使用してインスタンスを自動検出します
 
+`$ErrorActionPreference = "Stop"
+`$TargetArch = "$t"
+`$HostArch = "$HostArch"
+`$TargetMsvcVersion = "$msvcFullVer"
+`$TargetSdkVersion = "$selectedSdkVer"
+
+# スクリプトと同じディレクトリの vswhere.exe を使用
 `$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
-`$vsbtBase = Join-Path `$scriptDir "vsbt"
+`$vswhere = Join-Path `$scriptDir "vswhere.exe"
 
-`$msvcBin = Join-Path `$vsbtBase "VC\Tools\MSVC\$msvcVersionPath\bin\Host$HostArch\$t"
-`$sdkBin = Join-Path `$vsbtBase "Windows Kits\10\bin\$sdkVersionPath\$HostArch"
-`$sdkUcrtBin = Join-Path `$vsbtBase "Windows Kits\10\bin\$sdkVersionPath\$HostArch\ucrt"
-`$diaBin = Join-Path `$vsbtBase "DIA SDK\bin"
+# vswhere.exe が見つからない場合は PATH 上の vswhere を試す
+if (-not (Test-Path `$vswhere)) {
+    try {
+        `$null = Get-Command vswhere.exe -ErrorAction Stop
+        `$vswhere = "vswhere.exe"
+    } catch {
+        `$vswhere = `$null
+    }
+}
 
-`$msvcInclude = Join-Path `$vsbtBase "VC\Tools\MSVC\$msvcVersionPath\include"
-`$sdkUcrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\ucrt"
-`$sdkSharedInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\shared"
-`$sdkUmInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\um"
-`$sdkWinrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\winrt"
-`$sdkCppWinrtInclude = Join-Path `$vsbtBase "Windows Kits\10\Include\$sdkVersionPath\cppwinrt"
-`$diaInclude = Join-Path `$vsbtBase "DIA SDK\include"
+`$msvcBase = `$null
+`$msvcVersionPath = `$null
+`$sdkBase = `$null
+`$sdkVersionPath = `$null
 
-`$msvcLib = Join-Path `$vsbtBase "VC\Tools\MSVC\$msvcVersionPath\lib\$t"
-`$sdkUcrtLib = Join-Path `$vsbtBase "Windows Kits\10\Lib\$sdkVersionPath\ucrt\$t"
-`$sdkUmLib = Join-Path `$vsbtBase "Windows Kits\10\Lib\$sdkVersionPath\um\$t"
-`$diaLib = Join-Path `$vsbtBase "DIA SDK\lib"
+# MSVC バージョンの major.minor を抽出 (例: "14.44.35207" -> "14.44")
+`$targetMsvcMajorMinor = if (`$TargetMsvcVersion -match '^(\d+\.\d+)') { `$matches[1] } else { `$null }
+
+# vswhere で MSVC インスタンスを検索
+if (`$vswhere) {
+    try {
+        `$instances = & `$vswhere -products Microsoft.VisualStudio.Product.BuildTools ``
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 ``
+            -format json | ConvertFrom-Json
+
+        if (`$instances -and `$instances.Count -gt 0) {
+            # 目標バージョンを持つインスタンスを探す
+            `$instanceArray = if (`$instances -is [Array]) { `$instances } else { @(`$instances) }
+            foreach (`$instance in `$instanceArray) {
+                `$msvcToolsPath = Join-Path `$instance.installationPath "VC\Tools\MSVC"
+                if (Test-Path `$msvcToolsPath) {
+                    # 目標 major.minor に一致するバージョンを探す
+                    `$foundVersions = Get-ChildItem `$msvcToolsPath | Where-Object {
+                        `$_.Name -like "`$targetMsvcMajorMinor*"
+                    } | Sort-Object Name -Descending
+
+                    if (`$foundVersions -and `$foundVersions.Count -gt 0) {
+                        `$msvcBase = `$instance.installationPath
+                        `$msvcVersionPath = `$foundVersions[0].Name
+                        break
+                    }
+                }
+            }
+        }
+    } catch {
+        Write-Warning "vswhere failed to find MSVC: `$_"
+    }
+}
+
+# フォールバック: MSVC
+if (-not `$msvcBase) {
+    `$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
+    `$msvcBase = Join-Path `$scriptDir "vsbt"
+
+    if (Test-Path `$msvcBase) {
+        # 目標バージョンを検出
+        `$msvcToolsPath = Join-Path `$msvcBase "VC\Tools\MSVC"
+        if (Test-Path `$msvcToolsPath) {
+            # 目標 major.minor に一致するバージョンを探す
+            `$foundVersions = Get-ChildItem `$msvcToolsPath | Where-Object {
+                `$_.Name -like "`$targetMsvcMajorMinor*"
+            } | Sort-Object Name -Descending
+
+            if (`$foundVersions -and `$foundVersions.Count -gt 0) {
+                `$msvcVersionPath = `$foundVersions[0].Name
+            } else {
+                # 目標バージョンがない場合は最新版を使用
+                `$msvcVersionPath = Get-ChildItem `$msvcToolsPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
+            }
+        }
+    }
+}
+
+# vswhere で Windows SDK インスタンスを検索
+if (`$vswhere) {
+    try {
+        `$instances = & `$vswhere -products Microsoft.VisualStudio.Product.BuildTools ``
+            -format json | ConvertFrom-Json
+
+        if (`$instances -and `$instances.Count -gt 0) {
+            # 目標 SDK バージョンを持つインスタンスを探す
+            `$instanceArray = if (`$instances -is [Array]) { `$instances } else { @(`$instances) }
+            foreach (`$instance in `$instanceArray) {
+                `$sdkBinPath = Join-Path `$instance.installationPath "Windows Kits\10\bin"
+                if (Test-Path `$sdkBinPath) {
+                    # 目標バージョンのディレクトリが存在するかチェック
+                    `$targetSdkPath = Join-Path `$sdkBinPath `$TargetSdkVersion
+                    if (Test-Path `$targetSdkPath) {
+                        `$sdkBase = `$instance.installationPath
+                        `$sdkVersionPath = `$TargetSdkVersion
+                        break
+                    }
+                }
+            }
+        }
+    } catch {
+        Write-Warning "vswhere failed to find Windows SDK: `$_"
+    }
+}
+
+# フォールバック: Windows SDK
+if (-not `$sdkBase) {
+    `$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
+    `$sdkBase = Join-Path `$scriptDir "vsbt"
+
+    if (Test-Path `$sdkBase) {
+        # 目標 SDK バージョンを検出
+        `$sdkBinPath = Join-Path `$sdkBase "Windows Kits\10\bin"
+        if (Test-Path `$sdkBinPath) {
+            # 目標バージョンのディレクトリが存在するかチェック
+            `$targetSdkPath = Join-Path `$sdkBinPath `$TargetSdkVersion
+            if (Test-Path `$targetSdkPath) {
+                `$sdkVersionPath = `$TargetSdkVersion
+            } else {
+                # 目標バージョンがない場合は最新版を使用
+                `$sdkVersionPath = Get-ChildItem `$sdkBinPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
+            }
+        }
+    }
+}
+
+# バージョン検証
+if (-not `$msvcVersionPath) {
+    Write-Host "Error: MSVC version not detected"
+    exit 1
+}
+if (-not `$sdkVersionPath) {
+    Write-Host "Error: Windows SDK version not detected"
+    exit 1
+}
+
+# パスを構築
+`$msvcBin = Join-Path `$msvcBase "VC\Tools\MSVC\`$msvcVersionPath\bin\Host`$HostArch\`$TargetArch"
+`$sdkBin = Join-Path `$sdkBase "Windows Kits\10\bin\`$sdkVersionPath\`$HostArch"
+`$sdkUcrtBin = Join-Path `$sdkBase "Windows Kits\10\bin\`$sdkVersionPath\`$HostArch\ucrt"
+`$diaBin = Join-Path `$msvcBase "DIA SDK\bin"
+
+`$msvcInclude = Join-Path `$msvcBase "VC\Tools\MSVC\`$msvcVersionPath\include"
+`$sdkUcrtInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\ucrt"
+`$sdkSharedInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\shared"
+`$sdkUmInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\um"
+`$sdkWinrtInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\winrt"
+`$sdkCppWinrtInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\cppwinrt"
+`$diaInclude = Join-Path `$msvcBase "DIA SDK\include"
+
+`$msvcLib = Join-Path `$msvcBase "VC\Tools\MSVC\`$msvcVersionPath\lib\`$TargetArch"
+`$sdkUcrtLib = Join-Path `$sdkBase "Windows Kits\10\Lib\`$sdkVersionPath\ucrt\`$TargetArch"
+`$sdkUmLib = Join-Path `$sdkBase "Windows Kits\10\Lib\`$sdkVersionPath\um\`$TargetArch"
+`$diaLib = Join-Path `$msvcBase "DIA SDK\lib"
 
 # MSVC パスの存在確認
 if (-not (Test-Path `$msvcBin)) {
@@ -837,12 +1107,12 @@ if (-not (Test-Path `$msvcBin)) {
 }
 
 # 環境変数を設定 (常に上書き)
-`$env:VSCMD_ARG_HOST_ARCH = "$HostArch"
-`$env:VSCMD_ARG_TGT_ARCH = "$t"
-`$env:VCToolsVersion = "$msvcVersionPath"
-`$env:WindowsSDKVersion = "$sdkVersionPath"
-`$env:VCToolsInstallDir = Join-Path `$vsbtBase "VC\Tools\MSVC\$msvcVersionPath"
-`$env:WindowsSdkBinPath = Join-Path `$vsbtBase "Windows Kits\10\bin"
+`$env:VSCMD_ARG_HOST_ARCH = `$HostArch
+`$env:VSCMD_ARG_TGT_ARCH = `$TargetArch
+`$env:VCToolsVersion = `$msvcVersionPath
+`$env:WindowsSDKVersion = `$sdkVersionPath
+`$env:VCToolsInstallDir = Join-Path `$msvcBase "VC\Tools\MSVC\`$msvcVersionPath"
+`$env:WindowsSdkBinPath = Join-Path `$sdkBase "Windows Kits\10\bin"
 
 `$pathsToAdd = @(`$msvcBin, `$sdkBin, `$sdkUcrtBin, `$diaBin)
 `$currentPath = `$env:PATH
@@ -888,6 +1158,10 @@ if (`$pathChanged) {
     Write-ColorMessage "`nTo set up environment:"
     Write-ColorMessage "  CMD: $cmdExample"
     Write-ColorMessage "  PowerShell: $ps1Example"
+
+    # Register to vswhere
+    Write-ColorMessage "`nRegistering to vswhere..."
+    Register-VswhereInstance -InstallPath $OutputPath -MsvcVersion $msvcFullVer -SdkVersion $selectedSdkVer -Targets $targets
 
 } catch {
     Write-Error "An error occurred: $_"
