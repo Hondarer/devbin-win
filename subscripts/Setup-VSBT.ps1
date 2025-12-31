@@ -750,6 +750,7 @@ setlocal enabledelayedexpansion
 
 REM VSBT PATH 動的追加スクリプト (CMD)
 REM MSVC と Windows SDK を現在のセッションの環境変数に追加します
+REM vswhere を使用してインスタンスを自動検出します
 
 set "TARGET_ARCH=$t"
 set "HOST_ARCH=$HostArch"
@@ -759,39 +760,86 @@ set "TARGET_SDK_VERSION=$selectedSdkVer"
 
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
-set "VSBT_BASE=%SCRIPT_DIR%\vsbt"
 
+REM vswhere.exe を探す（スクリプトと同じディレクトリ、またはPATH上）
+set "VSWHERE=%SCRIPT_DIR%\vswhere.exe"
+if not exist "%VSWHERE%" (
+    where vswhere.exe >nul 2>&1
+    if !ERRORLEVEL! equ 0 (
+        set "VSWHERE=vswhere.exe"
+    ) else (
+        set "VSWHERE="
+    )
+)
+
+set "MSVC_BASE="
 set "MSVC_VERSION_PATH="
+set "SDK_BASE="
 set "SDK_VERSION_PATH="
 
-REM MSVC バージョンを検出
-set "MSVC_TOOLS_PATH=%VSBT_BASE%\VC\Tools\MSVC"
-if exist "%MSVC_TOOLS_PATH%" (
-    REM 目標バージョンをチェック
-    for /d %%v in ("%MSVC_TOOLS_PATH%\%TARGET_MSVC_MAJOR_MINOR%*") do (
-        set "MSVC_VERSION_PATH=%%~nxv"
-        goto :msvc_found
+REM vswhere で MSVC インスタンスを検索
+if defined VSWHERE (
+    for /f "delims=" %%i in ('"%VSWHERE%" -products Microsoft.VisualStudio.Product.BuildTools -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath -format value 2^>nul') do (
+        set "INSTANCE_PATH=%%i"
+        set "MSVC_TOOLS_PATH=!INSTANCE_PATH!\VC\Tools\MSVC"
+        if exist "!MSVC_TOOLS_PATH!" (
+            REM 目標バージョンをチェック
+            for /d %%v in ("!MSVC_TOOLS_PATH!\%TARGET_MSVC_MAJOR_MINOR%*") do (
+                set "MSVC_BASE=!INSTANCE_PATH!"
+                set "MSVC_VERSION_PATH=%%~nxv"
+                goto :msvc_found
+            )
+        )
     )
-    REM 目標バージョンがない場合は最新版を使用
-    for /f "delims=" %%v in ('dir /b /ad /o-n "%MSVC_TOOLS_PATH%" 2^>nul') do (
-        set "MSVC_VERSION_PATH=%%v"
-        goto :msvc_found
+)
+
+REM フォールバック: ローカルの vsbt フォルダを使用
+if not defined MSVC_BASE (
+    set "MSVC_BASE=%SCRIPT_DIR%\vsbt"
+    set "MSVC_TOOLS_PATH=!MSVC_BASE!\VC\Tools\MSVC"
+    if exist "!MSVC_TOOLS_PATH!" (
+        REM 目標バージョンをチェック
+        for /d %%v in ("!MSVC_TOOLS_PATH!\%TARGET_MSVC_MAJOR_MINOR%*") do (
+            set "MSVC_VERSION_PATH=%%~nxv"
+            goto :msvc_found
+        )
+        REM 目標バージョンがない場合は最新版を使用
+        for /f "delims=" %%v in ('dir /b /ad /o-n "!MSVC_TOOLS_PATH!" 2^>nul') do (
+            set "MSVC_VERSION_PATH=%%v"
+            goto :msvc_found
+        )
     )
 )
 :msvc_found
 
-REM Windows SDK バージョンを検出
-set "SDK_BIN_PATH=%VSBT_BASE%\Windows Kits\10\bin"
-if exist "%SDK_BIN_PATH%" (
-    REM 目標バージョンをチェック
-    if exist "%SDK_BIN_PATH%\%TARGET_SDK_VERSION%" (
-        set "SDK_VERSION_PATH=%TARGET_SDK_VERSION%"
-        goto :sdk_found
+REM vswhere で Windows SDK インスタンスを検索
+if defined VSWHERE (
+    for /f "delims=" %%i in ('"%VSWHERE%" -products Microsoft.VisualStudio.Product.BuildTools -property installationPath -format value 2^>nul') do (
+        set "INSTANCE_PATH=%%i"
+        set "SDK_BIN_PATH=!INSTANCE_PATH!\Windows Kits\10\bin"
+        if exist "!SDK_BIN_PATH!\%TARGET_SDK_VERSION%" (
+            set "SDK_BASE=!INSTANCE_PATH!"
+            set "SDK_VERSION_PATH=%TARGET_SDK_VERSION%"
+            goto :sdk_found
+        )
     )
-    REM 目標バージョンがない場合は最新版を使用
-    for /f "delims=" %%v in ('dir /b /ad /o-n "%SDK_BIN_PATH%" 2^>nul') do (
-        set "SDK_VERSION_PATH=%%v"
-        goto :sdk_found
+)
+
+REM フォールバック: ローカルの vsbt フォルダを使用
+if not defined SDK_BASE (
+    set "SDK_BASE=%SCRIPT_DIR%\vsbt"
+    set "SDK_BIN_PATH=!SDK_BASE!\Windows Kits\10\bin"
+    if exist "!SDK_BIN_PATH!" (
+        REM 目標バージョンをチェック
+        if exist "!SDK_BIN_PATH!\%TARGET_SDK_VERSION%" (
+            set "SDK_VERSION_PATH=%TARGET_SDK_VERSION%"
+            goto :sdk_found
+        )
+        REM 目標バージョンがない場合は最新版を使用
+        for /f "delims=" %%v in ('dir /b /ad /o-n "!SDK_BIN_PATH!" 2^>nul') do (
+            set "SDK_VERSION_PATH=%%v"
+            goto :sdk_found
+        )
     )
 )
 :sdk_found
@@ -807,23 +855,23 @@ if "%SDK_VERSION_PATH%"=="" (
 )
 
 REM パスを構築
-set "MSVC_BIN=%VSBT_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\bin\Host%HOST_ARCH%\%TARGET_ARCH%"
-set "SDK_BIN=%VSBT_BASE%\Windows Kits\10\bin\%SDK_VERSION_PATH%\%HOST_ARCH%"
-set "SDK_UCRT_BIN=%VSBT_BASE%\Windows Kits\10\bin\%SDK_VERSION_PATH%\%HOST_ARCH%\ucrt"
-set "DIA_BIN=%VSBT_BASE%\DIA SDK\bin"
+set "MSVC_BIN=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\bin\Host%HOST_ARCH%\%TARGET_ARCH%"
+set "SDK_BIN=%SDK_BASE%\Windows Kits\10\bin\%SDK_VERSION_PATH%\%HOST_ARCH%"
+set "SDK_UCRT_BIN=%SDK_BASE%\Windows Kits\10\bin\%SDK_VERSION_PATH%\%HOST_ARCH%\ucrt"
+set "DIA_BIN=%MSVC_BASE%\DIA SDK\bin"
 
-set "MSVC_INCLUDE=%VSBT_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\include"
-set "SDK_UCRT_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\ucrt"
-set "SDK_SHARED_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\shared"
-set "SDK_UM_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\um"
-set "SDK_WINRT_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\winrt"
-set "SDK_CPPWINRT_INCLUDE=%VSBT_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\cppwinrt"
-set "DIA_INCLUDE=%VSBT_BASE%\DIA SDK\include"
+set "MSVC_INCLUDE=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\include"
+set "SDK_UCRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\ucrt"
+set "SDK_SHARED_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\shared"
+set "SDK_UM_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\um"
+set "SDK_WINRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\winrt"
+set "SDK_CPPWINRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\cppwinrt"
+set "DIA_INCLUDE=%MSVC_BASE%\DIA SDK\include"
 
-set "MSVC_LIB=%VSBT_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\lib\%TARGET_ARCH%"
-set "SDK_UCRT_LIB=%VSBT_BASE%\Windows Kits\10\Lib\%SDK_VERSION_PATH%\ucrt\%TARGET_ARCH%"
-set "SDK_UM_LIB=%VSBT_BASE%\Windows Kits\10\Lib\%SDK_VERSION_PATH%\um\%TARGET_ARCH%"
-set "DIA_LIB=%VSBT_BASE%\DIA SDK\lib"
+set "MSVC_LIB=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\lib\%TARGET_ARCH%"
+set "SDK_UCRT_LIB=%SDK_BASE%\Windows Kits\10\Lib\%SDK_VERSION_PATH%\ucrt\%TARGET_ARCH%"
+set "SDK_UM_LIB=%SDK_BASE%\Windows Kits\10\Lib\%SDK_VERSION_PATH%\um\%TARGET_ARCH%"
+set "DIA_LIB=%MSVC_BASE%\DIA SDK\lib"
 
 REM MSVC パスの存在確認
 if not exist "%MSVC_BIN%" (
@@ -836,8 +884,8 @@ set "VSCMD_ARG_HOST_ARCH=%HOST_ARCH%"
 set "VSCMD_ARG_TGT_ARCH=%TARGET_ARCH%"
 set "VCToolsVersion=%MSVC_VERSION_PATH%"
 set "WindowsSDKVersion=%SDK_VERSION_PATH%"
-set "VCToolsInstallDir=%VSBT_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%"
-set "WindowsSdkBinPath=%VSBT_BASE%\Windows Kits\10\bin"
+set "VCToolsInstallDir=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%"
+set "WindowsSdkBinPath=%SDK_BASE%\Windows Kits\10\bin"
 
 set "PATH_CHANGED=0"
 
@@ -898,26 +946,17 @@ endlocal & set "PATH=%PATH%" & set "INCLUDE=%INCLUDE%" & set "LIB=%LIB%" & set "
 `$TargetMsvcVersion = "$msvcFullVer"
 `$TargetSdkVersion = "$selectedSdkVer"
 
-# vswhere.exe を探す
-`$vswherePaths = @(
-    "`${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe",
-    (Join-Path (Split-Path -Parent `$MyInvocation.MyCommand.Path) "vswhere.exe"),
-    "vswhere.exe"
-)
+# スクリプトと同じディレクトリの vswhere.exe を使用
+`$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$vswhere = Join-Path `$scriptDir "vswhere.exe"
 
-`$vswhere = `$null
-foreach (`$path in `$vswherePaths) {
-    if (Test-Path `$path -ErrorAction SilentlyContinue) {
-        `$vswhere = `$path
-        break
-    }
-    # PATH 上の vswhere を試す
-    if (`$path -eq "vswhere.exe") {
-        try {
-            `$null = Get-Command vswhere.exe -ErrorAction Stop
-            `$vswhere = "vswhere.exe"
-            break
-        } catch { }
+# vswhere.exe が見つからない場合は PATH 上の vswhere を試す
+if (-not (Test-Path `$vswhere)) {
+    try {
+        `$null = Get-Command vswhere.exe -ErrorAction Stop
+        `$vswhere = "vswhere.exe"
+    } catch {
+        `$vswhere = `$null
     }
 }
 

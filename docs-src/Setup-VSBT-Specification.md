@@ -160,7 +160,9 @@ vswhere インスタンスの登録と削除は、Setup-Common.psm1 の `Registe
 
 #### 管理者権限の要件
 
-vswhere への登録と削除には、`%ProgramData%` への書き込み権限が必要です。
+vswhere への登録と削除には、`%ProgramData%\Microsoft\VisualStudio\Packages\_Instances` への書き込み権限が必要です。
+
+Windows のデフォルト設定では、`%ProgramData%\Microsoft` フォルダにおいて Users や Everyone の書き込み権限が削除されているため、通常のユーザー権限ではインスタンス情報 (`state.json`) を作成できません。
 
 - **推奨**: PowerShell を管理者として実行
 - **権限がない場合**: vswhere 登録は失敗しますが、フォールバック機能により環境スクリプト (`Add-VSBT-Env-*.ps1`) は正常に動作します
@@ -170,9 +172,11 @@ vswhere への登録と削除には、`%ProgramData%` への書き込み権限�
 
 生成される `Add-VSBT-Env-*.ps1` スクリプトは vswhere を使用してインスタンスを自動検出します。
 
+devbin-win では vswhere.exe を `bin` ディレクトリにインストールするため、環境スクリプトから容易にアクセスできます。
+
 1. **vswhere.exe の検索順序**:
-   - `%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe`
-   - スクリプトと同じディレクトリの `vswhere.exe`
+   - `%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe` (Visual Studio インストーラー)
+   - スクリプトと同じディレクトリの `vswhere.exe` (devbin-win でインストールされた vswhere)
    - PATH 上の `vswhere.exe`
 
 2. **独立したコンポーネント検出とバージョンチェック** (柔軟性向上):

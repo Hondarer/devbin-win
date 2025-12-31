@@ -147,6 +147,13 @@ from [ReportGenerator](https://github.com/danielpalme/ReportGenerator)
 - [/releases/tag/v5.5.0](https://github.com/danielpalme/ReportGenerator/releases/tag/v5.5.0)
     - [ReportGenerator_5.5.0.zip](https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.0/ReportGenerator_5.5.0.zip)
 
+### vswhere
+
+from [microsoft/vswhere](https://github.com/microsoft/vswhere)
+
+- [/releases/tag/3.1.7](https://github.com/microsoft/vswhere/releases/tag/3.1.7)
+    - [vswhere.exe](https://github.com/microsoft/vswhere/releases/download/3.1.7/vswhere.exe)
+
 ### Visual Studio BUild Tools (VS 2022 C++ toolset 14.44 & Windows SDK v26100)
 
 ## TODO
