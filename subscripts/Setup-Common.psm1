@@ -708,8 +708,18 @@ function Register-VswhereInstance {
         Write-Host "Registered to vswhere: $instancePath" -ForegroundColor Green
     }
     catch {
-        Write-Warning "Failed to register vswhere instance: $_"
+        $isAccessDenied = $_.Exception.Message -match "(アクセスが拒否|Access.*denied|UnauthorizedAccess)"
+
+        if ($isAccessDenied) {
+            Write-Warning "Failed to register vswhere instance: Access denied"
+            Write-Host "Note: vswhere registration requires administrator privileges." -ForegroundColor Yellow
+            Write-Host "      Run PowerShell as Administrator to enable vswhere integration." -ForegroundColor Yellow
+        } else {
+            Write-Warning "Failed to register vswhere instance: $_"
+        }
+
         Write-Host "Continuing without vswhere registration..." -ForegroundColor Yellow
+        Write-Host "The VSBT environment will still work using the fallback mechanism." -ForegroundColor Cyan
     }
 }
 
@@ -722,10 +732,20 @@ function Unregister-VswhereInstance {
         if (Test-Path $instancePath) {
             Remove-Item -Path $instancePath -Recurse -Force -ErrorAction Stop
             Write-Host "Unregistered from vswhere: $instancePath" -ForegroundColor Green
+        } else {
+            Write-Host "vswhere instance not found (already unregistered or never registered)" -ForegroundColor Cyan
         }
     }
     catch {
-        Write-Warning "Failed to unregister vswhere instance: $_"
+        $isAccessDenied = $_.Exception.Message -match "(アクセスが拒否|Access.*denied|UnauthorizedAccess)"
+
+        if ($isAccessDenied) {
+            Write-Warning "Failed to unregister vswhere instance: Access denied"
+            Write-Host "Note: vswhere unregistration requires administrator privileges." -ForegroundColor Yellow
+        } else {
+            Write-Warning "Failed to unregister vswhere instance: $_"
+        }
+
         Write-Host "Continuing anyway..." -ForegroundColor Yellow
     }
 }
