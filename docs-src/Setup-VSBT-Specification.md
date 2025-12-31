@@ -147,14 +147,16 @@ powershell -ExecutionPolicy Bypass -File .\subscripts\Setup-VSBT.ps1 -ShowVersio
 
 ## vswhere 統合
 
-### 自動登録
+### 自動登録とアンインストール
 
-Setup-VSBT.ps1 は、インストール完了時に自動的に vswhere に登録されます。
+Setup-VSBT.ps1 は、インストール完了時に自動的に vswhere に登録されます。アンインストール時には、Setup-Bin.ps1 を通じて自動的に削除されます。
 
 - **登録先**: `%ProgramData%\Microsoft\VisualStudio\Packages\_Instances\8f3e5d42\state.json`
 - **インスタンス ID**: `8f3e5d42` (固定値、8文字ハッシュ形式)
 - **製品情報**: `Microsoft.VisualStudio.Product.BuildTools`
 - **コンポーネント**: `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` など
+
+vswhere インスタンスの登録と削除は、Setup-Common.psm1 の `Register-VswhereInstance` および `Unregister-VswhereInstance` 関数で管理されます。Setup-Bin.ps1 の `-Uninstall` オプション実行時、または `Invoke-CompleteUninstall` 関数呼び出し時に自動的に削除されます。
 
 ### 環境スクリプトの vswhere 対応
 
@@ -172,27 +174,6 @@ Setup-VSBT.ps1 は、インストール完了時に自動的に vswhere に登�
 
 3. **フォールバック**:
    - vswhere が見つからない場合、スクリプトと同じディレクトリの `vsbt` フォルダを使用
-
-### アンインストール: subscripts/Uninstall-VSBT.ps1
-
-VSBT のアンインストールを行うスクリプトです。
-
-```powershell
-# 基本的な使用方法
-.\subscripts\Uninstall-VSBT.ps1
-
-# キャッシュを保持してアンインストール
-.\subscripts\Uninstall-VSBT.ps1 -KeepCache
-
-# 確認をスキップして強制アンインストール
-.\subscripts\Uninstall-VSBT.ps1 -Force
-```
-
-**アンインストール処理**:
-1. vswhere 登録の解除
-2. 環境スクリプトの削除 (`Add-VSBT-Env-*.cmd`, `Add-VSBT-Env-*.ps1`)
-3. VSBT インストールフォルダの削除 (`bin\vsbt`)
-4. パッケージキャッシュの削除 (`packages\vsbt`, `-KeepCache` で保持可能)
 
 ## 注意事項
 

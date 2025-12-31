@@ -69,6 +69,23 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = 'SilentlyContinue' # Disable progress bar for performance
 
+# スクリプトのディレクトリを取得
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# 共通モジュールをインポート
+$commonModulePath = Join-Path $ScriptDir "Setup-Common.psm1"
+if (-not (Test-Path $commonModulePath)) {
+    Write-Host "Error: Setup-Common.psm1 not found at: $commonModulePath" -ForegroundColor Red
+    exit 1
+}
+
+try {
+    Import-Module $commonModulePath -Force -ErrorAction Stop
+} catch {
+    Write-Host "Error importing Setup-Common: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
 # Temporary download directory
 $TempExtractPath = "temp_extract"
 
@@ -81,104 +98,12 @@ $MANIFEST_URL = if ($Preview) {
 
 $script:TotalDownload = 0
 
-# Fixed Instance ID for vswhere registration (8-character hash)
-$INSTANCE_ID = "8f3e5d42"
-
 function Write-ColorMessage {
     param(
         [string]$Message,
         [ConsoleColor]$Color = [ConsoleColor]::White
     )
     Write-Host $Message -ForegroundColor $Color
-}
-
-function Register-VswhereInstance {
-    param(
-        [string]$InstallPath,
-        [string]$MsvcVersion,
-        [string]$SdkVersion,
-        [string[]]$Targets
-    )
-
-    try {
-        $instancesPath = Join-Path $env:ProgramData "Microsoft\VisualStudio\Packages\_Instances"
-        $instancePath = Join-Path $instancesPath $INSTANCE_ID
-
-        # Create instance directory
-        if (-not (Test-Path $instancePath)) {
-            New-Item -ItemType Directory -Path $instancePath -Force -ErrorAction Stop | Out-Null
-        }
-
-        # Get absolute path
-        $absolutePath = (Resolve-Path $InstallPath -ErrorAction Stop).Path
-
-        # Build packages array based on targets
-        $packagesArray = @(
-            @{
-                id = "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-                version = $MsvcVersion
-            }
-        )
-
-        foreach ($target in $Targets) {
-            $packagesArray += @{
-                id = "Microsoft.VisualStudio.Component.VC.Tools.$target"
-                version = $MsvcVersion
-            }
-        }
-
-        # Create state.json
-        $stateJson = @{
-            installationPath = $absolutePath
-            installationVersion = $MsvcVersion
-            installDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-            displayName = "Visual Studio Build Tools (devbin-win)"
-            description = "Portable MSVC and Windows SDK"
-            channelId = "VisualStudio.17.Release"
-            channelUri = "https://aka.ms/vs/17/release/channel"
-            enginePath = $absolutePath
-            installChannelUri = "https://aka.ms/vs/17/release/channel"
-            releaseNotes = "https://docs.microsoft.com/en-us/visualstudio/releases/2022/release-notes"
-            thirdPartyNotices = "https://go.microsoft.com/fwlink/?LinkId=660909"
-            product = @{
-                id = "Microsoft.VisualStudio.Product.BuildTools"
-                version = $MsvcVersion
-                localizedResources = @(
-                    @{
-                        language = "en-US"
-                        title = "Visual Studio Build Tools (devbin-win)"
-                        description = "Portable MSVC and Windows SDK"
-                    }
-                )
-            }
-            packages = $packagesArray
-        } | ConvertTo-Json -Depth 10
-
-        $stateJsonPath = Join-Path $instancePath "state.json"
-        [System.IO.File]::WriteAllText($stateJsonPath, $stateJson, [System.Text.Encoding]::UTF8)
-
-        Write-ColorMessage "Registered to vswhere: $instancePath" -Color Green
-    }
-    catch {
-        Write-Warning "Failed to register vswhere instance: $_"
-        Write-ColorMessage "Continuing without vswhere registration..." -Color Yellow
-    }
-}
-
-function Unregister-VswhereInstance {
-    try {
-        $instancesPath = Join-Path $env:ProgramData "Microsoft\VisualStudio\Packages\_Instances"
-        $instancePath = Join-Path $instancesPath $INSTANCE_ID
-
-        if (Test-Path $instancePath) {
-            Remove-Item -Path $instancePath -Recurse -Force -ErrorAction Stop
-            Write-ColorMessage "Unregistered from vswhere: $instancePath" -Color Green
-        }
-    }
-    catch {
-        Write-Warning "Failed to unregister vswhere instance: $_"
-        Write-ColorMessage "Continuing anyway..." -Color Yellow
-    }
 }
 
 function Get-FileHash256 {
