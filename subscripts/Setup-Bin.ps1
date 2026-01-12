@@ -80,7 +80,7 @@ function Get-PathDirectories {
         "$BaseDir\jdk-21\bin",
         "$BaseDir\graphviz",
         "$BaseDir\python-3.13",
-        "$BaseDir\dotnet8sdk",
+        "$BaseDir\dotnet10sdk",
         "$BaseDir\git",
         "$BaseDir\git\bin",
         "$BaseDir\git\cmd",
@@ -335,7 +335,7 @@ if ($Install) {
     Write-Host ""
     Write-Host "Setting .NET environment variables..."
 
-    $dotnetHome = Join-Path $InstallDir "dotnet8sdk"
+    $dotnetHome = Join-Path $InstallDir "dotnet10sdk"
     [Environment]::SetEnvironmentVariable("DOTNET_HOME", $dotnetHome, "User")
     Write-Host "  Set DOTNET_HOME=$dotnetHome"
 

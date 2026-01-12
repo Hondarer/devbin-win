@@ -75,8 +75,8 @@ from [python.org](https://www.python.org/)
 
 from [.NET のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet)
 
-- [.NET 8.0 のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet/8.0)
-    - [dotnet-sdk-8.0.414-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip)
+- [.NET 10.0 のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet/10.0)
+    - [dotnet-sdk-10.0.101-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.101/dotnet-sdk-10.0.101-win-x64.zip)
 
 ### Git
 

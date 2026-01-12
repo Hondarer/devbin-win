@@ -112,11 +112,11 @@ endlocal
         # .NET SDK - TargetDirectory extraction
         @{
             Name = ".NET SDK"
-            ShortName = "dotnet8sdk"
+            ShortName = "dotnet10sdk"
             ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
             ExtractStrategy = "TargetDirectory"
-            TargetDirectory = "dotnet8sdk"
-            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.414/dotnet-sdk-8.0.414-win-x64.zip"
+            TargetDirectory = "dotnet10sdk"
+            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.101/dotnet-sdk-10.0.101-win-x64.zip"
         },
 
         # Portable Git - SelfExtractingArchive extraction

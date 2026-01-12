@@ -90,7 +90,7 @@ function Add-ToUserPath {
                     $shouldSkip = $true
                 }
             }
-            elseif ($dirPath -like "*dotnet8sdk") {
+            elseif ($dirPath -like "*dotnet10sdk") {
                 if (Test-CommandExists "dotnet") {
                     Write-Host "  Skipped (dotnet.exe already available): $dirPath"
                     $shouldSkip = $true
@@ -118,7 +118,7 @@ function Add-ToUserPath {
                 Write-Host "  Added: $dirPath"
                 $pathChanged = $true
 
-                if ($dirPath -like "*dotnet8sdk") {
+                if ($dirPath -like "*dotnet10sdk") {
                     $currentDotnetHome = [Environment]::GetEnvironmentVariable("DOTNET_HOME", "User")
                     if (-not $currentDotnetHome) {
                         [Environment]::SetEnvironmentVariable("DOTNET_HOME", $dirPath, "User")
@@ -514,6 +514,12 @@ function Invoke-CompleteUninstall {
                     }
                 }
 
+                # 後方互換: dotnet8sdk が存在する場合は削除対象に追加
+                $dotnet8SdkPath = Join-Path $InstallDirectory "dotnet8sdk"
+                if (Test-Path $dotnet8SdkPath) {
+                    $pathDirs += $dotnet8SdkPath
+                }
+
                 if ($pathDirs -and $pathDirs.Count -gt 0) {
                     Remove-FromUserPath -Directories $pathDirs -Silent:$Silent
                 }
@@ -524,10 +530,12 @@ function Invoke-CompleteUninstall {
             }
         }
 
-        # DOTNET_HOME 環境変数を削除
+        # DOTNET_HOME 環境変数を削除 (dotnet10sdk および dotnet8sdk の後方互換)
         $currentDotnetHome = [Environment]::GetEnvironmentVariable("DOTNET_HOME", "User")
-        $dotnetSdkPath = Join-Path $InstallDirectory "dotnet8sdk"
-        if ($currentDotnetHome -and ($currentDotnetHome -eq $dotnetSdkPath)) {
+        $dotnet10SdkPath = Join-Path $InstallDirectory "dotnet10sdk"
+        $dotnet8SdkPath = Join-Path $InstallDirectory "dotnet8sdk"
+
+        if ($currentDotnetHome -and (($currentDotnetHome -eq $dotnet10SdkPath) -or ($currentDotnetHome -eq $dotnet8SdkPath))) {
             [Environment]::SetEnvironmentVariable("DOTNET_HOME", $null, "User")
             if (-not $Silent) {
                 Write-Host "Removed DOTNET_HOME environment variable: $currentDotnetHome"
