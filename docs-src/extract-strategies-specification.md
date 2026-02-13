@@ -280,11 +280,11 @@ PostExtract では以下の後処理がサポートされています。
 ```powershell
 @{
     Name = ".NET SDK"
-    ShortName = "dotnet"
+    ShortName = "dotnet10sdk"
     ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
     ExtractStrategy = "TargetDirectory"
-    TargetDirectory = "dotnet"
-    DownloadUrl = "https://download.visualstudio.microsoft.com/download/pr/12345/dotnet-sdk-9.0.101-win-x64.zip"
+    TargetDirectory = "dotnet10sdk"
+    DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.103/dotnet-sdk-10.0.103-win-x64.zip"
 }
 ```
 

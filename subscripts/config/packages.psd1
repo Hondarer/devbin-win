@@ -116,7 +116,7 @@ endlocal
             ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "dotnet10sdk"
-            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.101/dotnet-sdk-10.0.101-win-x64.zip"
+            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.103/dotnet-sdk-10.0.103-win-x64.zip"
         },
 
         # Portable Git - SelfExtractingArchive extraction
