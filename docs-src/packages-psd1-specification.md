@@ -113,7 +113,7 @@ ZIP を展開し、すべてのファイルを bin ディレクトリに配置�
 
 ### Subdirectory 戦略
 
-ZIP を展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。
+アーカイブを展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) にも対応しています。
 
 ```powershell
 @{
@@ -125,6 +125,22 @@ ZIP を展開後、指定されたサブディレクトリの内容のみを bin
     DownloadUrl = "https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip"
 }
 ```
+
+MSYS2 パッケージの例:
+
+```powershell
+@{
+    Name = "iconv"
+    ShortName = "iconv"
+    ArchivePattern = "mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
+    ExtractStrategy = "Subdirectory"
+    ExtractPath = "bin"
+    FilePattern = "^iconv\.exe$"
+    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst"
+}
+```
+
+MSYS2 パッケージは展開すると `mingw64/` をルートとする構造になり、`Get-ExtractedSourcePath` が `mingw64` を自動認識します。`ExtractPath` には `mingw64` を含めず配下のパスを指定してください。
 
 **追加パラメータ**:
 - `ExtractPath` (必須): 抽出するサブディレクトリのパス
@@ -378,6 +394,18 @@ packages.psd1 内のパッケージ定義の順序は重要です。依存関係
             ExtractStrategy = "InnoSetup"
             # ...
         }
+    )
+}
+```
+
+例: iconv は libiconv と gettext-runtime の DLL に依存するため、依存パッケージを先に定義します。
+
+```powershell
+@{
+    Packages = @(
+        @{ Name = "libiconv"; ShortName = "libiconv"; ... },
+        @{ Name = "gettext-runtime"; ShortName = "gettext-runtime"; ... },
+        @{ Name = "iconv"; ShortName = "iconv"; ... }
     )
 }
 ```

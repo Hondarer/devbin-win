@@ -201,6 +201,39 @@ endlocal
             DownloadUrl = "https://github.com/microsoft/vswhere/releases/download/3.1.7/vswhere.exe"
         },
 
+        # libiconv - Subdirectory extraction (MSYS2 package, iconv の依存)
+        @{
+            Name = "libiconv"
+            ShortName = "libiconv"
+            ArchivePattern = "mingw-w64-x86_64-libiconv-.*\.pkg\.tar\.zst$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            FilePattern = "\.dll$"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst"
+        },
+
+        # gettext-runtime - Subdirectory extraction (MSYS2 package, iconv の依存)
+        @{
+            Name = "gettext-runtime"
+            ShortName = "gettext-runtime"
+            ArchivePattern = "mingw-w64-x86_64-gettext-runtime-.*\.pkg\.tar\.zst$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            FilePattern = "\.dll$"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst"
+        },
+
+        # iconv - Subdirectory extraction (MSYS2 package)
+        @{
+            Name = "iconv"
+            ShortName = "iconv"
+            ArchivePattern = "mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            FilePattern = "^iconv\.exe$"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst"
+        },
+
         # nkf - Subdirectory extraction
         @{
             Name = "nkf"

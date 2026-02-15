@@ -17,7 +17,7 @@ subscripts/Setup-Strategies.psm1
 | 戦略名 | 説明 | 主な用途 |
 |--------|------|---------|
 | Standard | ZIP を展開し、すべてを bin に配置 | Node.js, Pandoc, Doxygen |
-| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract |
+| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, iconv |
 | SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code |
@@ -44,7 +44,7 @@ function Unblock-ArchiveFile {
 
 ### Expand-ArchiveToTemp
 
-アーカイブを一時ディレクトリに展開します。ZIP と 7z 形式をサポートします。
+アーカイブを一時ディレクトリに展開します。ZIP、7z、zstd 圧縮 tar (.pkg.tar.zst) 形式をサポートします。
 
 ```powershell
 function Expand-ArchiveToTemp {
@@ -102,7 +102,7 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 
 ### Subdirectory 戦略
 
-ZIP を展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。
+アーカイブを展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) にも対応しています。
 
 #### パラメータ
 
@@ -147,9 +147,25 @@ ZIP を展開後、指定されたサブディレクトリの内容のみを bin
 }
 ```
 
+MSYS2 パッケージ (.pkg.tar.zst) を使用した例:
+
+```powershell
+@{
+    Name = "iconv"
+    ShortName = "iconv"
+    ArchivePattern = "mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
+    ExtractStrategy = "Subdirectory"
+    ExtractPath = "bin"
+    FilePattern = "^iconv\.exe$"
+    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst"
+}
+```
+
+MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。`Get-ExtractedSourcePath` が `mingw64` を単一フォルダとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
+
 #### 適用パッケージ
 
-nkf, CMake, GNU Make, doxybook2, innoextract
+nkf, CMake, GNU Make, doxybook2, innoextract, iconv, libiconv, gettext-runtime
 
 ### SubdirectoryToTarget 戦略
 

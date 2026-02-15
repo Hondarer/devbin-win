@@ -126,6 +126,19 @@ from [nkf-bin](https://github.com/Hondarer/nkf-bin)
 - [/releases/tag/v2.1.5-96c3371](https://github.com/Hondarer/nkf-bin/releases/tag/v2.1.5-96c3371)
     - [nkf-bin-2.1.5-96c3371.zip](https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip)
 
+### iconv
+
+from [MSYS2 Packages](https://packages.msys2.org/)
+
+iconv.exe と実行に必要な DLL を MSYS2 パッケージから取得します。
+
+- [mingw-w64-x86_64-libiconv](https://packages.msys2.org/packages/mingw-w64-x86_64-libiconv) (libiconv-2.dll, libcharset-1.dll)
+    - [mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst)
+- [mingw-w64-x86_64-gettext-runtime](https://packages.msys2.org/packages/mingw-w64-x86_64-gettext-runtime) (libintl-8.dll, libasprintf-0.dll)
+    - [mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst)
+- [mingw-w64-x86_64-iconv](https://packages.msys2.org/packages/mingw-w64-x86_64-iconv) (iconv.exe)
+    - [mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst)
+
 ### innoextract
 
 from [innoextract](https://github.com/dscharrer/innoextract)
