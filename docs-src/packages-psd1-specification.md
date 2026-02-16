@@ -126,25 +126,27 @@ ZIP を展開し、すべてのファイルを bin ディレクトリに配置�
 }
 ```
 
-MSYS2 パッケージの例:
+MSYS2 MinGW パッケージの例 (RenameFiles 使用):
 
 ```powershell
 @{
-    Name = "iconv"
-    ShortName = "iconv"
-    ArchivePattern = "mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
+    Name = "GNU Make"
+    ShortName = "make"
+    ArchivePattern = "^mingw-w64-x86_64-make-.*\.pkg\.tar\.zst$"
     ExtractStrategy = "Subdirectory"
     ExtractPath = "bin"
-    FilePattern = "^iconv\.exe$"
-    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst"
+    FilePattern = "^mingw32-make\.exe$"
+    RenameFiles = @{ "mingw32-make.exe" = "make.exe" }
+    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst"
 }
 ```
 
-MSYS2 パッケージは展開すると `mingw64/` をルートとする構造になり、`Get-ExtractedSourcePath` が `mingw64` を自動認識します。`ExtractPath` には `mingw64` を含めず配下のパスを指定してください。
+MSYS2 パッケージは展開するとルートフォルダが1つだけ含まれる構造になります。mingw パッケージは `mingw64/`、msys パッケージは `usr/` がルートです。`Get-ExtractedSourcePath` がこれらを自動認識するため、`ExtractPath` にはルートフォルダを含めず配下のパスを指定してください。
 
 **追加パラメータ**:
 - `ExtractPath` (必須): 抽出するサブディレクトリのパス
 - `FilePattern` (オプション): 抽出するファイル名のパターン (正規表現)
+- `RenameFiles` (オプション): コピー時にファイル名を変更するハッシュテーブル (キー: 元のファイル名、値: 変更後のファイル名)
 
 ### SubdirectoryToTarget 戦略
 
@@ -398,14 +400,15 @@ packages.psd1 内のパッケージ定義の順序は重要です。依存関係
 }
 ```
 
-例: iconv は libiconv と gettext-runtime の DLL に依存するため、依存パッケージを先に定義します。
+例: GNU Make は MinGW ランタイム DLL に依存するため、gcc-libs、libiconv、gettext-runtime を先に定義します。
 
 ```powershell
 @{
     Packages = @(
-        @{ Name = "libiconv"; ShortName = "libiconv"; ... },
-        @{ Name = "gettext-runtime"; ShortName = "gettext-runtime"; ... },
-        @{ Name = "iconv"; ShortName = "iconv"; ... }
+        @{ Name = "mingw-w64-x86_64-gcc-libs"; ShortName = "mingw64-gcc-libs"; ... },
+        @{ Name = "mingw-w64-x86_64-libiconv"; ShortName = "mingw64-libiconv"; ... },
+        @{ Name = "mingw-w64-x86_64-gettext-runtime"; ShortName = "mingw64-gettext-runtime"; ... },
+        @{ Name = "GNU Make"; ShortName = "make"; ... }
     )
 }
 ```

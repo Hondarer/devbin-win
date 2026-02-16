@@ -151,24 +151,49 @@ endlocal
             }
         },
 
-        # GNU Make (bin) - Subdirectory extraction
+        # mingw-w64-x86_64-gcc-libs - Subdirectory extraction (MinGW package, make の依存)
         @{
-            Name = "GNU Make (bin)"
-            ShortName = "make"
-            ArchivePattern = "make-.*-bin\.zip$"
+            Name = "mingw-w64-x86_64-gcc-libs"
+            ShortName = "mingw64-gcc-libs"
+            ArchivePattern = "^mingw-w64-x86_64-gcc-libs-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
-            DownloadUrl = "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-bin.zip/download"
+            FilePattern = "\.dll$"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-15.2.0-11-any.pkg.tar.zst"
         },
 
-        # GNU Make (dep) - Subdirectory extraction
+        # mingw-w64-x86_64-libiconv - Subdirectory extraction (MinGW package, make の依存)
         @{
-            Name = "GNU Make (dep)"
-            ShortName = "make"
-            ArchivePattern = "make-.*-dep\.zip$"
+            Name = "mingw-w64-x86_64-libiconv"
+            ShortName = "mingw64-libiconv"
+            ArchivePattern = "^mingw-w64-x86_64-libiconv-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
-            DownloadUrl = "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download"
+            FilePattern = "\.dll$"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst"
+        },
+
+        # mingw-w64-x86_64-gettext-runtime - Subdirectory extraction (MinGW package, make の依存)
+        @{
+            Name = "mingw-w64-x86_64-gettext-runtime"
+            ShortName = "mingw64-gettext-runtime"
+            ArchivePattern = "^mingw-w64-x86_64-gettext-runtime-.*\.pkg\.tar\.zst$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            FilePattern = "\.dll$"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst"
+        },
+
+        # GNU Make - Subdirectory extraction (MinGW package)
+        @{
+            Name = "GNU Make"
+            ShortName = "make"
+            ArchivePattern = "^mingw-w64-x86_64-make-.*\.pkg\.tar\.zst$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            FilePattern = "^mingw32-make\.exe$"
+            RenameFiles = @{ "mingw32-make.exe" = "make.exe" }
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst"
         },
 
         # CMake - Subdirectory extraction
@@ -199,39 +224,6 @@ endlocal
             ExtractStrategy = "SingleExecutable"
             TargetName = "vswhere.exe"
             DownloadUrl = "https://github.com/microsoft/vswhere/releases/download/3.1.7/vswhere.exe"
-        },
-
-        # libiconv - Subdirectory extraction (MSYS2 package, iconv の依存)
-        @{
-            Name = "libiconv"
-            ShortName = "libiconv"
-            ArchivePattern = "mingw-w64-x86_64-libiconv-.*\.pkg\.tar\.zst$"
-            ExtractStrategy = "Subdirectory"
-            ExtractPath = "bin"
-            FilePattern = "\.dll$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst"
-        },
-
-        # gettext-runtime - Subdirectory extraction (MSYS2 package, iconv の依存)
-        @{
-            Name = "gettext-runtime"
-            ShortName = "gettext-runtime"
-            ArchivePattern = "mingw-w64-x86_64-gettext-runtime-.*\.pkg\.tar\.zst$"
-            ExtractStrategy = "Subdirectory"
-            ExtractPath = "bin"
-            FilePattern = "\.dll$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst"
-        },
-
-        # iconv - Subdirectory extraction (MSYS2 package)
-        @{
-            Name = "iconv"
-            ShortName = "iconv"
-            ArchivePattern = "mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
-            ExtractStrategy = "Subdirectory"
-            ExtractPath = "bin"
-            FilePattern = "^iconv\.exe$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst"
         },
 
         # nkf - Subdirectory extraction

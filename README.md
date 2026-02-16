@@ -92,15 +92,20 @@ from [Visual Studio Code](https://code.visualstudio.com/)
 - [Download Visual Studio Code](https://code.visualstudio.com/Download)
     - [x64](https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip)
 
-### GNU Make for Windows
+### GNU Make
 
-from [Make for Windows](https://gnuwin32.sourceforge.net/packages/make.htm)
+from [MSYS2 Packages](https://packages.msys2.org/)
 
-- Download
-    - Binaries
-        - [make-3.81-bin.zip](https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-bin.zip/download)
-    - Dependencies
-        - [make-3.81-dep.zip](https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81-dep.zip/download)
+make.exe と実行に必要な DLL を MSYS2 MinGW パッケージから取得します。mingw32-make.exe を make.exe にリネームして配置します。
+
+- [mingw-w64-x86_64-gcc-libs](https://packages.msys2.org/packages/mingw-w64-x86_64-gcc-libs) (GCC ランタイム DLL)
+    - [mingw-w64-x86_64-gcc-libs-15.2.0-11-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-15.2.0-11-any.pkg.tar.zst)
+- [mingw-w64-x86_64-libiconv](https://packages.msys2.org/packages/mingw-w64-x86_64-libiconv) (libiconv DLL)
+    - [mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst)
+- [mingw-w64-x86_64-gettext-runtime](https://packages.msys2.org/packages/mingw-w64-x86_64-gettext-runtime) (gettext ランタイム DLL)
+    - [mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst)
+- [mingw-w64-x86_64-make](https://packages.msys2.org/packages/mingw-w64-x86_64-make) (make.exe)
+    - [mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst)
 
 ### CMake
 
@@ -125,19 +130,6 @@ from [nkf-bin](https://github.com/Hondarer/nkf-bin)
 
 - [/releases/tag/v2.1.5-96c3371](https://github.com/Hondarer/nkf-bin/releases/tag/v2.1.5-96c3371)
     - [nkf-bin-2.1.5-96c3371.zip](https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip)
-
-### iconv
-
-from [MSYS2 Packages](https://packages.msys2.org/)
-
-iconv.exe と実行に必要な DLL を MSYS2 パッケージから取得します。
-
-- [mingw-w64-x86_64-libiconv](https://packages.msys2.org/packages/mingw-w64-x86_64-libiconv) (libiconv-2.dll, libcharset-1.dll)
-    - [mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst)
-- [mingw-w64-x86_64-gettext-runtime](https://packages.msys2.org/packages/mingw-w64-x86_64-gettext-runtime) (libintl-8.dll, libasprintf-0.dll)
-    - [mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst)
-- [mingw-w64-x86_64-iconv](https://packages.msys2.org/packages/mingw-w64-x86_64-iconv) (iconv.exe)
-    - [mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst)
 
 ### innoextract
 

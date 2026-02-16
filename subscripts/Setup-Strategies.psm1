@@ -126,7 +126,8 @@ function Invoke-SubdirectoryExtract {
         [string]$BinDir,
         [string]$TempDir,
         [string]$ExtractPath,
-        [string]$FilePattern = $null
+        [string]$FilePattern = $null,
+        [hashtable]$RenameFiles = $null
     )
 
     Unblock-ArchiveFile $ArchiveFile
@@ -184,6 +185,19 @@ function Invoke-SubdirectoryExtract {
 
         if ([string]::IsNullOrWhiteSpace($relativePath)) {
             continue
+        }
+
+        # RenameFiles が指定されている場合、ファイル名を変更
+        $fileName = Split-Path $relativePath -Leaf
+        if ($RenameFiles -and $RenameFiles.ContainsKey($fileName)) {
+            $newFileName = $RenameFiles[$fileName]
+            $parentDir = Split-Path $relativePath -Parent
+            if ($parentDir) {
+                $relativePath = Join-Path $parentDir $newFileName
+            } else {
+                $relativePath = $newFileName
+            }
+            Write-Host "Renaming: $fileName -> $newFileName"
         }
 
         $destinationPath = Join-Path $BinDir $relativePath
@@ -701,7 +715,7 @@ function Invoke-ExtractStrategy {
                 Invoke-StandardExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir
             }
             "Subdirectory" {
-                Invoke-SubdirectoryExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir -ExtractPath $PackageConfig.ExtractPath -FilePattern $PackageConfig.FilePattern
+                Invoke-SubdirectoryExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir -ExtractPath $PackageConfig.ExtractPath -FilePattern $PackageConfig.FilePattern -RenameFiles $PackageConfig.RenameFiles
             }
             "SubdirectoryToTarget" {
                 Invoke-SubdirectoryToTargetExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir -ExtractPath $PackageConfig.ExtractPath -TargetDirectory $PackageConfig.TargetDirectory

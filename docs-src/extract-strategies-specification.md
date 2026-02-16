@@ -110,6 +110,7 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 |-----------|------|-----|------|
 | ExtractPath | 抽出するサブディレクトリのパス | string | ✅ |
 | FilePattern | 抽出するファイル名のパターン (正規表現) | string | ❌ |
+| RenameFiles | コピー時にファイル名を変更するマッピング | hashtable | ❌ |
 
 #### 処理フロー
 
@@ -118,7 +119,8 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 3. ソースパスを特定
 4. ExtractPath で指定されたサブディレクトリを検索
 5. FilePattern が指定されている場合、パターンに一致するファイルのみをフィルタリング
-6. サブディレクトリの内容を bin ディレクトリにコピー
+6. RenameFiles が指定されている場合、ファイル名がキーに一致するファイルを値の名前に変更
+7. サブディレクトリの内容を bin ディレクトリにコピー
 
 #### 使用例
 
@@ -161,11 +163,28 @@ MSYS2 パッケージ (.pkg.tar.zst) を使用した例:
 }
 ```
 
+RenameFiles を使用してファイル名を変更する例:
+
+```powershell
+@{
+    Name = "GNU Make"
+    ShortName = "make"
+    ArchivePattern = "^mingw-w64-x86_64-make-.*\.pkg\.tar\.zst$"
+    ExtractStrategy = "Subdirectory"
+    ExtractPath = "bin"
+    FilePattern = "^mingw32-make\.exe$"
+    RenameFiles = @{ "mingw32-make.exe" = "make.exe" }
+    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst"
+}
+```
+
+この例では、`mingw32-make.exe` が `make.exe` にリネームされて bin ディレクトリに配置されます。
+
 MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。`Get-ExtractedSourcePath` が `mingw64` を単一フォルダとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
 
 #### 適用パッケージ
 
-nkf, CMake, GNU Make, doxybook2, innoextract, iconv, libiconv, gettext-runtime
+nkf, CMake, GNU Make, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, mingw-w64-x86_64-libiconv, mingw-w64-x86_64-gettext-runtime
 
 ### SubdirectoryToTarget 戦略
 
