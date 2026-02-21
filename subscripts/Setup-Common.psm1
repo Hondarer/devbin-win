@@ -725,15 +725,12 @@ function Register-VswhereInstance {
         $isAccessDenied = $_.Exception.Message -match "(アクセスが拒否|Access.*denied|UnauthorizedAccess)"
 
         if ($isAccessDenied) {
-            Write-Warning "Failed to register vswhere instance: Access denied"
-            Write-Host "Note: vswhere registration requires administrator privileges." -ForegroundColor Yellow
-            Write-Host "      Run PowerShell as Administrator to enable vswhere integration." -ForegroundColor Yellow
+            Write-Host "Skip to register vswhere instance: You are normal user."
         } else {
-            Write-Warning "Failed to register vswhere instance: $_"
+            Write-Host "Skip to register vswhere instance: $_"
         }
 
-        Write-Host "Continuing without vswhere registration..." -ForegroundColor Yellow
-        Write-Host "The VSBT environment will still work using the fallback mechanism." -ForegroundColor Cyan
+        Write-Host "Continuing without vswhere registration..."
     }
 }
 

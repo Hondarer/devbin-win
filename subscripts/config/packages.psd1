@@ -184,15 +184,15 @@ endlocal
             DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst"
         },
 
-        # iconv - Subdirectory extraction (libiconv パッケージに含まれる iconv.exe を抽出)
+        # iconv - Subdirectory extraction (mingw-w64-x86_64-iconv パッケージの iconv.exe を抽出)
         @{
             Name = "iconv"
             ShortName = "iconv"
-            ArchivePattern = "^mingw-w64-x86_64-libiconv-.*\.pkg\.tar\.zst$"
+            ArchivePattern = "^mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
             FilePattern = "^iconv\.exe$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst"
         },
 
         # GNU Make - Subdirectory extraction (MinGW package)

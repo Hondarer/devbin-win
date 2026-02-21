@@ -107,6 +107,15 @@ make.exe と実行に必要な DLL を MSYS2 MinGW パッケージから取得�
 - [mingw-w64-x86_64-make](https://packages.msys2.org/packages/mingw-w64-x86_64-make) (make.exe)
     - [mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst)
 
+### iconv
+
+from [MSYS2 Packages](https://packages.msys2.org/)
+
+iconv.exe を MSYS2 MinGW パッケージから取得します。実行に必要な `libiconv-2.dll` は GNU Make の依存として配置済みです。
+
+- [mingw-w64-x86_64-iconv](https://packages.msys2.org/packages/mingw-w64-x86_64-iconv) (iconv コマンド)
+    - [mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst)
+
 ### CMake
 
 from [CMake](https://cmake.org/)
