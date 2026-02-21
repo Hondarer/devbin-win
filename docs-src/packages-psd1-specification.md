@@ -400,7 +400,7 @@ packages.psd1 内のパッケージ定義の順序は重要です。依存関係
 }
 ```
 
-例: GNU Make は MinGW ランタイム DLL に依存するため、gcc-libs、libiconv、gettext-runtime を先に定義します。
+例: GNU Make は MinGW ランタイム DLL に依存するため、gcc-libs、libiconv、gettext-runtime を先に定義します。iconv は libiconv と同じアーカイブから `iconv.exe` のみを抽出するため、libiconv の後に定義します。
 
 ```powershell
 @{
@@ -408,6 +408,7 @@ packages.psd1 内のパッケージ定義の順序は重要です。依存関係
         @{ Name = "mingw-w64-x86_64-gcc-libs"; ShortName = "mingw64-gcc-libs"; ... },
         @{ Name = "mingw-w64-x86_64-libiconv"; ShortName = "mingw64-libiconv"; ... },
         @{ Name = "mingw-w64-x86_64-gettext-runtime"; ShortName = "mingw64-gettext-runtime"; ... },
+        @{ Name = "iconv"; ShortName = "iconv"; ... },  # libiconv パッケージから iconv.exe を抽出
         @{ Name = "GNU Make"; ShortName = "make"; ... }
     )
 }

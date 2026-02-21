@@ -177,7 +177,13 @@ function Remove-FromUserPath {
         $shouldRemove = $false
         foreach ($dir in $Directories) {
             $absolutePath = (Resolve-Path $dir -ErrorAction SilentlyContinue)
-            if ($absolutePath -and ($entry -eq $absolutePath.Path)) {
+            # ディレクトリが存在しない場合は GetFullPath でノーマライズしてフォールバック
+            $normalizedDir = if ($absolutePath) {
+                $absolutePath.Path
+            } else {
+                [System.IO.Path]::GetFullPath($dir)
+            }
+            if ($entry -eq $normalizedDir) {
                 if (-not $Silent) {
                     Write-Host "  Removed: $entry"
                 }

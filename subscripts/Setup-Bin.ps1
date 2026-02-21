@@ -212,6 +212,10 @@ if ($missingPackages.Count -gt 0) {
 # インストール前にクリーンアップを実行
 Write-Host "Performing pre-installation cleanup..."
 try {
+    # ディレクトリ削除前に PATH から削除する (Invoke-CompleteUninstall より先に実行)
+    $pathDirsToClean = Get-PathDirectories -BaseDir $InstallDir
+    Remove-FromUserPath -Directories $pathDirsToClean
+
     $cleanupResult = Invoke-CompleteUninstall `
         -InstallDirectory $InstallDir `
         -PreserveVSCodeData `

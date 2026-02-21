@@ -151,15 +151,17 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 
 MSYS2 パッケージ (.pkg.tar.zst) を使用した例:
 
+`iconv.exe` は `mingw-w64-x86_64-libiconv` パッケージに含まれます。同じアーカイブから DLL のみを抽出する `mingw-w64-x86_64-libiconv` エントリとは別に、`iconv.exe` だけを抽出するエントリを定義します。
+
 ```powershell
 @{
     Name = "iconv"
     ShortName = "iconv"
-    ArchivePattern = "mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
+    ArchivePattern = "^mingw-w64-x86_64-libiconv-.*\.pkg\.tar\.zst$"
     ExtractStrategy = "Subdirectory"
     ExtractPath = "bin"
     FilePattern = "^iconv\.exe$"
-    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst"
+    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst"
 }
 ```
 
