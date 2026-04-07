@@ -56,8 +56,8 @@ from [Graphviz](https://graphviz.org/)
 
 from [plantuml](https://github.com/plantuml/plantuml)
 
-- [/releases/tag/v1.2025.4](https://github.com/plantuml/plantuml/releases/tag/v1.2025.4)
-    - [plantuml-1.2025.4.jar](https://github.com/plantuml/plantuml/releases/download/v1.2025.4/plantuml-1.2025.4.jar)
+- [/releases/tag/v1.2026.2](https://github.com/plantuml/plantuml/releases/tag/v1.2026.2)
+    - [plantuml-1.2026.2.jar](https://github.com/plantuml/plantuml/releases/download/v1.2026.2/plantuml-1.2026.2.jar)
 
 ### Python
 

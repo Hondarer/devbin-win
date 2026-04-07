@@ -395,7 +395,7 @@ set "JAVA_HOME=%SCRIPT_DIR%jdk-21"
 
 endlocal
 "@
-    DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2025.4/plantuml-1.2025.4.jar"
+    DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2026.2/plantuml-1.2026.2.jar"
 }
 ```
 
