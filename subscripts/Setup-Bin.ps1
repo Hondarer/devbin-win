@@ -5,7 +5,8 @@ param(
     [string]$InstallDir = ".\bin",
     [switch]$Extract,
     [switch]$Install,
-    [switch]$Uninstall
+    [switch]$Uninstall,
+    [switch]$Manage
 )
 
 # スクリプトのディレクトリを取得
@@ -46,13 +47,32 @@ try {
     exit 1
 }
 
+$manifestModulePath = "$ScriptDir\Setup-Manifest.psm1"
+$componentsModulePath = "$ScriptDir\Setup-Components.psm1"
+
+if (Test-Path $manifestModulePath) {
+    try {
+        Import-Module $manifestModulePath -Force -ErrorAction Stop
+    } catch {
+        Write-Host "Warning: Failed to import Setup-Manifest: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
+if (Test-Path $componentsModulePath) {
+    try {
+        Import-Module $componentsModulePath -Force -ErrorAction Stop
+    } catch {
+        Write-Host "Warning: Failed to import Setup-Components: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
 # パッケージ設定を読み込む
 $PackagesConfigPath = Join-Path $ScriptDir "config\packages.psd1"
 $PackagesConfig = Invoke-Expression (Get-Content $PackagesConfigPath -Raw)
 $Packages = $PackagesConfig.Packages
 
 # オプションが指定されていない場合は使用方法を表示
-if (-not ($Extract -or $Install -or $Uninstall)) {
+if (-not ($Extract -or $Install -or $Uninstall -or $Manage)) {
     Write-Host "Development Tools Setup Script"
     Write-Host "================================"
     Write-Host ""
@@ -60,6 +80,7 @@ if (-not ($Extract -or $Install -or $Uninstall)) {
     Write-Host "  .\Setup-Bin.ps1 -Extract [-InstallDir <path>]    # Extract tools only"
     Write-Host "  .\Setup-Bin.ps1 -Install [-InstallDir <path>]    # Extract tools and add to PATH"
     Write-Host "  .\Setup-Bin.ps1 -Uninstall [-InstallDir <path>]  # Remove tools and clean PATH"
+    Write-Host "  .\Setup-Bin.ps1 -Manage [-InstallDir <path>]     # Interactive component manager"
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -InstallDir <path>  Installation directory (default: .\bin)"
@@ -68,14 +89,35 @@ if (-not ($Extract -or $Install -or $Uninstall)) {
     Write-Host "  .\Setup-Bin.ps1 -Extract                         # Extract to .\bin"
     Write-Host "  .\Setup-Bin.ps1 -Install -InstallDir C:\Tools    # Install to C:\Tools"
     Write-Host "  .\Setup-Bin.ps1 -Uninstall                       # Uninstall from .\bin"
+    Write-Host "  .\Setup-Bin.ps1 -Manage                          # Open component manager"
     exit 0
 }
 
 # 追加 / 削除すべき PATH ディレクトリを取得する
 function Get-PathDirectories {
-    param([string]$BaseDir)
+    param(
+        [string]$BaseDir,
+        [array]$PackageList = @()
+    )
 
-    $pathDirs = @(
+    # packages.psd1 の PathDirs から動的に生成する
+    if ($PackageList -and $PackageList.Count -gt 0) {
+        $pathDirs = @($BaseDir)
+        foreach ($pkg in $PackageList) {
+            if ($pkg.ContainsKey("PathDirs") -and $pkg.PathDirs) {
+                foreach ($rel in $pkg.PathDirs) {
+                    if ($rel) {
+                        $pathDirs += Join-Path $BaseDir $rel
+                    }
+                }
+            }
+        }
+        # 重複を除去して返す
+        return $pathDirs | Select-Object -Unique
+    }
+
+    # フォールバック: ハードコードリスト (PackageList が空の場合)
+    return @(
         $BaseDir,
         "$BaseDir\jdk-21\bin",
         "$BaseDir\graphviz",
@@ -88,8 +130,30 @@ function Get-PathDirectories {
         "$BaseDir\OpenCppCoverage",
         "$BaseDir\ReportGenerator"
     )
+}
 
-    return $pathDirs
+# Manage モード: 対話型コンポーネントマネージャー
+if ($Manage) {
+    $menuModulePath = "$ScriptDir\Setup-Menu.psm1"
+    if (-not (Test-Path $menuModulePath)) {
+        Write-Host "Error: Setup-Menu.psm1 not found at: $menuModulePath" -ForegroundColor Red
+        exit 1
+    }
+    try {
+        Import-Module $menuModulePath -Force -ErrorAction Stop
+    } catch {
+        Write-Host "Error importing Setup-Menu: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
+
+    # InstallDir を絶対パスに変換
+    $absoluteInstallDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($InstallDir)
+
+    # 環境変数をレジストリから同期
+    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME") -Silent | Out-Null
+
+    Invoke-MenuLoop -Packages $Packages -InstallDir $absoluteInstallDir -ScriptDir $ScriptDir
+    exit 0
 }
 
 # アンインストール処理
@@ -113,7 +177,7 @@ if ($Uninstall) {
     }
 
     # ユーザー PATH から開発ツールのディレクトリを削除
-    $pathDirs = Get-PathDirectories -BaseDir $InstallDir
+    $pathDirs = Get-PathDirectories -BaseDir $InstallDir -PackageList $Packages
     Remove-FromUserPath -Directories $pathDirs
 
     # DOTNET 環境変数を削除
@@ -213,7 +277,7 @@ if ($missingPackages.Count -gt 0) {
 Write-Host "Performing pre-installation cleanup..."
 try {
     # ディレクトリ削除前に PATH から削除する (Invoke-CompleteUninstall より先に実行)
-    $pathDirsToClean = Get-PathDirectories -BaseDir $InstallDir
+    $pathDirsToClean = Get-PathDirectories -BaseDir $InstallDir -PackageList $Packages
     Remove-FromUserPath -Directories $pathDirsToClean
 
     $cleanupResult = Invoke-CompleteUninstall `
@@ -332,7 +396,7 @@ if ($Install) {
     }
 
     # ユーザー PATH に開発ツールのディレクトリを追加
-    $pathDirs = Get-PathDirectories -BaseDir $InstallDir
+    $pathDirs = Get-PathDirectories -BaseDir $InstallDir -PackageList $Packages
     Add-ToUserPath -Directories $pathDirs
 
     # .NET 環境変数を設定
@@ -356,6 +420,37 @@ if ($Install) {
 
     # 環境変数を現在のプロセスに同期
     Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME") | Out-Null
+
+    # マニフェストを生成/更新 (コンポーネントマネージャーへの移行用)
+    if (Get-Command Read-Manifest -ErrorAction SilentlyContinue) {
+        Write-Host ""
+        Write-Host "Generating component manifest..."
+        try {
+            $manifest = Read-Manifest -InstallDir $InstallDir
+            foreach ($pkg in $Packages) {
+                $detectFiles = if ($pkg.ContainsKey("DetectFiles")) { @($pkg.DetectFiles) } else { @() }
+                $filesExist = if ($detectFiles.Count -gt 0) {
+                    Test-ComponentFiles -InstallDir $InstallDir -DetectFiles $detectFiles
+                } else { $true }
+
+                if ($filesExist -or $pkg.ExtractStrategy -eq "CopyToPackages") {
+                    $pathDirsForPkg = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
+                    $envVarsForPkg = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
+                    Add-ComponentToManifest `
+                        -Manifest $manifest `
+                        -ShortName $pkg.ShortName `
+                        -ArchiveFile "(batch-install)" `
+                        -Files @() `
+                        -PathDirs $pathDirsForPkg `
+                        -EnvVars $envVarsForPkg
+                }
+            }
+            Write-Manifest -InstallDir $InstallDir -Manifest $manifest
+            Write-Host "Component manifest saved."
+        } catch {
+            Write-Host "Warning: Failed to generate manifest: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
 
     Write-Host ""
     Write-Host "Installation completed successfully!" -ForegroundColor Green

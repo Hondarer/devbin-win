@@ -46,6 +46,77 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | ExtractStrategy | 抽出戦略名 | string | ✅ |
 | DownloadUrl | パッケージのダウンロード URL | string | ✅ |
 
+## コンポーネント管理プロパティ
+
+コンポーネントマネージャー (`Manage-Bin.cmd`) が使用するプロパティです。一括インストール (`Install-Bin.cmd`) では無視されます。
+
+| プロパティ | 説明 | 型 | 省略時の動作 |
+|-----------|------|-----|------------|
+| DependsOn | 依存パッケージの ShortName 配列 | string[] | `@()` (依存なし) |
+| PathDirs | PATH に追加するディレクトリ ($InstallDir からの相対パス) | string[] | `@()` (PATH 変更なし) |
+| EnvVars | 設定する環境変数のハッシュテーブル | hashtable | `@{}` (環境変数変更なし) |
+| EnvVarIsLiteral | リテラル値として扱う環境変数名の配列 | string[] | `@()` (全てパスとして結合) |
+| DetectFiles | インストール状態を検出するファイル ($InstallDir からの相対パス) | string[] | `@()` (ファイル検出なし) |
+| SkipIfCommand | このコマンドが PATH にある場合は PathDirs の追加をスキップ | string | なし (常に追加) |
+| Hidden | `$true` なら CLI メニューに表示しない | bool | `$false` (表示) |
+
+### DependsOn
+
+依存するパッケージの ShortName を配列で指定します。コンポーネントマネージャーが依存を自動解決し、依存先を先にインストールします。
+
+```powershell
+DependsOn = @("jdk")                  # JDK が必要
+DependsOn = @("innoextract")          # innoextract が必要
+DependsOn = @("mingw64-gcc-libs", "mingw64-libiconv", "mingw64-gettext-runtime")
+```
+
+### PathDirs
+
+インストール後にユーザー PATH へ追加するディレクトリを `$InstallDir` からの相対パスで指定します。
+
+```powershell
+PathDirs = @("jdk-21\bin")            # bin/jdk-21/bin を PATH に追加
+PathDirs = @("git", "git\bin", "git\cmd")  # 複数ディレクトリを追加
+PathDirs = @()                        # PATH 変更なし (bin/ ルートは共通で追加される)
+```
+
+### EnvVars と EnvVarIsLiteral
+
+設定する環境変数を `名前 = 値` のハッシュテーブルで指定します。値の意味は以下の通りです。
+
+- 空文字列 `""`: `$InstallDir` そのものを値として使用
+- それ以外: `$InstallDir\<値>` に展開
+- `EnvVarIsLiteral` に名前を列挙した変数: パス結合せずリテラル値として使用
+
+```powershell
+# .NET SDK の例
+EnvVars = @{
+    "DOTNET_HOME" = "dotnet10sdk"          # $InstallDir\dotnet10sdk
+    "DOTNET_CLI_TELEMETRY_OPTOUT" = "1"    # リテラル "1"
+}
+EnvVarIsLiteral = @("DOTNET_CLI_TELEMETRY_OPTOUT")
+
+# PlantUML の例
+EnvVars = @{ "PLANTUML_HOME" = "" }        # $InstallDir そのもの
+```
+
+### DetectFiles
+
+インストール済みかどうかをファイルシステムで確認するためのファイルパスを指定します (マニフェストが存在しない場合のフォールバックや、レガシーインストール検出に使用)。
+
+```powershell
+DetectFiles = @("jdk-21\bin\java.exe")
+DetectFiles = @("plantuml.jar", "plantuml.cmd")
+```
+
+### Hidden
+
+`$true` に設定すると CLI メニューに表示されず、他のコンポーネントの依存として自動インストール/アンインストールされます。GNU Make が依存する MinGW ランタイム DLL パッケージ (`mingw64-gcc-libs` など) に使用します。
+
+```powershell
+Hidden = $true   # メニュー非表示・自動管理
+```
+
 ### 共通プロパティの詳細
 
 #### Name
@@ -360,6 +431,11 @@ packages.psd1 の `Packages` 配列に新しいパッケージ定義を追加す
             ArchivePattern = "newtool-.*-win-x64\.zip$"
             ExtractStrategy = "Standard"
             DownloadUrl = "https://example.com/newtool.zip"
+            # コンポーネント管理プロパティ
+            DependsOn = @()
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("newtool.exe")
         }
     )
 }
@@ -377,7 +453,9 @@ packages.psd1 の `Packages` 配列に新しいパッケージ定義を追加す
 
 ## パッケージ定義の順序
 
-packages.psd1 内のパッケージ定義の順序は重要です。依存関係がある場合は、依存先のパッケージを先に定義する必要があります。
+packages.psd1 内のパッケージ定義の順序は一括インストール (`-Install`) の実行順序を決定します。依存関係がある場合は、依存先のパッケージを先に定義する必要があります。
+
+コンポーネントマネージャー (`-Manage`) では `DependsOn` に基づいて依存を自動解決するため、順序に依存しません。ただし、一括インストールとの一貫性を保つため、依存先を先に記述することを推奨します。
 
 例: OpenCppCoverage は innoextract に依存するため、innoextract を先に定義します。
 
@@ -387,13 +465,17 @@ packages.psd1 内のパッケージ定義の順序は重要です。依存関係
         # 先に定義
         @{
             Name = "innoextract"
+            ShortName = "innoextract"
+            DependsOn = @()
             # ...
         },
 
         # 後に定義 (innoextract に依存)
         @{
             Name = "OpenCppCoverage"
+            ShortName = "opencppcoverage"
             ExtractStrategy = "InnoSetup"
+            DependsOn = @("innoextract")
             # ...
         }
     )
@@ -405,11 +487,11 @@ packages.psd1 内のパッケージ定義の順序は重要です。依存関係
 ```powershell
 @{
     Packages = @(
-        @{ Name = "mingw-w64-x86_64-gcc-libs"; ShortName = "mingw64-gcc-libs"; ... },
-        @{ Name = "mingw-w64-x86_64-libiconv"; ShortName = "mingw64-libiconv"; ... },
-        @{ Name = "mingw-w64-x86_64-gettext-runtime"; ShortName = "mingw64-gettext-runtime"; ... },
-        @{ Name = "iconv"; ShortName = "iconv"; ... },  # libiconv パッケージから iconv.exe を抽出
-        @{ Name = "GNU Make"; ShortName = "make"; ... }
+        @{ Name = "mingw-w64-x86_64-gcc-libs"; ShortName = "mingw64-gcc-libs"; DependsOn = @(); Hidden = $true; ... },
+        @{ Name = "mingw-w64-x86_64-libiconv"; ShortName = "mingw64-libiconv"; DependsOn = @(); Hidden = $true; ... },
+        @{ Name = "mingw-w64-x86_64-gettext-runtime"; ShortName = "mingw64-gettext-runtime"; DependsOn = @(); Hidden = $true; ... },
+        @{ Name = "iconv"; ShortName = "iconv"; DependsOn = @("mingw64-libiconv"); ... },
+        @{ Name = "GNU Make"; ShortName = "make"; DependsOn = @("mingw64-gcc-libs", "mingw64-libiconv", "mingw64-gettext-runtime"); ... }
     )
 }
 ```

@@ -761,10 +761,58 @@ function Unregister-VswhereInstance {
     }
 }
 
+# 単一ディレクトリをユーザー PATH に追加するヘルパー
+function Add-SinglePathDir {
+    param([string]$Directory)
+
+    if (-not (Test-Path $Directory)) {
+        Write-Host "  Directory not found: $Directory" -ForegroundColor Yellow
+        return
+    }
+
+    $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+    if (-not $currentPath) { $currentPath = "" }
+
+    $entries = $currentPath -split ';' | Where-Object { $_.Trim() -ne "" }
+    if ($entries -contains $Directory) {
+        Write-Host "  Already in PATH: $Directory"
+        return
+    }
+
+    $newPath = if ($currentPath) { "$Directory;$currentPath" } else { $Directory }
+    [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
+    Write-Host "  Added: $Directory"
+}
+
+# 単一ディレクトリをユーザー PATH から削除するヘルパー
+function Remove-SinglePathDir {
+    param([string]$Directory)
+
+    $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+    if (-not $currentPath) { return }
+
+    $normalizedDir = if (Test-Path $Directory) {
+        (Resolve-Path $Directory).Path
+    } else {
+        [System.IO.Path]::GetFullPath($Directory)
+    }
+
+    $entries = $currentPath -split ';' | Where-Object { $_.Trim() -ne "" }
+    $newEntries = $entries | Where-Object { $_ -ne $normalizedDir }
+
+    if ($newEntries.Count -lt $entries.Count) {
+        $newPath = $newEntries -join ';'
+        [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
+        Write-Host "  Removed: $Directory"
+    }
+}
+
 Export-ModuleMember -Function @(
     'Test-CommandExists',
     'Add-ToUserPath',
     'Remove-FromUserPath',
+    'Add-SinglePathDir',
+    'Remove-SinglePathDir',
     'Convert-ToLongPath',
     'New-LongPathDirectory',
     'Copy-LongPathFile',

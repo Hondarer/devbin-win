@@ -129,31 +129,76 @@ Uninstall-Bin.cmd
 
 詳細な設計や内部動作については、[offline-pip-design.md](./offline-pip-design.md) を参照してください。
 
+## コンポーネントマネージャー
+
+個別のコンポーネントを選択してインストール/アンインストール/更新できます。
+
+### 起動方法
+
+```cmd
+Manage-Bin.cmd
+```
+
+### メニュー操作
+
+起動すると番号付きの一覧が表示されます。`[X]` がインストール済み、`[ ]` が未インストールです。
+
+```text
+  #  コンポーネント          状態          依存
+ --- ---------------------- ------------- ------------------
+  1  [X] Node.js            Installed     -
+  6  [X] Microsoft JDK      Installed     -
+  8  [ ] PlantUML           Not Installed -> jdk
+ 13  [X] GNU Make           Installed     (auto: gcc-libs, libiconv, gettext)
+```
+
+コマンド:
+
+| コマンド | 動作 | 例 |
+|---|---|---|
+| `i <番号>` | インストール | `i 8` |
+| `u <番号>` | アンインストール | `u 6` |
+| `r <番号>` | 再インストール/更新 | `r 1 6` |
+| `ia` | すべてのコンポーネントをインストール | `ia` |
+| `ua` | すべてのコンポーネントをアンインストール | `ua` |
+| `q` | 終了 | `q` |
+
+### 依存関係の自動処理
+
+依存コンポーネントが未インストールの場合は確認後に自動インストールされます。逆に、依存元コンポーネントが存在する状態でアンインストールしようとすると警告が表示されます。
+
+### 既存インストールからの移行
+
+`Install-Bin.cmd` で一括インストールした後に `Manage-Bin.cmd` を起動すると、既存のインストール状態を自動検出してマニフェストを生成します。以降は個別管理が可能になります。
+
 ## 高度な使用方法
 
-### setup.ps1 直接実行
+### Setup-Bin.ps1 直接実行
 
 より詳細な制御が必要な場合は、PowerShell スクリプトを直接実行できます。
 
 ```powershell
 # ファイル抽出のみ
-.\setup.ps1 -Extract
+.\subscripts\Setup-Bin.ps1 -Extract
 
 # インストール (抽出 + PATH 追加)
-.\setup.ps1 -Install
+.\subscripts\Setup-Bin.ps1 -Install
 
 # アンインストール (削除 + PATH 削除)
-.\setup.ps1 -Uninstall
+.\subscripts\Setup-Bin.ps1 -Uninstall
+
+# 対話型コンポーネントマネージャー
+.\subscripts\Setup-Bin.ps1 -Manage
 
 # カスタムインストール先
-.\setup.ps1 -Install -InstallDir "C:\MyTools"
+.\subscripts\Setup-Bin.ps1 -Install -InstallDir "C:\MyTools"
 ```
 
 ### 利用可能なオプション
 
 ```powershell
 # 利用方法を表示
-.\setup.ps1
+.\subscripts\Setup-Bin.ps1
 ```
 
 ## トラブルシューティング
