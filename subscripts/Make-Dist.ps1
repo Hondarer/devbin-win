@@ -46,6 +46,7 @@ $itemsToInclude = @(
     "subscripts",
     "Install-Bin.cmd",
     "Uninstall-Bin.cmd",
+    "Manage-Bin.cmd",
     "Setup-Home.cmd",
     "Install-GitBash-Profile.cmd",
     "Uninstall-GitBash-Profile.cmd",
