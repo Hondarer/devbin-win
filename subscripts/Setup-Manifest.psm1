@@ -37,6 +37,7 @@ function Read-Manifest {
             $comp = $prop.Value
             $manifest.components[$prop.Name] = @{
                 installedAt = $comp.installedAt
+                version     = if ($comp.PSObject.Properties["version"]) { $comp.version } else { "" }
                 archiveFile = $comp.archiveFile
                 files = @($comp.files)
                 pathDirs = @($comp.pathDirs)
@@ -90,6 +91,7 @@ function Add-ComponentToManifest {
     param(
         [hashtable]$Manifest,
         [string]$ShortName,
+        [string]$Version = "",
         [string]$ArchiveFile,
         [string[]]$Files,
         [string[]]$PathDirs,
@@ -98,6 +100,7 @@ function Add-ComponentToManifest {
 
     $Manifest.components[$ShortName] = @{
         installedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        version     = $Version
         archiveFile = $ArchiveFile
         files = $Files
         pathDirs = $PathDirs
@@ -255,10 +258,12 @@ function Initialize-LegacyManifest {
         if ($filesExist) {
             $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
             $envVars = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
+            $version = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
 
             Add-ComponentToManifest `
                 -Manifest $manifest `
                 -ShortName $shortName `
+                -Version $version `
                 -ArchiveFile "(legacy)" `
                 -Files @() `
                 -PathDirs $pathDirs `

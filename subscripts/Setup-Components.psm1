@@ -269,9 +269,11 @@ function Install-Component {
     # CopyToPackages 戦略はスキップ (ファイルは packages/ に留まる)
     if ($pkg.ExtractStrategy -eq "CopyToPackages") {
         $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
+        $version = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
         Add-ComponentToManifest `
             -Manifest $Manifest `
             -ShortName $ShortName `
+            -Version $version `
             -ArchiveFile "(no-extract)" `
             -Files @() `
             -PathDirs $pathDirs
@@ -353,9 +355,11 @@ function Install-Component {
     Add-BasePathDir -InstallDir $InstallDir
 
     # マニフェストに記録
+    $version = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
     Add-ComponentToManifest `
         -Manifest $Manifest `
         -ShortName $ShortName `
+        -Version $version `
         -ArchiveFile (Split-Path $(if ($archiveFile) { $archiveFile } else { "(no-archive)" }) -Leaf) `
         -Files $installedFiles `
         -PathDirs $pathDirs `

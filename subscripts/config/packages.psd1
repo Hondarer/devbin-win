@@ -4,6 +4,7 @@
         @{
             Name = "Node.js"
             ShortName = "nodejs"
+            Version = "22.18.0"
             ArchivePattern = "node-v.*-win-x64\.zip$"
             ExtractStrategy = "Standard"
             DownloadUrl = "https://nodejs.org/dist/v22.18.0/node-v22.18.0-win-x64.zip"
@@ -17,6 +18,7 @@
         @{
             Name = "Pandoc"
             ShortName = "pandoc"
+            Version = "3.8"
             ArchivePattern = "pandoc-.*-windows-x86_64\.zip$"
             ExtractStrategy = "Standard"
             DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.8/pandoc-3.8-windows-x86_64.zip"
@@ -30,6 +32,7 @@
         @{
             Name = "pandoc-crossref"
             ShortName = "pandoc-crossref"
+            Version = "0.3.21"
             ArchivePattern = "pandoc-crossref-Windows-X64\.7z$"
             ExtractStrategy = "Standard"
             DownloadUrl = "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.21/pandoc-crossref-Windows-X64.7z"
@@ -43,6 +46,7 @@
         @{
             Name = "Doxygen"
             ShortName = "doxygen"
+            Version = "1.14.0"
             ArchivePattern = "doxygen-.*\.windows\.x64\.bin\.zip$"
             ExtractStrategy = "Standard"
             DownloadUrl = "https://www.doxygen.nl/files/doxygen-1.14.0.windows.x64.bin.zip"
@@ -56,6 +60,7 @@
         @{
             Name = "doxybook2"
             ShortName = "doxybook2"
+            Version = "1.6.1"
             ArchivePattern = "doxybook2-windows-win64-v.*\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
@@ -70,6 +75,7 @@
         @{
             Name = "Microsoft JDK"
             ShortName = "jdk"
+            Version = "21.0.8"
             ArchivePattern = "microsoft-jdk-.*-windows-x64\.zip$"
             ExtractStrategy = "VersionNormalized"
             VersionPattern = "^jdk-(\d+)"
@@ -86,6 +92,7 @@
         @{
             Name = "Graphviz"
             ShortName = "graphviz"
+            Version = "14.0.2"
             ArchivePattern = "windows_10_cmake_Release_Graphviz-.*-win64\.zip$"
             ExtractStrategy = "SubdirectoryToTarget"
             ExtractPath = "bin"
@@ -101,6 +108,7 @@
         @{
             Name = "PlantUML"
             ShortName = "plantuml"
+            Version = "1.2026.2"
             ArchivePattern = "plantuml-.*\.jar$"
             ExtractStrategy = "JarWithWrapper"
             JarName = "plantuml.jar"
@@ -126,6 +134,7 @@ endlocal
         @{
             Name = "Python"
             ShortName = "python"
+            Version = "3.13.7"
             ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "python-3.13"
@@ -142,6 +151,7 @@ endlocal
         @{
             Name = "get-pip.py"
             ShortName = "get-pip"
+            Version = ""
             ArchivePattern = "get-pip\.py$"
             ExtractStrategy = "CopyToPackages"
             DownloadUrl = "https://bootstrap.pypa.io/get-pip.py"
@@ -156,6 +166,7 @@ endlocal
         @{
             Name = ".NET SDK"
             ShortName = "dotnet10sdk"
+            Version = "10.0.103"
             ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "dotnet10sdk"
@@ -172,6 +183,7 @@ endlocal
         @{
             Name = "Portable Git"
             ShortName = "git"
+            Version = "2.51.0"
             ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
             ExtractStrategy = "SelfExtractingArchive"
             TargetDirectory = "git"
@@ -196,6 +208,7 @@ endlocal
         @{
             Name = "VS Code"
             ShortName = "vscode"
+            Version = "1.104.2"
             ArchivePattern = "VSCode-win32-x64-.*\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "vscode"
@@ -215,6 +228,7 @@ endlocal
         @{
             Name = "mingw-w64-x86_64-gcc-libs"
             ShortName = "mingw64-gcc-libs"
+            Version = "15.2.0-11"
             ArchivePattern = "^mingw-w64-x86_64-gcc-libs-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
@@ -231,6 +245,7 @@ endlocal
         @{
             Name = "mingw-w64-x86_64-libiconv"
             ShortName = "mingw64-libiconv"
+            Version = "1.18-1"
             ArchivePattern = "^mingw-w64-x86_64-libiconv-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
@@ -247,6 +262,7 @@ endlocal
         @{
             Name = "mingw-w64-x86_64-gettext-runtime"
             ShortName = "mingw64-gettext-runtime"
+            Version = "1.0-1"
             ArchivePattern = "^mingw-w64-x86_64-gettext-runtime-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
@@ -263,6 +279,7 @@ endlocal
         @{
             Name = "iconv"
             ShortName = "iconv"
+            Version = "1.18-1"
             ArchivePattern = "^mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
@@ -278,6 +295,7 @@ endlocal
         @{
             Name = "GNU Make"
             ShortName = "make"
+            Version = "4.4.1-4"
             ArchivePattern = "^mingw-w64-x86_64-make-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
@@ -294,6 +312,7 @@ endlocal
         @{
             Name = "CMake"
             ShortName = "cmake"
+            Version = "4.1.2"
             ArchivePattern = "cmake-.*-windows-x86_64\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
@@ -308,6 +327,7 @@ endlocal
         @{
             Name = "NuGet"
             ShortName = "nuget"
+            Version = ""
             ArchivePattern = "nuget\.exe$"
             ExtractStrategy = "SingleExecutable"
             TargetName = "nuget.exe"
@@ -322,6 +342,7 @@ endlocal
         @{
             Name = "vswhere"
             ShortName = "vswhere"
+            Version = "3.1.7"
             ArchivePattern = "vswhere\.exe$"
             ExtractStrategy = "SingleExecutable"
             TargetName = "vswhere.exe"
@@ -336,6 +357,7 @@ endlocal
         @{
             Name = "nkf"
             ShortName = "nkf"
+            Version = "2.1.5"
             ArchivePattern = "nkf-bin-.*\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin\mingw64"
@@ -350,6 +372,7 @@ endlocal
         @{
             Name = "innoextract"
             ShortName = "innoextract"
+            Version = "1.9"
             ArchivePattern = "innoextract-.*-windows\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = ""
@@ -365,6 +388,7 @@ endlocal
         @{
             Name = "OpenCppCoverage"
             ShortName = "opencppcoverage"
+            Version = "0.9.9.0"
             ArchivePattern = "OpenCppCoverageSetup-x64-.*\.exe$"
             ExtractStrategy = "InnoSetup"
             ExtractPath = "app"
@@ -380,6 +404,7 @@ endlocal
         @{
             Name = "ReportGenerator"
             ShortName = "reportgenerator"
+            Version = "5.5.0"
             ArchivePattern = "ReportGenerator_.*\.zip$"
             ExtractStrategy = "SubdirectoryToTarget"
             ExtractPath = "net47"
@@ -396,6 +421,7 @@ endlocal
             Name = "Visual Studio Build Tools"
             DisplayName = "VS 2022 C++ toolset 14.44 & Windows SDK v26100"
             ShortName = "vsbt"
+            Version = "14.44"
             ArchivePattern = "^vsbt$"
             ExtractStrategy = "VSBuildTools"
             ExtractedName = "vsbt"

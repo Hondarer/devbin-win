@@ -436,9 +436,11 @@ if ($Install) {
                 if ($filesExist -or $pkg.ExtractStrategy -eq "CopyToPackages") {
                     $pathDirsForPkg = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
                     $envVarsForPkg = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
+                    $versionForPkg = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
                     Add-ComponentToManifest `
                         -Manifest $manifest `
                         -ShortName $pkg.ShortName `
+                        -Version $versionForPkg `
                         -ArchiveFile "(batch-install)" `
                         -Files @() `
                         -PathDirs $pathDirsForPkg `

@@ -508,9 +508,11 @@ function Apply-CheckedState {
         if ($State.Statuses[$item.ShortName] -eq "Legacy") {
             $pathDirs = if ($item.ContainsKey("PathDirs")) { @($item.PathDirs) } else { @() }
             $envVars  = if ($item.ContainsKey("EnvVars"))  { $item.EnvVars }     else { @{} }
+            $version  = if ($item.ContainsKey("Version"))  { $item.Version }     else { "" }
             Add-ComponentToManifest `
                 -Manifest $State.Manifest `
                 -ShortName $item.ShortName `
+                -Version $version `
                 -ArchiveFile "(legacy)" `
                 -Files @() `
                 -PathDirs $pathDirs `
