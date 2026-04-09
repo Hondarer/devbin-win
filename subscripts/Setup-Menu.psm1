@@ -82,6 +82,7 @@ function Initialize-MenuState {
         }
     }
 
+    $reinstall = @{}
     foreach ($item in $items) {
         $status = $statuses[$item.ShortName]
         if ($anyInstalled) {
@@ -91,11 +92,13 @@ function Initialize-MenuState {
             # クリーンインストール: DefaultChecked フィールドに従う
             $checked[$item.ShortName] = ($item.ContainsKey("DefaultChecked") -and $item.DefaultChecked -eq $true)
         }
+        $reinstall[$item.ShortName] = $false
     }
 
     return @{
         Items        = $items
         Checked      = $checked
+        Reinstall    = $reinstall
         CursorIndex  = 0
         Statuses     = $statuses
         Manifest     = $Manifest
@@ -126,6 +129,7 @@ function Render-MenuLine {
         [int]$Number,
         [hashtable]$Item,
         [bool]$IsChecked,
+        [bool]$IsReinstall,
         [string]$Status,
         [bool]$IsCursor,
         [array]$Packages
@@ -134,7 +138,7 @@ function Render-MenuLine {
     [Console]::SetCursorPosition(0, $Row)
 
     $prefix    = if ($IsCursor) { ">" } else { " " }
-    $checkbox  = if ($IsChecked) { "[X]" } else { "[ ]" }
+    $checkbox  = if ($IsReinstall) { "[R]" } elseif ($IsChecked) { "[X]" } else { "[ ]" }
     $statusDisp = Get-StatusDisplay -Status $Status
     $depDisplay = Get-DependencyDisplay -PackageConfig $Item -Packages $Packages
 
@@ -181,7 +185,7 @@ function Render-Footer {
 
     # 凡例
     [Console]::SetCursorPosition(0, $footerStart)
-    [Console]::Write((" [X] Installed  [ ] Not Installed  [!] Broken  [~] Legacy (manifest なし)").PadRight($width))
+    [Console]::Write((" [X] Installed  [R] Reinstall  [ ] Not Installed  [!] Broken  [~] Legacy (manifest なし)").PadRight($width))
 
     # 空行
     [Console]::SetCursorPosition(0, $footerStart + 1)
@@ -241,6 +245,7 @@ function Render-Menu {
             -Number ($i + 1) `
             -Item $item `
             -IsChecked $State.Checked[$item.ShortName] `
+            -IsReinstall $State.Reinstall[$item.ShortName] `
             -Status $State.Statuses[$item.ShortName] `
             -IsCursor ($i -eq $State.CursorIndex) `
             -Packages $State.Packages
@@ -278,11 +283,33 @@ function Toggle-CheckedItem {
 
     $item = $State.Items[$Index]
     $shortName = $item.ShortName
-    $newChecked = -not $State.Checked[$shortName]
-    $State.Checked[$shortName] = $newChecked
+    $status = $State.Statuses[$shortName]
+    $propagateCheck = $false
 
-    if ($newChecked) {
-        # チェック ON: この親に依存する子 (dependents) を推移的に自動チェック
+    if ($status -eq "Installed" -or $status -eq "Legacy") {
+        # 3状態サイクル: Checked → Reinstall → Unchecked → Checked
+        if ($State.Checked[$shortName] -and -not $State.Reinstall[$shortName]) {
+            # Checked → Reinstall
+            $State.Reinstall[$shortName] = $true
+            $propagateCheck = $true
+        } elseif ($State.Reinstall[$shortName]) {
+            # Reinstall → Unchecked
+            $State.Reinstall[$shortName] = $false
+            $State.Checked[$shortName] = $false
+        } else {
+            # Unchecked → Checked
+            $State.Checked[$shortName] = $true
+            $propagateCheck = $true
+        }
+    } else {
+        # NotInstalled / Broken: 従来の2値トグル
+        $newChecked = -not $State.Checked[$shortName]
+        $State.Checked[$shortName] = $newChecked
+        $propagateCheck = $newChecked
+    }
+
+    if ($propagateCheck) {
+        # チェック ON: この親に依存する子 (dependents) を推移的に自動チェック (auto-reinstall はしない)
         $queue = [System.Collections.Generic.Queue[string]]::new()
         $queue.Enqueue($shortName)
         $visited = @{ $shortName = $true }
@@ -318,6 +345,8 @@ function Apply-CheckedState {
         if ($checked -and $status -eq "NotInstalled") {
             $toInstall.Add($item)
         } elseif ($checked -and $status -eq "Broken") {
+            $toReinstall.Add($item)
+        } elseif ($State.Reinstall[$sn] -and ($status -eq "Installed" -or $status -eq "Legacy")) {
             $toReinstall.Add($item)
         } elseif (-not $checked -and ($status -eq "Installed" -or $status -eq "Legacy")) {
             $toUninstall.Add($item)
@@ -405,7 +434,7 @@ function Apply-CheckedState {
     }
 
     if ($toReinstall.Count -gt 0) {
-        Write-Host " 再インストール (Broken):"
+        Write-Host " 再インストール:"
         foreach ($item in $toReinstall) {
             Write-Host "   ~ $($item.Name)"
         }
@@ -544,6 +573,7 @@ function Apply-CheckedState {
     foreach ($item in $State.Items) {
         $status = $State.Statuses[$item.ShortName]
         $State.Checked[$item.ShortName] = ($status -eq "Installed" -or $status -eq "Broken" -or $status -eq "Legacy")
+        $State.Reinstall[$item.ShortName] = $false
     }
 
     # アンインストール対象だったアイテムは、操作結果にかかわらず強制 OFF
@@ -578,12 +608,12 @@ function Handle-KeyInput {
                 # ビューポート内: 2行だけ更新
                 $old = $State.Items[$oldIdx]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
-                    -Item $old -IsChecked $State.Checked[$old.ShortName] `
+                    -Item $old -IsChecked $State.Checked[$old.ShortName] -IsReinstall $State.Reinstall[$old.ShortName] `
                     -Status $State.Statuses[$old.ShortName] -IsCursor $false -Packages $State.Packages
 
                 $new = $State.Items[$newIdx]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
-                    -Item $new -IsChecked $State.Checked[$new.ShortName] `
+                    -Item $new -IsChecked $State.Checked[$new.ShortName] -IsReinstall $State.Reinstall[$new.ShortName] `
                     -Status $State.Statuses[$new.ShortName] -IsCursor $true -Packages $State.Packages
             }
         }
@@ -602,12 +632,12 @@ function Handle-KeyInput {
                 # ビューポート内: 2行だけ更新
                 $old = $State.Items[$oldIdx]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
-                    -Item $old -IsChecked $State.Checked[$old.ShortName] `
+                    -Item $old -IsChecked $State.Checked[$old.ShortName] -IsReinstall $State.Reinstall[$old.ShortName] `
                     -Status $State.Statuses[$old.ShortName] -IsCursor $false -Packages $State.Packages
 
                 $new = $State.Items[$newIdx]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
-                    -Item $new -IsChecked $State.Checked[$new.ShortName] `
+                    -Item $new -IsChecked $State.Checked[$new.ShortName] -IsReinstall $State.Reinstall[$new.ShortName] `
                     -Status $State.Statuses[$new.ShortName] -IsCursor $true -Packages $State.Packages
             }
         }
@@ -619,7 +649,7 @@ function Handle-KeyInput {
             for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
                 $item = $State.Items[$i]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) -Number ($i + 1) `
-                    -Item $item -IsChecked $State.Checked[$item.ShortName] `
+                    -Item $item -IsChecked $State.Checked[$item.ShortName] -IsReinstall $State.Reinstall[$item.ShortName] `
                     -Status $State.Statuses[$item.ShortName] -IsCursor ($i -eq $State.CursorIndex) `
                     -Packages $State.Packages
             }
@@ -637,11 +667,17 @@ function Handle-KeyInput {
         default {
             switch ($KeyInfo.KeyChar) {
                 { $_ -eq 'a' -or $_ -eq 'A' } {
-                    foreach ($item in $State.Items) { $State.Checked[$item.ShortName] = $true }
+                    foreach ($item in $State.Items) {
+                        $State.Checked[$item.ShortName] = $true
+                        $State.Reinstall[$item.ShortName] = $false
+                    }
                     $State.NeedRedraw = $true
                 }
                 { $_ -eq 'n' -or $_ -eq 'N' } {
-                    foreach ($item in $State.Items) { $State.Checked[$item.ShortName] = $false }
+                    foreach ($item in $State.Items) {
+                        $State.Checked[$item.ShortName] = $false
+                        $State.Reinstall[$item.ShortName] = $false
+                    }
                     $State.NeedRedraw = $true
                 }
                 { $_ -eq 'q' -or $_ -eq 'Q' } {
