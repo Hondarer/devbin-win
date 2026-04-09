@@ -59,6 +59,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | EnvVarIsLiteral | リテラル値として扱う環境変数名の配列 | string[] | `@()` (全てパスとして結合) |
 | DetectFiles | インストール状態を検出するファイル ($InstallDir からの相対パス) | string[] | `@()` (ファイル検出なし) |
 | SkipIfCommand | このコマンドが PATH にある場合は PathDirs の追加をスキップ | string | なし (常に追加) |
+| DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |
 | Hidden | `$true` なら CLI メニューに表示しない | bool | `$false` (表示) |
 
 ### DependsOn

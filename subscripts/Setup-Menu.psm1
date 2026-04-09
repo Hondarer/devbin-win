@@ -82,6 +82,26 @@ function Initialize-MenuState {
         }
     }
 
+    # Disabled 判定: DisableIfCommand が devbin-win 外部で見つかった場合に非活性化
+    $disabled = @{}
+    foreach ($item in $items) {
+        $disableCmd = if ($item.ContainsKey("DisableIfCommand")) { $item.DisableIfCommand } else { "" }
+        if ($disableCmd) {
+            $found = Get-Command $disableCmd -ErrorAction SilentlyContinue
+            if ($found -and $found.Source) {
+                $cmdPath = $found.Source
+                $resolvedInstall = Resolve-Path $InstallDir -ErrorAction SilentlyContinue
+                $absInstallDir = if ($resolvedInstall) { $resolvedInstall.Path } else { "" }
+                $isOwn = $absInstallDir -and $cmdPath.StartsWith($absInstallDir, [System.StringComparison]::OrdinalIgnoreCase)
+                $disabled[$item.ShortName] = -not $isOwn
+            } else {
+                $disabled[$item.ShortName] = $false
+            }
+        } else {
+            $disabled[$item.ShortName] = $false
+        }
+    }
+
     $reinstall = @{}
     foreach ($item in $items) {
         $status = $statuses[$item.ShortName]
@@ -90,7 +110,12 @@ function Initialize-MenuState {
             $checked[$item.ShortName] = ($status -eq "Installed" -or $status -eq "Broken" -or $status -eq "Legacy")
         } else {
             # クリーンインストール: DefaultChecked フィールドに従う
-            $checked[$item.ShortName] = ($item.ContainsKey("DefaultChecked") -and $item.DefaultChecked -eq $true)
+            $isDefaultChecked = ($item.ContainsKey("DefaultChecked") -and $item.DefaultChecked -eq $true)
+            $checked[$item.ShortName] = $isDefaultChecked -and -not $disabled[$item.ShortName]
+        }
+        # Disabled かつ NotInstalled は強制 OFF
+        if ($disabled[$item.ShortName] -and $status -eq "NotInstalled") {
+            $checked[$item.ShortName] = $false
         }
         $reinstall[$item.ShortName] = $false
     }
@@ -99,6 +124,7 @@ function Initialize-MenuState {
         Items        = $items
         Checked      = $checked
         Reinstall    = $reinstall
+        Disabled     = $disabled
         CursorIndex  = 0
         Statuses     = $statuses
         Manifest     = $Manifest
@@ -130,6 +156,7 @@ function Render-MenuLine {
         [hashtable]$Item,
         [bool]$IsChecked,
         [bool]$IsReinstall,
+        [bool]$IsDisabled,
         [string]$Status,
         [bool]$IsCursor,
         [array]$Packages
@@ -138,8 +165,11 @@ function Render-MenuLine {
     [Console]::SetCursorPosition(0, $Row)
 
     $prefix    = if ($IsCursor) { ">" } else { " " }
-    $checkbox  = if ($IsReinstall) { "[R]" } elseif ($IsChecked) { "[X]" } else { "[ ]" }
+    $checkbox  = if ($IsDisabled -and -not $IsChecked) { "[-]" } elseif ($IsReinstall) { "[R]" } elseif ($IsChecked) { "[X]" } else { "[ ]" }
     $statusDisp = Get-StatusDisplay -Status $Status
+    if ($IsDisabled -and $Status -eq "NotInstalled") {
+        $statusDisp = @{ Label = "External"; Color = [ConsoleColor]::DarkGray }
+    }
     $depDisplay = Get-DependencyDisplay -PackageConfig $Item -Packages $Packages
 
     $componentField = "$checkbox $($Item.Name)"
@@ -155,6 +185,9 @@ function Render-MenuLine {
     if ($IsCursor) {
         [Console]::ForegroundColor = [ConsoleColor]::White
         [Console]::BackgroundColor = [ConsoleColor]::DarkBlue
+    } elseif ($IsDisabled -and -not $IsChecked) {
+        [Console]::ForegroundColor = [ConsoleColor]::DarkGray
+        [Console]::BackgroundColor = [ConsoleColor]::Black
     } else {
         [Console]::ForegroundColor = $statusDisp.Color
         [Console]::BackgroundColor = [ConsoleColor]::Black
@@ -185,7 +218,7 @@ function Render-Footer {
 
     # 凡例
     [Console]::SetCursorPosition(0, $footerStart)
-    [Console]::Write((" [X] Installed  [R] Reinstall  [ ] Not Installed  [!] Broken  [~] Legacy (manifest なし)").PadRight($width))
+    [Console]::Write((" [X] Installed  [R] Reinstall  [ ] Not Installed  [-] External  [!] Broken  [~] Legacy (manifest なし)").PadRight($width))
 
     # 空行
     [Console]::SetCursorPosition(0, $footerStart + 1)
@@ -246,6 +279,7 @@ function Render-Menu {
             -Item $item `
             -IsChecked $State.Checked[$item.ShortName] `
             -IsReinstall $State.Reinstall[$item.ShortName] `
+            -IsDisabled $State.Disabled[$item.ShortName] `
             -Status $State.Statuses[$item.ShortName] `
             -IsCursor ($i -eq $State.CursorIndex) `
             -Packages $State.Packages
@@ -284,28 +318,40 @@ function Toggle-CheckedItem {
     $item = $State.Items[$Index]
     $shortName = $item.ShortName
     $status = $State.Statuses[$shortName]
+    $isDisabled = $State.Disabled[$shortName]
     $propagateCheck = $false
 
     if ($status -eq "Installed" -or $status -eq "Legacy") {
-        # 3状態サイクル: Checked → Reinstall → Unchecked → Checked
-        if ($State.Checked[$shortName] -and -not $State.Reinstall[$shortName]) {
-            # Checked → Reinstall
-            $State.Reinstall[$shortName] = $true
-            $propagateCheck = $true
-        } elseif ($State.Reinstall[$shortName]) {
-            # Reinstall → Unchecked
-            $State.Reinstall[$shortName] = $false
-            $State.Checked[$shortName] = $false
+        if ($isDisabled) {
+            # Disabled: チェック ON / Reinstall 遷移は禁止。チェック OFF (アンインストール) のみ許可
+            if ($State.Checked[$shortName]) {
+                $State.Reinstall[$shortName] = $false
+                $State.Checked[$shortName] = $false
+            }
+            # Unchecked の場合は何もしない
         } else {
-            # Unchecked → Checked
-            $State.Checked[$shortName] = $true
-            $propagateCheck = $true
+            # 3状態サイクル: Checked → Reinstall → Unchecked → Checked
+            if ($State.Checked[$shortName] -and -not $State.Reinstall[$shortName]) {
+                # Checked → Reinstall
+                $State.Reinstall[$shortName] = $true
+                $propagateCheck = $true
+            } elseif ($State.Reinstall[$shortName]) {
+                # Reinstall → Unchecked
+                $State.Reinstall[$shortName] = $false
+                $State.Checked[$shortName] = $false
+            } else {
+                # Unchecked → Checked
+                $State.Checked[$shortName] = $true
+                $propagateCheck = $true
+            }
         }
     } else {
-        # NotInstalled / Broken: 従来の2値トグル
-        $newChecked = -not $State.Checked[$shortName]
-        $State.Checked[$shortName] = $newChecked
-        $propagateCheck = $newChecked
+        # NotInstalled / Broken: Disabled の場合はチェック ON を禁止
+        if (-not $isDisabled) {
+            $newChecked = -not $State.Checked[$shortName]
+            $State.Checked[$shortName] = $newChecked
+            $propagateCheck = $newChecked
+        }
     }
 
     if ($propagateCheck) {
@@ -611,11 +657,13 @@ function Handle-KeyInput {
                 $old = $State.Items[$oldIdx]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
                     -Item $old -IsChecked $State.Checked[$old.ShortName] -IsReinstall $State.Reinstall[$old.ShortName] `
+                    -IsDisabled $State.Disabled[$old.ShortName] `
                     -Status $State.Statuses[$old.ShortName] -IsCursor $false -Packages $State.Packages
 
                 $new = $State.Items[$newIdx]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
                     -Item $new -IsChecked $State.Checked[$new.ShortName] -IsReinstall $State.Reinstall[$new.ShortName] `
+                    -IsDisabled $State.Disabled[$new.ShortName] `
                     -Status $State.Statuses[$new.ShortName] -IsCursor $true -Packages $State.Packages
             }
         }
@@ -635,11 +683,13 @@ function Handle-KeyInput {
                 $old = $State.Items[$oldIdx]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
                     -Item $old -IsChecked $State.Checked[$old.ShortName] -IsReinstall $State.Reinstall[$old.ShortName] `
+                    -IsDisabled $State.Disabled[$old.ShortName] `
                     -Status $State.Statuses[$old.ShortName] -IsCursor $false -Packages $State.Packages
 
                 $new = $State.Items[$newIdx]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
                     -Item $new -IsChecked $State.Checked[$new.ShortName] -IsReinstall $State.Reinstall[$new.ShortName] `
+                    -IsDisabled $State.Disabled[$new.ShortName] `
                     -Status $State.Statuses[$new.ShortName] -IsCursor $true -Packages $State.Packages
             }
         }
@@ -652,6 +702,7 @@ function Handle-KeyInput {
                 $item = $State.Items[$i]
                 Render-MenuLine -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) -Number ($i + 1) `
                     -Item $item -IsChecked $State.Checked[$item.ShortName] -IsReinstall $State.Reinstall[$item.ShortName] `
+                    -IsDisabled $State.Disabled[$item.ShortName] `
                     -Status $State.Statuses[$item.ShortName] -IsCursor ($i -eq $State.CursorIndex) `
                     -Packages $State.Packages
             }
@@ -670,6 +721,10 @@ function Handle-KeyInput {
             switch ($KeyInfo.KeyChar) {
                 { $_ -eq 'a' -or $_ -eq 'A' } {
                     foreach ($item in $State.Items) {
+                        # Disabled かつ NotInstalled はチェック ON を禁止
+                        if ($State.Disabled[$item.ShortName] -and $State.Statuses[$item.ShortName] -eq "NotInstalled") {
+                            continue
+                        }
                         $State.Checked[$item.ShortName] = $true
                         $State.Reinstall[$item.ShortName] = $false
                     }

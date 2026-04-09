@@ -221,6 +221,7 @@ endlocal
             EnvVars = @{}
             DetectFiles = @("vscode\Code.exe")
             SkipIfCommand = "code"
+            DisableIfCommand = "code"
             DefaultChecked = $false
         },
 
