@@ -143,8 +143,8 @@ function Get-StatusDisplay {
     switch ($Status) {
         "Installed"    { return @{ Label = "Installed";     Color = [ConsoleColor]::White } }
         "Broken"       { return @{ Label = "Broken";        Color = [ConsoleColor]::Yellow } }
-        "Legacy"       { return @{ Label = "Legacy";        Color = [ConsoleColor]::Cyan } }
-        default        { return @{ Label = "Not Installed"; Color = [ConsoleColor]::DarkGray } }
+        "Legacy"       { return @{ Label = "Legacy";        Color = [ConsoleColor]::White } }
+        default        { return @{ Label = "Not Installed"; Color = [ConsoleColor]::White } }
     }
 }
 
