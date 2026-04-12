@@ -42,7 +42,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 |-----------|------|-----|------|
 | Name | パッケージの表示名 | string | ✅ |
 | ShortName | パッケージの短縮名 (識別子) | string | ✅ |
-| Version | パッケージのバージョン番号。マニフェストに記録され、将来のバージョンアップ判定に使用する。バージョン管理の対象外の場合は `""` を指定する | string | ✅ |
+| Version | パッケージのバージョン番号。マニフェストに記録され、`Manage-Bin.cmd` ではこの値とマニフェスト記録値を比較して `Updateable` 判定に使用する。バージョン管理の対象外の場合は `""` を指定する | string | ✅ |
 | ArchivePattern | アーカイブファイルのパターン (正規表現) | string | ✅ |
 | ExtractStrategy | 抽出戦略名 | string | ✅ |
 | DownloadUrl | パッケージのダウンロード URL | string | ✅ |

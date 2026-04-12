@@ -60,6 +60,32 @@ function Get-DependencyDisplay {
     return $parts -join " "
 }
 
+# ステータスに応じた初期選択状態を設定する
+function Set-MenuSelectionState {
+    param(
+        [hashtable]$Checked,
+        [hashtable]$Reinstall,
+        [string]$ShortName,
+        [string]$Status,
+        [bool]$IsDisabled,
+        [bool]$HasAnyInstalled,
+        [bool]$IsDefaultChecked
+    )
+
+    if ($HasAnyInstalled) {
+        $Checked[$ShortName] = ($Status -eq "Installed" -or $Status -eq "Broken" -or $Status -eq "Legacy" -or $Status -eq "Updateable")
+        $Reinstall[$ShortName] = ($Status -eq "Updateable")
+    } else {
+        $Checked[$ShortName] = $IsDefaultChecked -and -not $IsDisabled
+        $Reinstall[$ShortName] = $false
+    }
+
+    if ($IsDisabled -and $Status -eq "NotInstalled") {
+        $Checked[$ShortName] = $false
+        $Reinstall[$ShortName] = $false
+    }
+}
+
 # メニュー状態を初期化する
 function Initialize-MenuState {
     param(
@@ -105,19 +131,15 @@ function Initialize-MenuState {
     $reinstall = @{}
     foreach ($item in $items) {
         $status = $statuses[$item.ShortName]
-        if ($anyInstalled) {
-            # 既存インストールあり: インストール済みのものをチェック ON
-            $checked[$item.ShortName] = ($status -eq "Installed" -or $status -eq "Broken" -or $status -eq "Legacy")
-        } else {
-            # クリーンインストール: DefaultChecked フィールドに従う
-            $isDefaultChecked = ($item.ContainsKey("DefaultChecked") -and $item.DefaultChecked -eq $true)
-            $checked[$item.ShortName] = $isDefaultChecked -and -not $disabled[$item.ShortName]
-        }
-        # Disabled かつ NotInstalled は強制 OFF
-        if ($disabled[$item.ShortName] -and $status -eq "NotInstalled") {
-            $checked[$item.ShortName] = $false
-        }
-        $reinstall[$item.ShortName] = $false
+        $isDefaultChecked = ($item.ContainsKey("DefaultChecked") -and $item.DefaultChecked -eq $true)
+        Set-MenuSelectionState `
+            -Checked $checked `
+            -Reinstall $reinstall `
+            -ShortName $item.ShortName `
+            -Status $status `
+            -IsDisabled $disabled[$item.ShortName] `
+            -HasAnyInstalled $anyInstalled `
+            -IsDefaultChecked $isDefaultChecked
     }
 
     return @{
@@ -142,6 +164,7 @@ function Get-StatusDisplay {
     param([string]$Status)
     switch ($Status) {
         "Installed"    { return @{ Label = "Installed";     Color = [ConsoleColor]::White } }
+        "Updateable"   { return @{ Label = "Updateable";    Color = [ConsoleColor]::Cyan } }
         "Broken"       { return @{ Label = "Broken";        Color = [ConsoleColor]::Yellow } }
         "Legacy"       { return @{ Label = "Legacy";        Color = [ConsoleColor]::White } }
         default        { return @{ Label = "Not Installed"; Color = [ConsoleColor]::White } }
@@ -218,7 +241,7 @@ function Render-Footer {
 
     # 凡例
     [Console]::SetCursorPosition(0, $footerStart)
-    [Console]::Write((" [X] Installed  [R] Reinstall  [ ] Not Installed  [-] External  [!] Broken  [~] Legacy (manifest なし)").PadRight($width))
+    [Console]::Write((" [X] Selected Installed  [R] Reinstall / Update  [ ] Not Selected  [-] External").PadRight($width))
 
     # 空行
     [Console]::SetCursorPosition(0, $footerStart + 1)
@@ -321,7 +344,7 @@ function Toggle-CheckedItem {
     $isDisabled = $State.Disabled[$shortName]
     $propagateCheck = $false
 
-    if ($status -eq "Installed" -or $status -eq "Legacy") {
+    if ($status -eq "Installed" -or $status -eq "Legacy" -or $status -eq "Updateable") {
         if ($isDisabled) {
             # Disabled: チェック ON / Reinstall 遷移は禁止。チェック OFF (アンインストール) のみ許可
             if ($State.Checked[$shortName]) {
@@ -392,9 +415,9 @@ function Apply-CheckedState {
             $toInstall.Add($item)
         } elseif ($checked -and $status -eq "Broken") {
             $toReinstall.Add($item)
-        } elseif ($State.Reinstall[$sn] -and ($status -eq "Installed" -or $status -eq "Legacy")) {
+        } elseif ($State.Reinstall[$sn] -and ($status -eq "Installed" -or $status -eq "Legacy" -or $status -eq "Updateable")) {
             $toReinstall.Add($item)
-        } elseif (-not $checked -and ($status -eq "Installed" -or $status -eq "Legacy")) {
+        } elseif (-not $checked -and ($status -eq "Installed" -or $status -eq "Legacy" -or $status -eq "Updateable")) {
             $toUninstall.Add($item)
         }
     }
@@ -410,7 +433,7 @@ function Apply-CheckedState {
             if (-not $depItem) { continue }  # Hidden パッケージは Install-Component が処理する
             $depChecked = $State.Checked[$dep]
             $depStatus = $State.Statuses[$dep]
-            if (-not $depChecked -and $depStatus -ne "Installed") {
+            if (-not $depChecked -and $depStatus -ne "Installed" -and $depStatus -ne "Legacy" -and $depStatus -ne "Updateable") {
                 $missingDeps += @{ Item = $item; Dependency = $depItem }
             }
         }
@@ -465,7 +488,7 @@ function Apply-CheckedState {
                 $depPkg = Get-PackageByShortName -ShortName $dep -Packages $State.Packages
                 if ($depPkg) {
                     $depStatus = Get-ComponentStatus -Manifest $State.Manifest -InstallDir $State.InstallDir -PackageConfig $depPkg
-                    if ($depStatus -ne "Installed") {
+                    if ($depStatus -ne "Installed" -and $depStatus -ne "Updateable") {
                         $resolvedInstall.Add($depPkg)
                     }
                 }
@@ -620,8 +643,14 @@ function Apply-CheckedState {
 
     foreach ($item in $State.Items) {
         $status = $State.Statuses[$item.ShortName]
-        $State.Checked[$item.ShortName] = ($status -eq "Installed" -or $status -eq "Broken" -or $status -eq "Legacy")
-        $State.Reinstall[$item.ShortName] = $false
+        Set-MenuSelectionState `
+            -Checked $State.Checked `
+            -Reinstall $State.Reinstall `
+            -ShortName $item.ShortName `
+            -Status $status `
+            -IsDisabled $State.Disabled[$item.ShortName] `
+            -HasAnyInstalled $true `
+            -IsDefaultChecked $false
     }
 
     # アンインストール対象だったアイテムは、操作結果にかかわらず強制 OFF

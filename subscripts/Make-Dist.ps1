@@ -44,8 +44,6 @@ $itemsToInclude = @(
     "README.md",
     "docs-src",
     "subscripts",
-    "Install-Bin.cmd",
-    "Uninstall-Bin.cmd",
     "Manage-Bin.cmd",
     "Setup-Home.cmd",
     "Install-GitBash-Profile.cmd",
