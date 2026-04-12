@@ -45,7 +45,7 @@ $itemsToInclude = @(
     "docs-src",
     "subscripts",
     "Manage-Bin.cmd",
-    "Setup-Home.cmd",
+#    "Setup-Home.cmd",
     "Install-GitBash-Profile.cmd",
     "Uninstall-GitBash-Profile.cmd",
     "Install-MinGW-Profile.cmd",
