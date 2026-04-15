@@ -339,6 +339,21 @@ endlocal
             DetectFiles = @("nuget.exe")
         },
 
+        # cloc - SingleExecutable extraction
+        @{
+            Name = "cloc"
+            ShortName = "cloc"
+            Version = "2.08"
+            ArchivePattern = "^cloc-\d+\.\d+\.exe$"
+            ExtractStrategy = "SingleExecutable"
+            TargetName = "cloc.exe"
+            DownloadUrl = "https://github.com/AlDanial/cloc/releases/download/v2.08/cloc-2.08.exe"
+            DependsOn = @()
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("cloc.exe")
+        },
+
         # vswhere - SingleExecutable extraction
         @{
             Name = "vswhere"

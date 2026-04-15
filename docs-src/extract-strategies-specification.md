@@ -22,7 +22,7 @@ subscripts/Setup-Strategies.psm1
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
-| SingleExecutable | 単一実行ファイルをコピー | NuGet |
+| SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
 | InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
@@ -433,7 +433,7 @@ PlantUML
 
 #### 適用パッケージ
 
-NuGet
+NuGet, cloc, vswhere
 
 ### SelfExtractingArchive 戦略
 

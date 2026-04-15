@@ -34,8 +34,18 @@ python3 --version
 dotnet --version
 git --version
 code --version
+cloc --version
 vswhere -?
 ```
+
+#### cloc について
+
+cloc はソースコードの空行・コメント行・コード行を数えるツールです。
+
+- **用途**: リポジトリやディレクトリ単位のコード行数集計
+- **配置場所**: `bin\cloc.exe`
+- **バージョン**: 2.08
+- **プロジェクト**: [AlDanial/cloc](https://github.com/AlDanial/cloc)
 
 #### vswhere について
 
@@ -95,7 +105,7 @@ Uninstall-Bin.cmd
 
 ### その他のツール
 
-- Node.js、Pandoc、Doxygen、PlantUML、vswhere などは常に PATH に追加されます
+- Node.js、Pandoc、Doxygen、PlantUML、cloc、vswhere などは常に PATH に追加されます
 
 ## オフライン環境での pip インストール
 

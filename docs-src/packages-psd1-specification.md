@@ -332,6 +332,8 @@ endlocal
 **追加パラメータ**:
 - `TargetName` (オプション): コピー先のファイル名
 
+NuGet、cloc、vswhere のように、配布物が単体の `.exe` で完結するツールに適しています。
+
 ### SelfExtractingArchive 戦略
 
 自己解凍実行ファイルを実行して展開します。

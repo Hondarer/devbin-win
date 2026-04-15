@@ -133,6 +133,13 @@ from [NuGet](https://www.nuget.org/)
 - [Available NuGet Distribution Versions](https://www.nuget.org/downloads)
     - [nuget.exe - recommended latest v6.14.0](https://dist.nuget.org/win-x86-commandline/latest/nuget.exe)
 
+### cloc
+
+from [AlDanial/cloc](https://github.com/AlDanial/cloc)
+
+- [/releases/tag/v2.08](https://github.com/AlDanial/cloc/releases/tag/v2.08)
+    - [cloc-2.08.exe](https://github.com/AlDanial/cloc/releases/download/v2.08/cloc-2.08.exe)
+
 ### nkf
 
 from [nkf-bin](https://github.com/Hondarer/nkf-bin)
