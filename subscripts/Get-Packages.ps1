@@ -2,7 +2,8 @@
 # packages ディレクトリにダウンロードするスクリプト
 
 param(
-    [switch]$Force = $false
+    [switch]$Force = $false,
+    [string[]]$PackageShortNames = @()
 )
 
 # スクリプトのディレクトリを取得
@@ -23,6 +24,47 @@ if (-not (Test-Path $PackagesConfigPath)) {
 
 $PackagesConfig = Invoke-Expression (Get-Content $PackagesConfigPath -Raw)
 $Packages = $PackagesConfig.Packages
+
+function Get-TargetPackages {
+    param(
+        [array]$AllPackages,
+        [string[]]$RequestedShortNames
+    )
+
+    if (-not $RequestedShortNames -or $RequestedShortNames.Count -eq 0) {
+        return @($AllPackages)
+    }
+
+    $targets = @()
+    $seen = @{}
+
+    foreach ($shortName in $RequestedShortNames) {
+        if ([string]::IsNullOrWhiteSpace($shortName)) {
+            continue
+        }
+
+        if ($seen.ContainsKey($shortName)) {
+            continue
+        }
+
+        $package = $AllPackages | Where-Object { $_.ShortName -eq $shortName } | Select-Object -First 1
+        if (-not $package) {
+            throw "Package not found: $shortName"
+        }
+
+        $targets += $package
+        $seen[$shortName] = $true
+    }
+
+    return $targets
+}
+
+try {
+    $TargetPackages = Get-TargetPackages -AllPackages $Packages -RequestedShortNames $PackageShortNames
+} catch {
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
 
 # packages ディレクトリが存在しない場合は作成
 if (-not (Test-Path "packages")) {
@@ -119,7 +161,7 @@ function Get-File {
 }
 
 # Visual Studio Build Tools のダウンロード処理
-$vsbtPackage = $Packages | Where-Object { $_.ExtractStrategy -eq "VSBuildTools" }
+$vsbtPackage = $TargetPackages | Where-Object { $_.ExtractStrategy -eq "VSBuildTools" } | Select-Object -First 1
 if ($vsbtPackage) {
     Write-Host ""
     Write-Host "=== Visual Studio Build Tools Download ===" -ForegroundColor Cyan
@@ -159,7 +201,7 @@ if ($vsbtPackage) {
 
 # ダウンロード対象ファイルを packages.psd1 から取得
 $downloads = @()
-foreach ($package in $Packages) {
+foreach ($package in $TargetPackages) {
     if ($package.DownloadUrl) {
         $downloads += $package.DownloadUrl
     }
@@ -173,6 +215,9 @@ if ($downloads.Count -eq 0 -and -not $vsbtPackage) {
 # ダウンロード実行
 Write-Host "=== File Download Started ==="
 Write-Host "Downloading files to packages directory."
+if ($PackageShortNames -and $PackageShortNames.Count -gt 0) {
+    Write-Host "Selected packages: $((@($TargetPackages | ForEach-Object { $_.ShortName })) -join ', ')"
+}
 Write-Host "Total packages: $($downloads.Count)"
 
 if ($Force) {
@@ -235,6 +280,16 @@ if ($successCount -eq $totalCount) {
 }
 
 # pip wheel ファイルの自動ダウンロード
+$shouldDownloadPipWheels = $true
+if ($PackageShortNames -and $PackageShortNames.Count -gt 0) {
+    $targetShortNames = @($TargetPackages | ForEach-Object { $_.ShortName })
+    $shouldDownloadPipWheels = ($targetShortNames -contains "python") -or ($targetShortNames -contains "get-pip")
+}
+
+if (-not $shouldDownloadPipWheels) {
+    return
+}
+
 Write-Host ""
 Write-Host "=== Pip Wheel Download ===" -ForegroundColor Cyan
 Write-Host ""

@@ -295,7 +295,13 @@ function Install-Component {
             Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
             $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
             if (Test-Path $getPackagesScript) {
-                & $getPackagesScript
+                $downloadTargets = @(Resolve-Dependencies -ShortName $ShortName -Packages $Packages | Select-Object -Unique)
+                if (-not $downloadTargets -or $downloadTargets.Count -eq 0) {
+                    $downloadTargets = @($ShortName)
+                }
+
+                Write-Host "  ダウンロード対象: $($downloadTargets -join ', ')"
+                & $getPackagesScript -PackageShortNames $downloadTargets
             }
 
             $archiveFiles = Get-ChildItem -Path $packagesDir -File -ErrorAction SilentlyContinue |
@@ -425,7 +431,11 @@ function Uninstall-Component {
 
     # マニフェストのファイル一覧に基づいて削除
     $componentData = $Manifest.components[$ShortName]
-    $files = if ($componentData -and $componentData.ContainsKey("files")) { @($componentData.files) } else { @() }
+    $files = if ($componentData -and $componentData.ContainsKey("files")) {
+        @($componentData.files) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    } else {
+        @()
+    }
     $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }
 
     if ($targetDir) {
@@ -445,7 +455,7 @@ function Uninstall-Component {
         foreach ($otherShortName in $Manifest.components.Keys) {
             if ($otherShortName -eq $ShortName) { continue }
             $otherData = $Manifest.components[$otherShortName]
-            foreach ($f in @($otherData.files)) {
+            foreach ($f in @($otherData.files) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
                 $allOtherFiles[$f] = $true
             }
         }

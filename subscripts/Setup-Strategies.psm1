@@ -1,4 +1,4 @@
-# Setup-Strategies.psm1
+﻿# Setup-Strategies.psm1
 # 抽出戦略の実装
 
 # 注意: Setup-Common.psm1 は呼び出し元のスクリプトでインポートする必要があります

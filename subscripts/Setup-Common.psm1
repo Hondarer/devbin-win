@@ -1,4 +1,4 @@
-# Setup-Common.psm1
+﻿# Setup-Common.psm1
 # 共通関数モジュール
 
 # コマンドが PATH で既に利用可能かどうかをチェックする
