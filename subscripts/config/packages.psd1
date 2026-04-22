@@ -202,6 +202,7 @@ endlocal
             EnvVars = @{}
             DetectFiles = @("git\bin\git.exe")
             SkipIfCommand = "git"
+            DisableIfCommand = "git"
         },
 
         # VS Code - TargetDirectory extraction
