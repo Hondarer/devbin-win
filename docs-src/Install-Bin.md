@@ -15,7 +15,7 @@ Install-Bin.cmd
 
 ### インストール内容
 
-- **インストール先**: `C:\ProgramData\devbin-win\bin`
+- **インストール先**: `C:\ProgramData\<ユーザー名>\devbin-win\bin`
 - **PATH環境変数**: 自動的にユーザー PATH に追加
 - **既存ツール保護**: システムに同じツールがある場合は既存を優先
 
@@ -69,9 +69,9 @@ Uninstall-Bin.cmd
 
 ### アンインストール内容
 
-- インストールディレクトリ `C:\ProgramData\devbin-win\bin` を完全削除
+- インストールディレクトリ `C:\ProgramData\<ユーザー名>\devbin-win\bin` を完全削除
 - ユーザー PATH 環境変数から該当エントリを削除
-- 親ディレクトリ `C:\ProgramData\devbin-win` も削除 (空の場合)
+- 親ディレクトリ `C:\ProgramData\<ユーザー名>\devbin-win` も削除 (空の場合)
 
 ## 既存ツールとの共存
 

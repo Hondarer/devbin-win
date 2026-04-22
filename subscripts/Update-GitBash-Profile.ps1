@@ -2,20 +2,23 @@
 param(
     [switch]$Install,      # プロファイルをインストール
     [switch]$Uninstall,    # プロファイルをアンインストール
-    [switch]$Force = $false # 強制実行
+    [switch]$Force = $false, # 強制実行
+    [string]$InstallDir = ""  # devbin-win インストール先 (既定: %ProgramData%\%USERNAME%\devbin-win\bin)
 )
 
 # 使用方法を表示
 function Show-Usage {
     Write-Host "`n=== Windows Terminal Git Bash Profile Manager ==="
     Write-Host "`nUsage:"
-    Write-Host "  .\Update-GitBash-Profile.ps1 -Install         # Install Git Bash profile"
-    Write-Host "  .\Update-GitBash-Profile.ps1 -Uninstall       # Uninstall Git Bash profile"
-    Write-Host "  .\Update-GitBash-Profile.ps1 -Install -Force  # Force overwrite existing profile"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Install                          # Install Git Bash profile"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Uninstall                        # Uninstall Git Bash profile"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Install -Force                   # Force overwrite existing profile"
+    Write-Host "  .\Update-GitBash-Profile.ps1 -Install -InstallDir <path>       # Use custom install dir"
     Write-Host "`nOptions:"
-    Write-Host "  -Install     Add Git Bash profile to Windows Terminal"
-    Write-Host "  -Uninstall   Remove Git Bash profile from Windows Terminal" 
-    Write-Host "  -Force       Force overwrite existing profile (use with -Install)"
+    Write-Host "  -Install              Add Git Bash profile to Windows Terminal"
+    Write-Host "  -Uninstall            Remove Git Bash profile from Windows Terminal"
+    Write-Host "  -Force                Force overwrite existing profile (use with -Install)"
+    Write-Host "  -InstallDir <path>    devbin-win bin directory (default: %ProgramData%\%USERNAME%\devbin-win\bin)"
     Write-Host "`nExamples:"
     Write-Host "  # Install profile"
     Write-Host "  .\Update-GitBash-Profile.ps1 -Install"
@@ -85,6 +88,7 @@ function Save-TerminalSettings {
 function Install-GitBashProfile {
     param(
         [string]$SettingsPath,
+        [string]$BinDir,
         [bool]$ForceUpdate = $false
     )
     
@@ -92,9 +96,9 @@ function Install-GitBashProfile {
     $newProfile = @{
         guid = "{b2e42366-5d93-4fb7-be22-177d0a5850d1}"
         name = "Git Bash"
-        commandline = "C:\ProgramData\devbin-win\bin\git\bin\bash.exe -i -l"
+        commandline = "$BinDir\git\bin\bash.exe -i -l"
         startingDirectory = "%USERPROFILE%"
-        icon = "C:\ProgramData\devbin-win\bin\git\mingw64\share\git\git-for-windows.ico"
+        icon = "$BinDir\git\mingw64\share\git\git-for-windows.ico"
     }
     
     try {
@@ -261,6 +265,13 @@ function Main {
         exit 1
     }
     
+    # InstallDir の既定値を動的に決定
+    $effectiveInstallDir = if ($InstallDir -and $InstallDir -ne "") {
+        $InstallDir
+    } else {
+        "$env:ProgramData\$env:USERNAME\devbin-win\bin"
+    }
+    
     # Settings.jsonのパスを取得
     $settingsPath = Get-WindowsTerminalSettingsPath
     if (-not $settingsPath) {
@@ -272,7 +283,7 @@ function Main {
     
     if ($Install) {
         Write-Host "Installing Git Bash profile..."
-        $success = Install-GitBashProfile -SettingsPath $settingsPath -ForceUpdate $Force
+        $success = Install-GitBashProfile -SettingsPath $settingsPath -BinDir $effectiveInstallDir -ForceUpdate $Force
     }
     elseif ($Uninstall) {
         Write-Host "Uninstalling Git Bash profile..."

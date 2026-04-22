@@ -12,8 +12,8 @@ REM Get current script directory
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
-REM Set target installation directory to C:\ProgramData\devbin-win\bin
-set "INSTALL_DIR=C:\ProgramData\devbin-win\bin"
+REM Set target installation directory to C:\ProgramData\%USERNAME%\devbin-win\bin
+set "INSTALL_DIR=%ProgramData%\%USERNAME%\devbin-win\bin"
 
 echo Target directory: %INSTALL_DIR%
 echo.

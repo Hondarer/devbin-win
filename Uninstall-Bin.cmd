@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 REM Development Tools Uninstallation Bootstrap Script
-REM Removes tools from C:\ProgramData\devbin-win
+REM Removes tools from C:\ProgramData\%USERNAME%\devbin-win
 
 echo Development Tools Uninstallation
 echo ==================================
@@ -13,7 +13,7 @@ set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
 REM Set target installation directory
-set "INSTALL_DIR=C:\ProgramData\devbin-win\bin"
+set "INSTALL_DIR=%ProgramData%\%USERNAME%\devbin-win\bin"
 
 echo Target directory: %INSTALL_DIR%
 echo.
@@ -45,7 +45,7 @@ set "PS_EXIT_CODE=%errorLevel%"
 if !PS_EXIT_CODE! equ 0 (
     echo.
     echo Removing parent directory if empty...
-    set "PARENT_DIR=C:\ProgramData\devbin-win"
+    set "PARENT_DIR=%ProgramData%\%USERNAME%\devbin-win"
     set "PARENT_REMOVED=0"
     if exist "!PARENT_DIR!" (
         rmdir "!PARENT_DIR!" 2>nul
@@ -72,7 +72,7 @@ if !PS_EXIT_CODE! equ 0 (
     echo - Removed DOTNET_CLI_TELEMETRY_OPTOUT environment variable
     echo - Deleted installation directory: %INSTALL_DIR%
     if !PARENT_REMOVED! equ 1 (
-        echo - Removed parent directory: C:\ProgramData\devbin-win
+        echo - Removed parent directory: !PARENT_DIR!
     ) else (
         echo - Parent directory preserved (contains VS Code data or other files^)
     )
