@@ -160,6 +160,63 @@ function Get-File {
     }
 }
 
+function Get-PackageDownloadFileName {
+    param(
+        [hashtable]$Package
+    )
+
+    $url = $Package.DownloadUrl
+    $uri = [Uri]$url
+    $fileName = if ($Package.ContainsKey("DownloadFileName")) { $Package.DownloadFileName } else { "" }
+
+    if ([string]::IsNullOrWhiteSpace($fileName)) {
+        $fileName = [System.IO.Path]::GetFileName($uri.AbsolutePath)
+    }
+
+    # SourceForge の /download で終わる URL の場合、その前のセグメントを使用
+    if ($fileName -eq "download" -and $uri.Host -like "*sourceforge.net*") {
+        $pathSegments = $uri.AbsolutePath.Split('/', [StringSplitOptions]::RemoveEmptyEntries)
+        $fileName = $pathSegments[-2]  # /download の前のセグメント
+    }
+    # GitHub の /archive/refs/tags/ URL の場合、リポジトリ名を含むファイル名を生成
+    elseif ($uri.Host -eq "github.com" -and $uri.AbsolutePath -match '/([^/]+)/([^/]+)/archive/refs/tags/(.+)$') {
+        $repoName = $matches[2]
+        $tagName = [System.IO.Path]::GetFileNameWithoutExtension($matches[3])
+        $extension = [System.IO.Path]::GetExtension($matches[3])
+        # タグ名の先頭が "v" で始まる場合は除去
+        $tagName = $tagName -replace '^v', ''
+        $fileName = "$repoName-$tagName$extension"
+    }
+
+    return $fileName
+}
+
+function Remove-OldPackageFiles {
+    param(
+        [hashtable]$Package,
+        [string]$CurrentFileName,
+        [string]$PackagesDir = "packages"
+    )
+
+    if (-not (Test-Path $PackagesDir)) {
+        return
+    }
+
+    $oldFiles = Get-ChildItem -Path $PackagesDir -File -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Name -match $Package.ArchivePattern -and $_.Name -ne $CurrentFileName
+        }
+
+    foreach ($oldFile in $oldFiles) {
+        try {
+            Remove-Item -LiteralPath $oldFile.FullName -Force -ErrorAction Stop
+            Write-Host "  Removed old package file: $($oldFile.Name)"
+        } catch {
+            Write-Host "  Warning: Failed to remove old package file $($oldFile.Name): $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+}
+
 # Visual Studio Build Tools のダウンロード処理
 $vsbtPackage = $TargetPackages | Where-Object { $_.ExtractStrategy -eq "VSBuildTools" } | Select-Object -First 1
 if ($vsbtPackage) {
@@ -203,7 +260,11 @@ if ($vsbtPackage) {
 $downloads = @()
 foreach ($package in $TargetPackages) {
     if ($package.DownloadUrl) {
-        $downloads += $package.DownloadUrl
+        $downloads += [PSCustomObject]@{
+            Package = $package
+            Url = $package.DownloadUrl
+            FileName = Get-PackageDownloadFileName -Package $package
+        }
     }
 }
 
@@ -227,29 +288,14 @@ if ($Force) {
 $successCount = 0
 $totalCount = $downloads.Count
 
-foreach ($url in $downloads) {
-    $uri = [Uri]$url
-    $fileName = [System.IO.Path]::GetFileName($uri.AbsolutePath)
-
-    # SourceForge の /download で終わる URL の場合、その前のセグメントを使用
-    if ($fileName -eq "download" -and $uri.Host -like "*sourceforge.net*") {
-        $pathSegments = $uri.AbsolutePath.Split('/', [StringSplitOptions]::RemoveEmptyEntries)
-        $fileName = $pathSegments[-2]  # /download の前のセグメント
-    }
-    # GitHub の /archive/refs/tags/ URL の場合、リポジトリ名を含むファイル名を生成
-    elseif ($uri.Host -eq "github.com" -and $uri.AbsolutePath -match '/([^/]+)/([^/]+)/archive/refs/tags/(.+)$') {
-        $repoName = $matches[2]
-        $tagName = [System.IO.Path]::GetFileNameWithoutExtension($matches[3])
-        $extension = [System.IO.Path]::GetExtension($matches[3])
-        # タグ名の先頭が "v" で始まる場合は除去
-        $tagName = $tagName -replace '^v', ''
-        $fileName = "$repoName-$tagName$extension"
-    }
-
+foreach ($download in $downloads) {
+    $url = $download.Url
+    $fileName = $download.FileName
     $outputPath = Join-Path "packages" $fileName
 
     if (Get-File -Url $url -OutputPath $outputPath) {
         $successCount++
+        Remove-OldPackageFiles -Package $download.Package -CurrentFileName $fileName
     }
 
     Start-Sleep -Milliseconds 500

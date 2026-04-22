@@ -119,7 +119,7 @@ function Get-PathDirectories {
     # フォールバック: ハードコードリスト (PackageList が空の場合)
     return @(
         $BaseDir,
-        "$BaseDir\jdk-21\bin",
+        "$BaseDir\jdk-25\bin",
         "$BaseDir\graphviz",
         "$BaseDir\python-3.13",
         "$BaseDir\dotnet10sdk",

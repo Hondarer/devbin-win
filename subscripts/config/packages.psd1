@@ -4,10 +4,10 @@
         @{
             Name = "Node.js"
             ShortName = "nodejs"
-            Version = "22.18.0"
+            Version = "25.9.0"
             ArchivePattern = "node-v.*-win-x64\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://nodejs.org/dist/v22.18.0/node-v22.18.0-win-x64.zip"
+            DownloadUrl = "https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -18,10 +18,10 @@
         @{
             Name = "Pandoc"
             ShortName = "pandoc"
-            Version = "3.8"
+            Version = "3.9.0.2"
             ArchivePattern = "pandoc-.*-windows-x86_64\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.8/pandoc-3.8-windows-x86_64.zip"
+            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -32,10 +32,10 @@
         @{
             Name = "pandoc-crossref"
             ShortName = "pandoc-crossref"
-            Version = "0.3.21"
+            Version = "0.3.23a"
             ArchivePattern = "pandoc-crossref-Windows-X64\.7z$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.21/pandoc-crossref-Windows-X64.7z"
+            DownloadUrl = "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.23a/pandoc-crossref-Windows-X64.7z"
             DependsOn = @("pandoc")
             PathDirs = @()
             EnvVars = @{}
@@ -46,10 +46,10 @@
         @{
             Name = "Doxygen"
             ShortName = "doxygen"
-            Version = "1.14.0"
+            Version = "1.15.0"
             ArchivePattern = "doxygen-.*\.windows\.x64\.bin\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://www.doxygen.nl/files/doxygen-1.14.0.windows.x64.bin.zip"
+            DownloadUrl = "https://www.doxygen.nl/files/doxygen-1.15.0.windows.x64.bin.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -75,16 +75,16 @@
         @{
             Name = "Microsoft JDK"
             ShortName = "jdk"
-            Version = "21.0.8"
+            Version = "25.0.1"
             ArchivePattern = "microsoft-jdk-.*-windows-x64\.zip$"
             ExtractStrategy = "VersionNormalized"
             VersionPattern = "^jdk-(\d+)"
             TargetDirectory = "jdk-{0}"
-            DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-21.0.8-windows-x64.zip"
+            DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-25.0.1-windows-x64.zip"
             DependsOn = @()
-            PathDirs = @("jdk-21\bin")
+            PathDirs = @("jdk-25\bin")
             EnvVars = @{}
-            DetectFiles = @("jdk-21\bin\java.exe")
+            DetectFiles = @("jdk-25\bin\java.exe")
             SkipIfCommand = "java"
         },
 
@@ -118,7 +118,7 @@
 setlocal
 
 set "SCRIPT_DIR=%~dp0"
-set "JAVA_HOME=%SCRIPT_DIR%jdk-21"
+set "JAVA_HOME=%SCRIPT_DIR%jdk-25"
 "%JAVA_HOME%\bin\java.exe" -jar "%SCRIPT_DIR%plantuml.jar" %*
 
 endlocal
@@ -134,12 +134,12 @@ endlocal
         @{
             Name = "Python"
             ShortName = "python"
-            Version = "3.13.7"
+            Version = "3.13.13"
             ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "python-3.13"
             PostSetupScript = "python-setup.ps1"
-            DownloadUrl = "https://www.python.org/ftp/python/3.13.7/python-3.13.7-embed-amd64.zip"
+            DownloadUrl = "https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip"
             DependsOn = @("get-pip")
             PathDirs = @("python-3.13")
             EnvVars = @{}
@@ -166,11 +166,11 @@ endlocal
         @{
             Name = ".NET SDK"
             ShortName = "dotnet10sdk"
-            Version = "10.0.103"
+            Version = "10.0.202"
             ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "dotnet10sdk"
-            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.103/dotnet-sdk-10.0.103-win-x64.zip"
+            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.202/dotnet-sdk-10.0.202-win-x64.zip"
             DependsOn = @()
             PathDirs = @("dotnet10sdk")
             EnvVars = @{ "DOTNET_HOME" = "dotnet10sdk"; "DOTNET_CLI_TELEMETRY_OPTOUT" = "1" }
@@ -183,12 +183,12 @@ endlocal
         @{
             Name = "Portable Git"
             ShortName = "git"
-            Version = "2.51.0"
+            Version = "2.54.0"
             ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
             ExtractStrategy = "SelfExtractingArchive"
             TargetDirectory = "git"
             ExtractArgs = @("-y", "-o{TargetPath}")
-            DownloadUrl = "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/PortableGit-2.51.0-64-bit.7z.exe"
+            DownloadUrl = "https://sourceforge.net/projects/git-for-windows.mirror/files/v2.54.0.windows.1/PortableGit-2.54.0-64-bit.7z.exe/download"
             PostExtract = @{
                 CopyFiles = @(
                     @{ Source = "packages\Add-MinGW-Path.cmd"; Destination = "Add-MinGW-Path.cmd" },
@@ -209,11 +209,12 @@ endlocal
         @{
             Name = "VS Code"
             ShortName = "vscode"
-            Version = "1.104.2"
+            Version = "1.117.0"
             ArchivePattern = "VSCode-win32-x64-.*\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "vscode"
-            DownloadUrl = "https://vscode.download.prss.microsoft.com/dbazure/download/stable/e3a5acfb517a443235981655413d566533107e92/VSCode-win32-x64-1.104.2.zip"
+            DownloadUrl = "https://update.code.visualstudio.com/1.117.0/win32-x64-archive/stable"
+            DownloadFileName = "VSCode-win32-x64-1.117.0.zip"
             PostExtract = @{
                 CreateDirectories = @("data")
             }
@@ -230,12 +231,12 @@ endlocal
         @{
             Name = "mingw-w64-x86_64-gcc-libs"
             ShortName = "mingw64-gcc-libs"
-            Version = "15.2.0-11"
+            Version = "15.2.0-14"
             ArchivePattern = "^mingw-w64-x86_64-gcc-libs-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
             FilePattern = "\.dll$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-15.2.0-11-any.pkg.tar.zst"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-15.2.0-14-any.pkg.tar.zst"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -247,12 +248,12 @@ endlocal
         @{
             Name = "mingw-w64-x86_64-libiconv"
             ShortName = "mingw64-libiconv"
-            Version = "1.18-1"
+            Version = "1.19-1"
             ArchivePattern = "^mingw-w64-x86_64-libiconv-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
             FilePattern = "\.dll$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.18-1-any.pkg.tar.zst"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.19-1-any.pkg.tar.zst"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -281,12 +282,12 @@ endlocal
         @{
             Name = "iconv"
             ShortName = "iconv"
-            Version = "1.18-1"
+            Version = "1.19-1"
             ArchivePattern = "^mingw-w64-x86_64-iconv-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
             FilePattern = "^iconv\.exe$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.18-1-any.pkg.tar.zst"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.19-1-any.pkg.tar.zst"
             DependsOn = @("mingw64-libiconv")
             PathDirs = @()
             EnvVars = @{}
@@ -314,11 +315,11 @@ endlocal
         @{
             Name = "CMake"
             ShortName = "cmake"
-            Version = "4.1.2"
+            Version = "4.3.1"
             ArchivePattern = "cmake-.*-windows-x86_64\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
-            DownloadUrl = "https://github.com/Kitware/CMake/releases/download/v4.1.2/cmake-4.1.2-windows-x86_64.zip"
+            DownloadUrl = "https://github.com/Kitware/CMake/releases/download/v4.3.1/cmake-4.3.1-windows-x86_64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -329,11 +330,11 @@ endlocal
         @{
             Name = "NuGet"
             ShortName = "nuget"
-            Version = ""
+            Version = "7.3.1"
             ArchivePattern = "nuget\.exe$"
             ExtractStrategy = "SingleExecutable"
             TargetName = "nuget.exe"
-            DownloadUrl = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+            DownloadUrl = "https://dist.nuget.org/win-x86-commandline/v7.3.1/nuget.exe"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -421,12 +422,12 @@ endlocal
         @{
             Name = "ReportGenerator"
             ShortName = "reportgenerator"
-            Version = "5.5.0"
+            Version = "5.5.1"
             ArchivePattern = "ReportGenerator_.*\.zip$"
             ExtractStrategy = "SubdirectoryToTarget"
             ExtractPath = "net47"
             TargetDirectory = "ReportGenerator"
-            DownloadUrl = "https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.0/ReportGenerator_5.5.0.zip"
+            DownloadUrl = "https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.1/ReportGenerator_5.5.1.zip"
             DependsOn = @()
             PathDirs = @("ReportGenerator")
             EnvVars = @{}
