@@ -1,4 +1,4 @@
-@{
+﻿@{
     Packages = @(
         # Node.js - Standard extraction
         @{
@@ -12,6 +12,7 @@
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("node.exe")
+            DefaultChecked = $true
         },
 
         # Pandoc - Standard extraction
@@ -26,6 +27,7 @@
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("pandoc.exe")
+            DefaultChecked = $true
         },
 
         # pandoc-crossref - Standard extraction
@@ -40,6 +42,7 @@
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("pandoc-crossref.exe")
+            DefaultChecked = $true
         },
 
         # Doxygen - Standard extraction
@@ -54,6 +57,7 @@
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("doxygen.exe")
+            DefaultChecked = $true
         },
 
         # doxybook2 - Subdirectory extraction
@@ -69,6 +73,7 @@
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("doxybook2.exe")
+            DefaultChecked = $true
         },
 
         # Microsoft JDK - VersionNormalized extraction
@@ -86,6 +91,7 @@
             EnvVars = @{}
             DetectFiles = @("jdk-25\bin\java.exe")
             SkipIfCommand = "java"
+            DefaultChecked = $true
         },
 
         # Graphviz - SubdirectoryToTarget extraction
@@ -102,6 +108,7 @@
             PathDirs = @("graphviz")
             EnvVars = @{}
             DetectFiles = @("graphviz\dot.exe")
+            DefaultChecked = $true
         },
 
         # PlantUML - JarWithWrapper extraction
@@ -128,6 +135,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{ "PLANTUML_HOME" = "" }
             DetectFiles = @("plantuml.jar", "plantuml.cmd")
+            DefaultChecked = $true
         },
 
         # Python - TargetDirectory extraction with PostSetupScript
@@ -145,6 +153,7 @@ endlocal
             EnvVars = @{}
             DetectFiles = @("python-3.13\python.exe")
             SkipIfCommand = "python"
+            DefaultChecked = $true
         },
 
         # get-pip.py (Python に関連するが独立したダウンロード)
@@ -177,6 +186,7 @@ endlocal
             EnvVarIsLiteral = @("DOTNET_CLI_TELEMETRY_OPTOUT")
             DetectFiles = @("dotnet10sdk\dotnet.exe")
             SkipIfCommand = "dotnet"
+            DefaultChecked = $true
         },
 
         # Portable Git - SelfExtractingArchive extraction
@@ -203,6 +213,7 @@ endlocal
             DetectFiles = @("git\bin\git.exe")
             SkipIfCommand = "git"
             DisableIfCommand = "git"
+            DefaultChecked = $false
         },
 
         # VS Code - TargetDirectory extraction
@@ -292,6 +303,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("iconv.exe")
+            DefaultChecked = $true
         },
 
         # GNU Make - Subdirectory extraction (MinGW package)
@@ -309,6 +321,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("make.exe")
+            DefaultChecked = $true
         },
 
         # CMake - Subdirectory extraction
@@ -324,6 +337,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("cmake.exe")
+            DefaultChecked = $true
         },
 
         # NuGet - SingleExecutable extraction
@@ -339,6 +353,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("nuget.exe")
+            DefaultChecked = $true
         },
 
         # cloc - SingleExecutable extraction
@@ -354,6 +369,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("cloc.exe")
+            DefaultChecked = $true
         },
 
         # vswhere - SingleExecutable extraction
@@ -369,6 +385,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("vswhere.exe")
+            DefaultChecked = $true
         },
 
         # nkf - Subdirectory extraction
@@ -384,6 +401,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("nkf.exe")
+            DefaultChecked = $true
         },
 
         # innoextract - Subdirectory extraction
@@ -400,6 +418,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("innoextract.exe")
+            DefaultChecked = $true
         },
 
         # OpenCppCoverage - InnoSetup extraction (requires innoextract)
@@ -416,6 +435,7 @@ endlocal
             PathDirs = @("OpenCppCoverage")
             EnvVars = @{}
             DetectFiles = @("OpenCppCoverage\OpenCppCoverage.exe")
+            DefaultChecked = $true
         },
 
         # ReportGenerator - SubdirectoryToTarget extraction
@@ -432,6 +452,7 @@ endlocal
             PathDirs = @("ReportGenerator")
             EnvVars = @{}
             DetectFiles = @("ReportGenerator\ReportGenerator.exe")
+            DefaultChecked = $true
         },
 
         # Visual Studio Build Tools - VSBuildTools extraction
@@ -453,6 +474,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("vsbt")
+            DefaultChecked = $true
         }
     )
 }
