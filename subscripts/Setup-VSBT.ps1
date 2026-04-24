@@ -614,10 +614,14 @@ try {
                 # Delete if not required
                 if (-not $isRequired) {
                     $fileSize = $cachedFile.Length
-                    Remove-Item $cachedFile.FullName -Force -ErrorAction SilentlyContinue
-                    $cleanedCount++
-                    $cleanedSize += $fileSize
-                    Write-Host "  Removed: $relativePath"
+                    try {
+                        Remove-Item $cachedFile.FullName -Force -ErrorAction Stop
+                        $cleanedCount++
+                        $cleanedSize += $fileSize
+                        Write-Host "  Removed: $relativePath"
+                    } catch {
+                        Write-Host "  Warning: Failed to remove: $relativePath" -ForegroundColor Yellow
+                    }
                 }
             }
 
