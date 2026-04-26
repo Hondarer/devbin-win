@@ -67,7 +67,7 @@ from [python.org](https://www.python.org/)
     - [Python 3.13.13](https://www.python.org/downloads/release/python-31313/)
         - [Windows embeddable package (64-bit)](https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip)
 
-- [get-pip](https://bootstrap.pypa.io/get-pip.py)
+- [get-pip 26.0.1](https://bootstrap.pypa.io/pip/26.0.1/get-pip.py)
 
 完全オフライン環境での pip インストールに対応しています。pip wheel ファイルは Get-Packages.ps1 実行時に自動的に packages/pip-packages フォルダにダウンロードされます。詳細は [offline-pip-design.md](./docs-src/offline-pip-design.md) を参照してください。
 

@@ -160,10 +160,10 @@ endlocal
         @{
             Name = "get-pip.py"
             ShortName = "get-pip"
-            Version = ""
-            ArchivePattern = "get-pip\.py$"
+            Version = "26.0.1"
+            ArchivePattern = "get-pip-26\.0\.1\.py$"
             ExtractStrategy = "CopyToPackages"
-            DownloadUrl = "https://bootstrap.pypa.io/get-pip.py"
+            DownloadUrl = "https://bootstrap.pypa.io/pip/26.0.1/get-pip.py"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}

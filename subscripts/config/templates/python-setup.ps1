@@ -23,8 +23,9 @@ if ((Test-Path $pythonExe) -and !(Test-Path $python3Exe)) {
 }
 
 # get-pip.py が存在する場合はコピー
-$getPipPath = "packages\get-pip.py"
-if (Test-Path $getPipPath) {
+$getPipFile = Get-ChildItem "packages\get-pip*.py" | Select-Object -First 1
+$getPipPath = if ($getPipFile) { $getPipFile.FullName } else { "" }
+if ($getPipPath -and (Test-Path $getPipPath)) {
     $getPipDestination = Join-Path $TargetPath "get-pip.py"
     Copy-Item -Path $getPipPath -Destination $getPipDestination -Force
     Write-Host "Copied get-pip.py to Python directory"

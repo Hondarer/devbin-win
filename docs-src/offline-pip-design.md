@@ -17,17 +17,17 @@ actor User
 participant "Get-Packages.ps1" as GetPkg
 participant "Setup-Bin.ps1" as Setup
 participant "python-setup.ps1" as PySetup
-participant "get-pip.py" as GetPip
+participant "get-pip-26.0.1.py" as GetPip
 participant "PyPI (Internet)" as PyPI
 
 User -> GetPkg: ダウンロード実行
-GetPkg -> GetPkg: get-pip.py をダウンロード
+GetPkg -> GetPkg: get-pip-26.0.1.py をダウンロード
 GetPkg -> GetPkg: packages フォルダに保存
 
 User -> Setup: インストール実行
 Setup -> Setup: Python を展開
 Setup -> PySetup: PostSetupScript 実行
-PySetup -> PySetup: get-pip.py をコピー
+PySetup -> PySetup: get-pip-26.0.1.py をコピー
 PySetup -> GetPip: python.exe で実行
 GetPip -> PyPI: pip.whl をダウンロード
 GetPip -> PyPI: setuptools.whl をダウンロード
@@ -48,7 +48,7 @@ GetPip --> PySetup: 完了
 get-pip.py の `--no-index` および `--find-links` オプションを使用して、ローカルの wheel ファイルから pip をインストールします。
 
 ```bash
-python get-pip.py --no-index --find-links=./pip-packages
+python get-pip-26.0.1.py --no-index --find-links=./pip-packages
 ```
 
 このアプローチにより、以下の利点があります。
@@ -63,7 +63,7 @@ python get-pip.py --no-index --find-links=./pip-packages
 @startuml オフライン pip インストールのアーキテクチャ
 caption オフライン pip インストールのアーキテクチャ
 package "packages フォルダ" {
-  [get-pip.py]
+  [get-pip-26.0.1.py]
   folder "pip-packages" {
     [pip-*.whl]
     [setuptools-*.whl]
@@ -77,7 +77,7 @@ package "処理層" {
 }
 
 getpkg --> [pip-packages] : wheel をダウンロード
-pysetup --> [get-pip.py] : オフライン実行
+pysetup --> [get-pip-26.0.1.py] : オフライン実行
 pysetup --> [pip-packages] : find-links 指定
 @enduml
 ```
@@ -201,10 +201,10 @@ Get-Packages.ps1 は、wheel ファイルを自動的にダウンロードする
 
 動作フロー
 
-1. get-pip.py をダウンロード
+1. get-pip-26.0.1.py をダウンロード
 2. Python が利用可能かを確認
    - Python が見つかった場合: `pip download` で wheel ファイルをダウンロードし、packages フォルダに配置
-   - Python が見つからない場合: get-pip.py のダウンロードのみ実施。wheel ファイルは Setup-Bin.ps1 実行時に取得
+   - Python が見つからない場合: get-pip-26.0.1.py のダウンロードのみ実施。wheel ファイルは Setup-Bin.ps1 実行時に取得
 
 この仕組みにより、以下のシナリオに対応します。
 
@@ -229,7 +229,7 @@ packages/
 │  ├─ pip-25.3-py3-none-any.whl
 │  ├─ setuptools-80.9.0-py3-none-any.whl
 │  └─ wheel-0.45.1-py3-none-any.whl
-└─ get-pip.py
+└─ get-pip-26.0.1.py
 ```
 
 ## 動作フロー
@@ -244,7 +244,7 @@ participant "Get-Packages.ps1" as GetPkg
 participant "PyPI (Internet)" as PyPI
 
 User -> GetPkg: ダウンロード実行
-GetPkg -> PyPI: get-pip.py をダウンロード
+GetPkg -> PyPI: get-pip-26.0.1.py をダウンロード
 GetPkg -> GetPkg: packages/ に保存
 
 GetPkg -> GetPkg: Python の有無を確認
@@ -254,7 +254,7 @@ alt Python が利用可能
     GetPkg -> GetPkg: packages/pip-packages/ に保存
     GetPkg --> User: 完了 (完全オフライン対応)
 else Python が見つからない
-    GetPkg --> User: get-pip.py のみ保存\n(wheel は Setup-Bin.ps1 で取得)
+    GetPkg --> User: get-pip-26.0.1.py のみ保存\n(wheel は Setup-Bin.ps1 で取得)
 end
 @enduml
 ```
@@ -267,14 +267,14 @@ caption オフライン pip インストールフロー
 actor User
 participant "Setup-Bin.ps1" as Setup
 participant "python-setup.ps1" as PySetup
-participant "get-pip.py" as GetPip
+participant "get-pip-26.0.1.py" as GetPip
 
 User -> Setup: インストール実行
 
 Setup -> Setup: Python を展開
 Setup -> PySetup: PostSetupScript 実行
 
-PySetup -> PySetup: get-pip.py をコピー
+PySetup -> PySetup: get-pip-26.0.1.py をコピー
 PySetup -> PySetup: pip-packages フォルダの存在確認
 PySetup -> GetPip: python.exe で実行\n(--no-index --find-links)
 GetPip -> GetPip: packages/pip-packages/ から\nwheel を読み込み
@@ -291,14 +291,14 @@ caption 初回オンライン pip インストールフロー
 actor User
 participant "Setup-Bin.ps1" as Setup
 participant "python-setup.ps1" as PySetup
-participant "get-pip.py" as GetPip
+participant "get-pip-26.0.1.py" as GetPip
 participant "PyPI (Internet)" as PyPI
 
 User -> Setup: インストール実行
 Setup -> Setup: Python を展開
 Setup -> PySetup: PostSetupScript 実行
 
-PySetup -> PySetup: get-pip.py をコピー
+PySetup -> PySetup: get-pip-26.0.1.py をコピー
 PySetup -> PySetup: pip-packages フォルダなし
 
 PySetup -> PyPI: pip download で wheel を取得
@@ -315,14 +315,14 @@ PySetup --> Setup: 完了 (次回はオフライン可能)
 
 #### Get-Packages.ps1
 
-1. 各パッケージのダウンロード (get-pip.py など)
+1. 各パッケージのダウンロード (get-pip-26.0.1.py など)
 2. Python の利用可否を確認
    - `Get-Command python.exe` で確認
 3. Python が利用可能な場合
    - `pip download pip setuptools wheel` で wheel ファイルをダウンロード
    - packages/pip-packages フォルダに直接保存
 4. Python が見つからない場合
-   - get-pip.py のみダウンロード
+   - get-pip-26.0.1.py のみダウンロード
    - wheel ファイルは Setup-Bin.ps1 実行時に取得
 
 #### Setup-Bin.ps1
@@ -334,11 +334,11 @@ PySetup --> Setup: 完了 (次回はオフライン可能)
 
 #### python-setup.ps1
 
-1. get-pip.py を Python ディレクトリにコピー
+1. get-pip-26.0.1.py を Python ディレクトリにコピー
 2. packages/pip-packages フォルダの存在を確認
 3. オフラインモードまたはオンラインモードで pip をインストール
-   - オフライン: `python get-pip.py --no-index --find-links=packages/pip-packages`
-   - オンライン: `pip download` で wheel を取得後、`python get-pip.py` を実行
+   - オフライン: `python get-pip-26.0.1.py --no-index --find-links=packages/pip-packages`
+   - オンライン: `pip download` で wheel を取得後、`python get-pip-26.0.1.py` を実行
 4. オンライン実行時は wheel ファイルを packages/pip-packages に保存
    - 次回実行時はオフラインインストールが可能になる
 
@@ -365,7 +365,7 @@ PySetup --> Setup: 完了 (次回はオフライン可能)
 #### 手動手順 (Python が未インストールの場合)
 
 1. インターネット接続のあるマシンで Get-Packages.ps1 を実行
-   - get-pip.py のみダウンロードされる
+   - get-pip-26.0.1.py のみダウンロードされる
 2. packages フォルダ全体をオフライン環境にコピー
 3. オフライン環境で Setup-Bin.ps1 を初回実行
    - オンライン接続がある場合、wheel ファイルが自動的に取得・保存される
