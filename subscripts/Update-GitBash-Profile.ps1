@@ -42,7 +42,7 @@ function Get-WindowsTerminalSettingsPath {
         }
     }
     
-    Write-Error "Windows Terminal settings.json not found. Please ensure Windows Terminal is installed."
+    Write-Warning "Windows Terminal settings.json not found. Skipping Git Bash profile update."
     return $null
 }
 
@@ -224,8 +224,8 @@ function Uninstall-GitBashProfile {
         $removedCount = $originalCount - $newCount
         
         if ($removedCount -eq 0) {
-            Write-Host "No profiles were removed."
-            return $false
+            Write-Host "Git Bash profile was not present. Nothing to remove."
+            return $true
         }
         
         # 設定を保存
@@ -275,7 +275,7 @@ function Main {
     # Settings.jsonのパスを取得
     $settingsPath = Get-WindowsTerminalSettingsPath
     if (-not $settingsPath) {
-        exit 1
+        exit 0
     }
     
     # 操作実行

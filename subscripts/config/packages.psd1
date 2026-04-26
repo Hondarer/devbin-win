@@ -210,6 +210,26 @@ endlocal
             DependsOn = @()
             PathDirs = @("git", "git\bin", "git\cmd")
             EnvVars = @{}
+            PostInstallScripts = @(
+                @{
+                    Path = "Update-GitBash-Profile.ps1"
+                    Arguments = @("-Install", "-Force", "-InstallDir", "<InstallDir>")
+                },
+                @{
+                    Path = "Update-MinGW-Profile.ps1"
+                    Arguments = @("-Install", "-Force")
+                }
+            )
+            PostUninstallScripts = @(
+                @{
+                    Path = "Update-GitBash-Profile.ps1"
+                    Arguments = @("-Uninstall")
+                },
+                @{
+                    Path = "Update-MinGW-Profile.ps1"
+                    Arguments = @("-Uninstall")
+                }
+            )
             DetectFiles = @("git\bin\git.exe")
             SkipIfCommand = "git"
             DisableIfCommand = "git"

@@ -59,6 +59,8 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | EnvVars | 設定する環境変数のハッシュテーブル | hashtable | `@{}` (環境変数変更なし) |
 | EnvVarIsLiteral | リテラル値として扱う環境変数名の配列 | string[] | `@()` (全てパスとして結合) |
 | DetectFiles | インストール状態を検出するファイル ($InstallDir からの相対パス) | string[] | `@()` (ファイル検出なし) |
+| PostInstallScripts | インストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
+| PostUninstallScripts | アンインストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
 | SkipIfCommand | このコマンドが PATH にある場合は PathDirs の追加をスキップ | string | なし (常に追加) |
 | DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |
 | Hidden | `$true` なら CLI メニューに表示しない | bool | `$false` (表示) |
@@ -287,6 +289,33 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
 - `UseLongPathSupport` (オプション): 長いパス対応を有効化 (ブール値)
 - `PostSetupScript` (オプション): 後処理スクリプトのファイル名 (subscripts/config/templates 内)
 - `PostExtract` (オプション): 後処理の定義
+
+### PostInstallScripts / PostUninstallScripts
+
+コンポーネントマネージャーの install / uninstall 完了後に追加で実行するスクリプトを定義します。
+
+```powershell
+@{
+    Name = "Portable Git"
+    ShortName = "git"
+    PostInstallScripts = @(
+        @{
+            Path = "Update-GitBash-Profile.ps1"
+            Arguments = @("-Install", "-Force", "-InstallDir", "<InstallDir>")
+        }
+    )
+    PostUninstallScripts = @(
+        @{
+            Path = "Update-GitBash-Profile.ps1"
+            Arguments = @("-Uninstall")
+        }
+    )
+}
+```
+
+- `Path` (必須): `subscripts/` からの相対パス
+- `Arguments` (オプション): 引数配列。`<InstallDir>` は実際のインストール先に置換される
+- スクリプト失敗時は警告を出して本体の install / uninstall は継続する
 
 ### JarWithWrapper 戦略
 

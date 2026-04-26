@@ -44,12 +44,12 @@ $itemsToInclude = @(
     "README.md",
     "docs-src",
     "subscripts",
-    "Manage-Bin.cmd",
+    "Manage-Bin.cmd" #,
 #    "Setup-Home.cmd",
-    "Install-GitBash-Profile.cmd",
-    "Uninstall-GitBash-Profile.cmd",
-    "Install-MinGW-Profile.cmd",
-    "Uninstall-MinGW-Profile.cmd"
+#   "Install-GitBash-Profile.cmd",
+#   "Uninstall-GitBash-Profile.cmd",
+#   "Install-MinGW-Profile.cmd",
+#   "Uninstall-MinGW-Profile.cmd"
 )
 
 # 除外対象のファイル一覧

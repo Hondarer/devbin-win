@@ -899,6 +899,7 @@ function Apply-CheckedState {
                 -ShortName $pkg.ShortName `
                 -Packages $State.Packages `
                 -InstallDir $State.InstallDir `
+                -ScriptDir $State.ScriptDir `
                 -Manifest $State.Manifest `
                 -Force
             if ($r) {
