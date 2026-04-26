@@ -168,6 +168,7 @@ function Get-PackageDownloadFileName {
     $url = $Package.DownloadUrl
     $uri = [Uri]$url
     $fileName = if ($Package.ContainsKey("DownloadFileName")) { $Package.DownloadFileName } else { "" }
+    $version = if ($Package.ContainsKey("Version")) { [string]$Package.Version } else { "" }
 
     if ([string]::IsNullOrWhiteSpace($fileName)) {
         $fileName = [System.IO.Path]::GetFileName($uri.AbsolutePath)
@@ -186,6 +187,24 @@ function Get-PackageDownloadFileName {
         # タグ名の先頭が "v" で始まる場合は除去
         $tagName = $tagName -replace '^v', ''
         $fileName = "$repoName-$tagName$extension"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($version) -and $fileName -notlike "*$version*") {
+        $compoundExtensions = @(".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".7z.exe")
+        $matchedCompoundExtension = $compoundExtensions | Where-Object { $fileName.EndsWith($_, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+
+        if ($matchedCompoundExtension) {
+            $baseName = $fileName.Substring(0, $fileName.Length - $matchedCompoundExtension.Length)
+            $fileName = "$baseName-$version$matchedCompoundExtension"
+        } else {
+            $extension = [System.IO.Path]::GetExtension($fileName)
+            if ([string]::IsNullOrEmpty($extension)) {
+                $fileName = "$fileName-$version"
+            } else {
+                $baseName = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
+                $fileName = "$baseName-$version$extension"
+            }
+        }
     }
 
     return $fileName
