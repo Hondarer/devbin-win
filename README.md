@@ -15,8 +15,8 @@ from [https://nodejs.org/en](https://nodejs.org/en)
 
 from [https://github.com/jgm/pandoc](https://github.com/jgm/pandoc)
 
-- [/releases/tag/3.9.0.2](https://github.com/jgm/pandoc/releases/tag/3.9.0.2)
-    - [pandoc-3.9.0.2-windows-x86_64.zip](https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip)
+- [/releases/tag/3.9](https://github.com/jgm/pandoc/releases/tag/3.9)
+    - [pandoc-3.9-windows-x86_64.zip](https://github.com/jgm/pandoc/releases/download/3.9/pandoc-3.9-windows-x86_64.zip)
 
 ### pandoc-crossref
 

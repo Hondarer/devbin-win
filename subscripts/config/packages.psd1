@@ -19,10 +19,10 @@
         @{
             Name = "Pandoc"
             ShortName = "pandoc"
-            Version = "3.9.0.2"
+            Version = "3.9"
             ArchivePattern = "pandoc-.*-windows-x86_64\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip"
+            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.9/pandoc-3.9-windows-x86_64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
