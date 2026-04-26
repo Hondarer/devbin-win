@@ -438,19 +438,24 @@ function Uninstall-Component {
     }
     $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }
 
+    $targetDirRemoved = $false
     if ($targetDir) {
         # TargetDirectory 系: ディレクトリごと削除
+        # テンプレート未解決 (例: "jdk-{0}") でパスが存在しない場合はフォールスルー
         $targetPath = Join-Path $InstallDir $targetDir
         if (Test-Path $targetPath) {
             try {
                 Remove-Item -Path $targetPath -Recurse -Force -ErrorAction Stop
                 Write-Host "  Removed: $targetDir"
+                $targetDirRemoved = $true
             } catch {
                 Write-Host "Warning: Failed to remove '$targetDir': $($_.Exception.Message)" -ForegroundColor Yellow
             }
         }
-    } elseif ($files.Count -gt 0) {
-        # フラット系: 個別ファイル削除 (参照カウント確認)
+    }
+
+    if (-not $targetDirRemoved) {
+        # 他コンポーネントのファイル一覧を収集 (参照カウント・ルートディレクトリ保護用)
         $allOtherFiles = @{}
         foreach ($otherShortName in $Manifest.components.Keys) {
             if ($otherShortName -eq $ShortName) { continue }
@@ -460,32 +465,70 @@ function Uninstall-Component {
             }
         }
 
-        foreach ($file in $files) {
-            if ($allOtherFiles.ContainsKey($file)) {
-                Write-Host "  Skipped (shared): $file"
-                continue
+        if ($files.Count -gt 0) {
+            # ファイルリスト削除 (参照カウント確認)
+            foreach ($file in $files) {
+                if ($allOtherFiles.ContainsKey($file)) {
+                    Write-Host "  Skipped (shared): $file"
+                    continue
+                }
+                $fullPath = Join-Path $InstallDir $file
+                if (Test-Path $fullPath) {
+                    try {
+                        Remove-Item -Path $fullPath -Force -ErrorAction Stop
+                        Write-Host "  Removed: $file"
+                    } catch {
+                        Write-Host "Warning: Failed to remove '$file': $($_.Exception.Message)" -ForegroundColor Yellow
+                    }
+                }
             }
-            $fullPath = Join-Path $InstallDir $file
-            if (Test-Path $fullPath) {
-                try {
-                    Remove-Item -Path $fullPath -Force -ErrorAction Stop
-                    Write-Host "  Removed: $file"
-                } catch {
-                    Write-Host "Warning: Failed to remove '$file': $($_.Exception.Message)" -ForegroundColor Yellow
+        } else {
+            # ファイル一覧なし: DetectFiles で削除対象を特定
+            $detectFiles = if ($pkg.ContainsKey("DetectFiles")) { @($pkg.DetectFiles) } else { @() }
+            foreach ($df in $detectFiles) {
+                $fullPath = Join-Path $InstallDir $df
+                if (Test-Path $fullPath) {
+                    try {
+                        $dfItem = Get-Item $fullPath -ErrorAction SilentlyContinue
+                        if ($dfItem -and $dfItem.PSIsContainer) {
+                            Remove-Item -Path $fullPath -Recurse -Force -ErrorAction Stop
+                        } else {
+                            Remove-Item -Path $fullPath -Force -ErrorAction Stop
+                        }
+                        Write-Host "  Removed: $df"
+                    } catch {
+                        Write-Host "Warning: Failed to remove '$df': $($_.Exception.Message)" -ForegroundColor Yellow
+                    }
                 }
             }
         }
-    } else {
-        # ファイル一覧なし: DetectFiles で削除対象を特定
-        $detectFiles = if ($pkg.ContainsKey("DetectFiles")) { @($pkg.DetectFiles) } else { @() }
-        foreach ($df in $detectFiles) {
-            $fullPath = Join-Path $InstallDir $df
-            if (Test-Path $fullPath) {
-                try {
-                    Remove-Item -Path $fullPath -Force -ErrorAction Stop
-                    Write-Host "  Removed: $df"
-                } catch {
-                    Write-Host "Warning: Failed to remove '$df': $($_.Exception.Message)" -ForegroundColor Yellow
+
+        # ファイル削除後、孤立したルートディレクトリを削除
+        # (VersionNormalized のテンプレート未解決や DetectFiles がファイルパスの場合に対応)
+        $sourcePaths = if ($files.Count -gt 0) { $files } else {
+            if ($pkg.ContainsKey("DetectFiles")) { @($pkg.DetectFiles) } else { @() }
+        }
+        $rootDirs = $sourcePaths |
+            Where-Object { $_ } |
+            ForEach-Object { ($_ -split '[\\\/]')[0] } |
+            Where-Object { $_ } |
+            Sort-Object -Unique
+        foreach ($rd in $rootDirs) {
+            $rdPath = Join-Path $InstallDir $rd
+            if (Test-Path $rdPath) {
+                $rdItem = Get-Item $rdPath -ErrorAction SilentlyContinue
+                if ($rdItem -and $rdItem.PSIsContainer) {
+                    $hasOtherRefs = ($allOtherFiles.Keys |
+                        Where-Object { $_ -and $_ -match "^$([regex]::Escape($rd))[\\\/]" } |
+                        Measure-Object).Count -gt 0
+                    if (-not $hasOtherRefs) {
+                        try {
+                            Remove-Item -Path $rdPath -Recurse -Force -ErrorAction SilentlyContinue
+                            Write-Host "  Removed directory: $rd"
+                        } catch {
+                            Write-Host "Warning: Failed to remove directory '$rd': $($_.Exception.Message)" -ForegroundColor Yellow
+                        }
+                    }
                 }
             }
         }
