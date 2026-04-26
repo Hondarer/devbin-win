@@ -5,6 +5,104 @@
 $script:HEADER_ROWS = 5
 # フッター行数 (スクロール情報 + 凡例 + 空行 + キーバインド+選択数)
 $script:FOOTER_ROWS = 4
+$script:INPUT_RECORD_KEY_EVENT = 0x0001
+$script:INPUT_RECORD_MOUSE_EVENT = 0x0002
+$script:INPUT_RECORD_WINDOW_BUFFER_SIZE_EVENT = 0x0004
+$script:MOUSE_WHEELED_EVENT = 0x0004
+$script:SHIFT_PRESSED = 0x0010
+$script:LEFT_ALT_PRESSED = 0x0002
+$script:RIGHT_ALT_PRESSED = 0x0001
+$script:LEFT_CTRL_PRESSED = 0x0008
+$script:RIGHT_CTRL_PRESSED = 0x0004
+$script:STD_INPUT_HANDLE = -10
+$script:ENABLE_MOUSE_INPUT = 0x0010
+$script:ENABLE_QUICK_EDIT_MODE = 0x0040
+$script:ENABLE_EXTENDED_FLAGS = 0x0080
+
+if (-not ("Devbin.ConsoleInputNative" -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+namespace Devbin
+{
+    [StructLayout(LayoutKind.Sequential)]
+    public struct COORD
+    {
+        public short X;
+        public short Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KEY_EVENT_RECORD
+    {
+        public int bKeyDown;
+        public ushort wRepeatCount;
+        public ushort wVirtualKeyCode;
+        public ushort wVirtualScanCode;
+        public ushort UnicodeChar;
+        public uint dwControlKeyState;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSE_EVENT_RECORD
+    {
+        public COORD dwMousePosition;
+        public uint dwButtonState;
+        public uint dwControlKeyState;
+        public uint dwEventFlags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct WINDOW_BUFFER_SIZE_RECORD
+    {
+        public COORD dwSize;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    public struct INPUT_RECORD
+    {
+        [FieldOffset(0)]
+        public short EventType;
+
+        [FieldOffset(4)]
+        public KEY_EVENT_RECORD KeyEvent;
+
+        [FieldOffset(4)]
+        public MOUSE_EVENT_RECORD MouseEvent;
+
+        [FieldOffset(4)]
+        public WINDOW_BUFFER_SIZE_RECORD WindowBufferSizeEvent;
+    }
+
+    public static class ConsoleInputNative
+    {
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr GetStdHandle(int nStdHandle);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ReadConsoleInput(
+            IntPtr hConsoleInput,
+            [Out] INPUT_RECORD[] lpBuffer,
+            uint nLength,
+            out uint lpNumberOfEventsRead);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool FlushConsoleInputBuffer(IntPtr hConsoleInput);
+    }
+}
+"@
+}
 
 # 表示用コンポーネント一覧を構築する (Hidden パッケージを除外)
 function Get-MenuItems {
@@ -231,6 +329,189 @@ function Update-Viewport {
     }
 }
 
+function Move-MenuCursor {
+    param(
+        [hashtable]$State,
+        [int]$Delta
+    )
+
+    if ($Delta -eq 0 -or $State.Items.Count -eq 0) {
+        return "continue"
+    }
+
+    $oldIdx = $State.CursorIndex
+    $newIdx = [Math]::Max(0, [Math]::Min($State.Items.Count - 1, $oldIdx + $Delta))
+    if ($newIdx -eq $oldIdx) {
+        return "continue"
+    }
+
+    $State.CursorIndex = $newIdx
+
+    if ($newIdx -lt $State.ViewportTop -or $newIdx -ge $State.ViewportTop + $State.ViewportSize) {
+        # ビューポート外: スクロールしてフルリドロー
+        Update-Viewport -State $State
+        $State.NeedRedraw = $true
+    } else {
+        # ビューポート内: 2行だけ更新
+        $old = $State.Items[$oldIdx]
+        Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
+            -Item $old -IsChecked $State.Checked[$old.ShortName] -IsReinstall $State.Reinstall[$old.ShortName] `
+            -IsDisabled $State.Disabled[$old.ShortName] `
+            -Status $State.Statuses[$old.ShortName] -IsCursor $false -Packages $State.Packages
+
+        $new = $State.Items[$newIdx]
+        Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
+            -Item $new -IsChecked $State.Checked[$new.ShortName] -IsReinstall $State.Reinstall[$new.ShortName] `
+            -IsDisabled $State.Disabled[$new.ShortName] `
+            -Status $State.Statuses[$new.ShortName] -IsCursor $true -Packages $State.Packages
+    }
+
+    return "continue"
+}
+
+function Set-AllMenuItemsChecked {
+    param([hashtable]$State)
+
+    foreach ($item in $State.Items) {
+        # Disabled かつ NotInstalled はチェック ON を禁止
+        if ($State.Disabled[$item.ShortName] -and $State.Statuses[$item.ShortName] -eq "NotInstalled") {
+            continue
+        }
+        $State.Checked[$item.ShortName] = $true
+        $State.Reinstall[$item.ShortName] = $false
+    }
+
+    $State.NeedRedraw = $true
+}
+
+function Clear-AllMenuItemsChecked {
+    param([hashtable]$State)
+
+    foreach ($item in $State.Items) {
+        $State.Checked[$item.ShortName] = $false
+        $State.Reinstall[$item.ShortName] = $false
+    }
+
+    $State.NeedRedraw = $true
+}
+
+function ConvertTo-ConsoleKeyInfo {
+    param($KeyEvent)
+
+    $controlState = $KeyEvent.dwControlKeyState
+    $virtualKeyCode = [int]$KeyEvent.wVirtualKeyCode
+    $unicodeChar = [char][uint16]$KeyEvent.UnicodeChar
+    $consoleKey = if ([System.Enum]::IsDefined([System.ConsoleKey], $virtualKeyCode)) {
+        [System.ConsoleKey]$virtualKeyCode
+    } else {
+        [System.ConsoleKey]::NoName
+    }
+
+    return [System.ConsoleKeyInfo]::new(
+        $unicodeChar,
+        $consoleKey,
+        (($controlState -band $script:SHIFT_PRESSED) -ne 0),
+        ((($controlState -band $script:LEFT_ALT_PRESSED) -ne 0) -or (($controlState -band $script:RIGHT_ALT_PRESSED) -ne 0)),
+        ((($controlState -band $script:LEFT_CTRL_PRESSED) -ne 0) -or (($controlState -band $script:RIGHT_CTRL_PRESSED) -ne 0))
+    )
+}
+
+function Enable-ConsoleMouseInput {
+    $inputHandle = [Devbin.ConsoleInputNative]::GetStdHandle($script:STD_INPUT_HANDLE)
+    if ($inputHandle -eq [IntPtr]::Zero -or $inputHandle -eq [IntPtr]::new(-1)) {
+        return @{ Enabled = $false }
+    }
+
+    $originalMode = 0
+    if (-not [Devbin.ConsoleInputNative]::GetConsoleMode($inputHandle, [ref]$originalMode)) {
+        return @{ Enabled = $false }
+    }
+
+    $mouseMode = ($originalMode -bor $script:ENABLE_MOUSE_INPUT -bor $script:ENABLE_EXTENDED_FLAGS) -band (-bnot $script:ENABLE_QUICK_EDIT_MODE)
+    if (-not [Devbin.ConsoleInputNative]::SetConsoleMode($inputHandle, [uint32]$mouseMode)) {
+        return @{ Enabled = $false; Handle = $inputHandle; OriginalMode = $originalMode }
+    }
+
+    [Devbin.ConsoleInputNative]::FlushConsoleInputBuffer($inputHandle) | Out-Null
+    return @{ Enabled = $true; Handle = $inputHandle; OriginalMode = $originalMode }
+}
+
+function Restore-ConsoleInputMode {
+    param([hashtable]$InputModeState)
+
+    if ($InputModeState -and $InputModeState.ContainsKey("Handle") -and $InputModeState.ContainsKey("OriginalMode")) {
+        [Devbin.ConsoleInputNative]::SetConsoleMode($InputModeState.Handle, [uint32]$InputModeState.OriginalMode) | Out-Null
+    }
+}
+
+function Read-MenuInput {
+    param([hashtable]$InputModeState)
+
+    if (-not $InputModeState.Enabled) {
+        return @{ Kind = "Key"; KeyInfo = [Console]::ReadKey($true) }
+    }
+
+    $records = New-Object 'Devbin.INPUT_RECORD[]' 1
+    $readCount = 0
+    while ($true) {
+        $ok = [Devbin.ConsoleInputNative]::ReadConsoleInput($InputModeState.Handle, $records, 1, [ref]$readCount)
+        if (-not $ok -or $readCount -le 0) {
+            return @{ Kind = "Key"; KeyInfo = [Console]::ReadKey($true) }
+        }
+
+        $record = $records[0]
+        switch ($record.EventType) {
+            $script:INPUT_RECORD_KEY_EVENT {
+                if ($record.KeyEvent.bKeyDown -eq 0) {
+                    continue
+                }
+                return @{ Kind = "Key"; KeyInfo = (ConvertTo-ConsoleKeyInfo -KeyEvent $record.KeyEvent) }
+            }
+
+            $script:INPUT_RECORD_MOUSE_EVENT {
+                if ($record.MouseEvent.dwEventFlags -ne $script:MOUSE_WHEELED_EVENT) {
+                    continue
+                }
+                return @{ Kind = "Mouse"; MouseEvent = $record.MouseEvent }
+            }
+
+            $script:INPUT_RECORD_WINDOW_BUFFER_SIZE_EVENT {
+                return @{ Kind = "Resize" }
+            }
+        }
+    }
+}
+
+function Handle-MouseInput {
+    param(
+        [hashtable]$State,
+        $MouseEvent
+    )
+
+    if ($MouseEvent.dwEventFlags -ne $script:MOUSE_WHEELED_EVENT) {
+        return "continue"
+    }
+
+    $menuTop = $script:HEADER_ROWS
+    $menuBottom = $script:HEADER_ROWS + $State.ViewportSize - 1
+    $mouseRow = [int]$MouseEvent.dwMousePosition.Y
+    if ($mouseRow -lt $menuTop -or $mouseRow -gt $menuBottom) {
+        return "continue"
+    }
+
+    $wheelDeltaBits = [int](($MouseEvent.dwButtonState -shr 16) -band 0xFFFF)
+    $wheelDelta = if ($wheelDeltaBits -ge 0x8000) { $wheelDeltaBits - 0x10000 } else { $wheelDeltaBits }
+    if ($wheelDelta -eq 0) {
+        return "continue"
+    }
+
+    if ($wheelDelta -gt 0) {
+        return Move-MenuCursor -State $State -Delta -1
+    }
+
+    return Move-MenuCursor -State $State -Delta 1
+}
+
 # フッターを描画する
 function Render-Footer {
     param([hashtable]$State)
@@ -250,7 +531,7 @@ function Render-Footer {
     # キーバインド + 選択数
     [Console]::SetCursorPosition(0, $footerStart + 2)
     $checkedCount = ($State.Checked.Values | Where-Object { $_ }).Count
-    [Console]::Write((" ↑↓ 移動 | Space 選択切替 | A 全選択 | N 全解除 | Enter 適用 | Q 終了 | 選択: $checkedCount / $($State.Items.Count)").PadRight($width))
+    [Console]::Write((" ↑↓/Wheel 移動 | Space 選択切替 | A 全選択 | N 全解除 | Enter 適用 | Q 終了 | 選択: $checkedCount / $($State.Items.Count)").PadRight($width))
 
     [Console]::ResetColor()
 }
@@ -671,55 +952,11 @@ function Handle-KeyInput {
 
     switch ($KeyInfo.Key) {
         "UpArrow" {
-            $oldIdx = $State.CursorIndex
-            if ($oldIdx -le 0) { return "continue" }
-            $State.CursorIndex = $oldIdx - 1
-            $newIdx = $State.CursorIndex
-
-            if ($newIdx -lt $State.ViewportTop -or $newIdx -ge $State.ViewportTop + $State.ViewportSize) {
-                # ビューポート外: スクロールしてフルリドロー
-                Update-Viewport -State $State
-                $State.NeedRedraw = $true
-            } else {
-                # ビューポート内: 2行だけ更新
-                $old = $State.Items[$oldIdx]
-                Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
-                    -Item $old -IsChecked $State.Checked[$old.ShortName] -IsReinstall $State.Reinstall[$old.ShortName] `
-                    -IsDisabled $State.Disabled[$old.ShortName] `
-                    -Status $State.Statuses[$old.ShortName] -IsCursor $false -Packages $State.Packages
-
-                $new = $State.Items[$newIdx]
-                Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
-                    -Item $new -IsChecked $State.Checked[$new.ShortName] -IsReinstall $State.Reinstall[$new.ShortName] `
-                    -IsDisabled $State.Disabled[$new.ShortName] `
-                    -Status $State.Statuses[$new.ShortName] -IsCursor $true -Packages $State.Packages
-            }
+            return Move-MenuCursor -State $State -Delta -1
         }
 
         "DownArrow" {
-            $oldIdx = $State.CursorIndex
-            if ($oldIdx -ge $State.Items.Count - 1) { return "continue" }
-            $State.CursorIndex = $oldIdx + 1
-            $newIdx = $State.CursorIndex
-
-            if ($newIdx -lt $State.ViewportTop -or $newIdx -ge $State.ViewportTop + $State.ViewportSize) {
-                # ビューポート外: スクロールしてフルリドロー
-                Update-Viewport -State $State
-                $State.NeedRedraw = $true
-            } else {
-                # ビューポート内: 2行だけ更新
-                $old = $State.Items[$oldIdx]
-                Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
-                    -Item $old -IsChecked $State.Checked[$old.ShortName] -IsReinstall $State.Reinstall[$old.ShortName] `
-                    -IsDisabled $State.Disabled[$old.ShortName] `
-                    -Status $State.Statuses[$old.ShortName] -IsCursor $false -Packages $State.Packages
-
-                $new = $State.Items[$newIdx]
-                Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
-                    -Item $new -IsChecked $State.Checked[$new.ShortName] -IsReinstall $State.Reinstall[$new.ShortName] `
-                    -IsDisabled $State.Disabled[$new.ShortName] `
-                    -Status $State.Statuses[$new.ShortName] -IsCursor $true -Packages $State.Packages
-            }
+            return Move-MenuCursor -State $State -Delta 1
         }
 
         "Spacebar" {
@@ -745,25 +982,25 @@ function Handle-KeyInput {
             return "quit"
         }
 
+        "A" {
+            Set-AllMenuItemsChecked -State $State
+        }
+
+        "N" {
+            Clear-AllMenuItemsChecked -State $State
+        }
+
+        "Q" {
+            return "quit"
+        }
+
         default {
             switch ($KeyInfo.KeyChar) {
                 { $_ -eq 'a' -or $_ -eq 'A' } {
-                    foreach ($item in $State.Items) {
-                        # Disabled かつ NotInstalled はチェック ON を禁止
-                        if ($State.Disabled[$item.ShortName] -and $State.Statuses[$item.ShortName] -eq "NotInstalled") {
-                            continue
-                        }
-                        $State.Checked[$item.ShortName] = $true
-                        $State.Reinstall[$item.ShortName] = $false
-                    }
-                    $State.NeedRedraw = $true
+                    Set-AllMenuItemsChecked -State $State
                 }
                 { $_ -eq 'n' -or $_ -eq 'N' } {
-                    foreach ($item in $State.Items) {
-                        $State.Checked[$item.ShortName] = $false
-                        $State.Reinstall[$item.ShortName] = $false
-                    }
-                    $State.NeedRedraw = $true
+                    Clear-AllMenuItemsChecked -State $State
                 }
                 { $_ -eq 'q' -or $_ -eq 'Q' } {
                     return "quit"
@@ -810,6 +1047,7 @@ function Invoke-MenuLoop {
         -ScriptDir $ScriptDir
 
     $originalCursorVisible = [Console]::CursorVisible
+    $inputModeState = Enable-ConsoleMouseInput
 
     try {
         while ($true) {
@@ -817,14 +1055,26 @@ function Invoke-MenuLoop {
                 Render-Menu -State $state
             }
 
-            $keyInfo = [Console]::ReadKey($true)
-            $result = Handle-KeyInput -State $state -KeyInfo $keyInfo
+            $inputEvent = Read-MenuInput -InputModeState $inputModeState
+            switch ($inputEvent.Kind) {
+                "Mouse" {
+                    $result = Handle-MouseInput -State $state -MouseEvent $inputEvent.MouseEvent
+                }
+                "Resize" {
+                    $state.NeedRedraw = $true
+                    $result = "continue"
+                }
+                default {
+                    $result = Handle-KeyInput -State $state -KeyInfo $inputEvent.KeyInfo
+                }
+            }
 
             if ($result -eq "quit") {
                 break
             }
         }
     } finally {
+        Restore-ConsoleInputMode -InputModeState $inputModeState
         [Console]::CursorVisible = $originalCursorVisible
         [Console]::ResetColor()
         [Console]::Clear()
