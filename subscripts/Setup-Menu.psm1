@@ -353,19 +353,18 @@ function Toggle-CheckedItem {
             }
             # Unchecked の場合は何もしない
         } else {
-            # 3状態サイクル: Checked → Reinstall → Unchecked → Checked
+            # 3状態サイクル: Checked → Unchecked → Reinstall → Checked
             if ($State.Checked[$shortName] -and -not $State.Reinstall[$shortName]) {
-                # Checked → Reinstall
-                $State.Reinstall[$shortName] = $true
-                $propagateCheck = $true
-            } elseif ($State.Reinstall[$shortName]) {
-                # Reinstall → Unchecked
-                $State.Reinstall[$shortName] = $false
+                # Checked → Unchecked
                 $State.Checked[$shortName] = $false
-            } else {
-                # Unchecked → Checked
-                $State.Checked[$shortName] = $true
+            } elseif ($State.Reinstall[$shortName]) {
+                # Reinstall → Checked
+                $State.Reinstall[$shortName] = $false
                 $propagateCheck = $true
+            } else {
+                # Unchecked → Reinstall
+                $State.Checked[$shortName] = $true
+                $State.Reinstall[$shortName] = $true
             }
         }
     } else {
