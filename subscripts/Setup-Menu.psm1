@@ -184,6 +184,63 @@ function Set-MenuSelectionState {
     }
 }
 
+function Get-FontRegistryMatchState {
+    param(
+        [string]$FontName,
+        [string]$RegistryPath,
+        [string]$InstallDir = ""
+    )
+
+    $result = @{
+        HasMatch = $false
+        IsOwn    = $false
+    }
+
+    if ([string]::IsNullOrWhiteSpace($FontName) -or -not (Test-Path $RegistryPath)) {
+        return $result
+    }
+
+    $fontProps = Get-ItemProperty -Path $RegistryPath -ErrorAction SilentlyContinue
+    if (-not $fontProps) {
+        return $result
+    }
+
+    $normalizedInstallDir = ""
+    if ($InstallDir) {
+        try {
+            $normalizedInstallDir = [System.IO.Path]::GetFullPath($InstallDir)
+        } catch {
+            $normalizedInstallDir = $InstallDir
+        }
+        if ($normalizedInstallDir -and -not $normalizedInstallDir.EndsWith('\')) {
+            $normalizedInstallDir += '\'
+        }
+    }
+
+    $matches = $fontProps.PSObject.Properties | Where-Object { $_.Name -like "*$FontName*" }
+    foreach ($match in $matches) {
+        $result.HasMatch = $true
+        $fontPath = if ($null -ne $match.Value) { [string]$match.Value } else { "" }
+        if (-not $normalizedInstallDir -or [string]::IsNullOrWhiteSpace($fontPath)) {
+            continue
+        }
+
+        $normalizedFontPath = ""
+        try {
+            $normalizedFontPath = [System.IO.Path]::GetFullPath($fontPath)
+        } catch {
+            $normalizedFontPath = $fontPath
+        }
+
+        if ($normalizedFontPath.StartsWith($normalizedInstallDir, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $result.IsOwn = $true
+            break
+        }
+    }
+
+    return $result
+}
+
 # メニュー状態を初期化する
 function Initialize-MenuState {
     param(
@@ -208,14 +265,15 @@ function Initialize-MenuState {
 
     # Disabled 判定: DisableIfCommand が devbin-win 外部で見つかった場合に非活性化
     $disabled = @{}
+    $resolvedInstall = Resolve-Path $InstallDir -ErrorAction SilentlyContinue
+    $absInstallDir = if ($resolvedInstall) { $resolvedInstall.Path } else { $InstallDir }
+
     foreach ($item in $items) {
         $disableCmd = if ($item.ContainsKey("DisableIfCommand")) { $item.DisableIfCommand } else { "" }
         if ($disableCmd) {
             $found = Get-Command $disableCmd -ErrorAction SilentlyContinue
             if ($found -and $found.Source) {
                 $cmdPath = $found.Source
-                $resolvedInstall = Resolve-Path $InstallDir -ErrorAction SilentlyContinue
-                $absInstallDir = if ($resolvedInstall) { $resolvedInstall.Path } else { "" }
                 $isOwn = $absInstallDir -and $cmdPath.StartsWith($absInstallDir, [System.StringComparison]::OrdinalIgnoreCase)
                 $disabled[$item.ShortName] = -not $isOwn
             } else {
@@ -223,6 +281,30 @@ function Initialize-MenuState {
             }
         } else {
             $disabled[$item.ShortName] = $false
+        }
+    }
+
+    # Disabled 判定: DisableIfFont が HKCU/HKLM で devbin-win 外部登録済みの場合に非活性化
+    foreach ($item in $items) {
+        if ($disabled[$item.ShortName]) { continue }
+
+        $disableFontName = if ($item.ContainsKey("DisableIfFont")) { $item.DisableIfFont } else { "" }
+        if (-not $disableFontName) { continue }
+
+        $hkcuMatch = Get-FontRegistryMatchState `
+            -FontName $disableFontName `
+            -RegistryPath "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" `
+            -InstallDir $absInstallDir
+        if ($hkcuMatch.HasMatch -and -not $hkcuMatch.IsOwn) {
+            $disabled[$item.ShortName] = $true
+            continue
+        }
+
+        $hklmMatch = Get-FontRegistryMatchState `
+            -FontName $disableFontName `
+            -RegistryPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+        if ($hklmMatch.HasMatch) {
+            $disabled[$item.ShortName] = $true
         }
     }
 

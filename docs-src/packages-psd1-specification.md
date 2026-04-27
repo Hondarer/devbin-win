@@ -63,6 +63,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | PostUninstallScripts | アンインストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
 | SkipIfCommand | このコマンドが PATH にある場合は PathDirs の追加をスキップ | string | なし (常に追加) |
 | DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |
+| DisableIfFont | このフォント名を持つ登録が HKCU/HKLM にあり、かつ HKCU の value data が devbin-win 配下を指していない場合、メニューでのインストール操作を無効化する。UI 表示は `External` に統一 | string | なし (常に有効) |
 | Hidden | `$true` なら CLI メニューに表示しない | bool | `$false` (表示) |
 
 ### DependsOn
@@ -120,6 +121,19 @@ DetectFiles = @("plantuml.jar", "plantuml.cmd")
 
 ```powershell
 Hidden = $true   # メニュー非表示・自動管理
+```
+
+### DisableIfFont
+
+フォント系パッケージで、同名フォントが既に登録済みならメニューからの新規インストールを無効化したい場合に使用します。
+
+- `HKCU` の value name を照合し、value data が `$InstallDir` 配下なら devbin 自身の登録として扱う
+- `HKCU` に一致があっても value data が `$InstallDir` 配下以外なら `External`
+- `HKLM` に一致がある場合も `External`
+- UI 表示は原因を分けず `External` に統一する
+
+```powershell
+DisableIfFont = "UDEV Gothic HSRFJPDOC"
 ```
 
 ### 共通プロパティの詳細
