@@ -518,7 +518,7 @@ endlocal
             )
             DetectFiles = @("fonts\UDEVGothicHSRFJPDOC\UDEVGothicHSRFJPDOC-Regular.ttf")
             DisableIfFont = "UDEV Gothic HSRFJPDOC"
-            DefaultChecked = $false
+            DefaultChecked = $true
         }
     )
 }
