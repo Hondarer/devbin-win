@@ -22,13 +22,13 @@ if ((Test-Path $pythonExe) -and !(Test-Path $python3Exe)) {
     }
 }
 
-# get-pip.py が存在する場合はコピー
-$getPipFile = Get-ChildItem "packages\get-pip*.py" | Select-Object -First 1
-$getPipPath = if ($getPipFile) { $getPipFile.FullName } else { "" }
-if ($getPipPath -and (Test-Path $getPipPath)) {
-    $getPipDestination = Join-Path $TargetPath "get-pip.py"
-    Copy-Item -Path $getPipPath -Destination $getPipDestination -Force
-    Write-Host "Copied get-pip.py to Python directory"
+# pip.pyz が存在する場合はコピー
+$pipPyzFile = Get-ChildItem "packages\pip-*.pyz" | Select-Object -First 1
+$pipPyzPath = if ($pipPyzFile) { $pipPyzFile.FullName } else { "" }
+if ($pipPyzPath -and (Test-Path $pipPyzPath)) {
+    $pipPyzDestination = Join-Path $TargetPath "pip.pyz"
+    Copy-Item -Path $pipPyzPath -Destination $pipPyzDestination -Force
+    Write-Host "Copied pip.pyz to Python directory"
 
     # site-packages を有効にするため pth ファイルをパッチ
     $pthFiles = Get-ChildItem -Path $TargetPath -Filter "*._pth"
@@ -100,22 +100,20 @@ if ($getPipPath -and (Test-Path $getPipPath)) {
             if ($offlineMode) {
                 Write-Host "Using offline installation with local wheel files..."
                 $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
-                & $pythonExe $getPipDestination --no-warn-script-location `
-                    --no-index --find-links=$pipPackagesAbsPath
+                & $pythonExe $pipPyzDestination install --no-warn-script-location `
+                    --no-index --find-links=$pipPackagesAbsPath pip setuptools wheel
             } else {
                 Write-Host "Using online installation (downloading from PyPI)..."
 
-                # 一時ディレクトリに wheel をダウンロード
+                # pip.pyz でオンラインインストール
+                & $pythonExe $pipPyzDestination install --no-warn-script-location pip setuptools wheel
+
+                # インストール後に wheel を取得して次回オフライン用に保存
                 $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
                 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
-                # pip download で wheel ファイルを取得
                 & $pythonExe -m pip download pip setuptools wheel --dest $tempDir --no-deps 2>$null
 
-                # get-pip.py で通常インストール
-                & $pythonExe $getPipDestination --no-warn-script-location
-
-                # ダウンロードした wheel を packages/pip-packages に保存
                 if (Test-Path $tempDir) {
                     New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
                     Copy-Item -Path "$tempDir\*.whl" -Destination $pipPackagesDir -Force
@@ -140,7 +138,7 @@ if ($getPipPath -and (Test-Path $getPipPath)) {
         Write-Host "Warning: python.exe not found, skipping pip installation"
     }
 } else {
-    Write-Host "Warning: get-pip.py not found at $getPipPath, skipping pip installation"
+    Write-Host "Warning: pip.pyz not found at $pipPyzPath, skipping pip installation"
 }
 
 Write-Host "Python post-setup completed."

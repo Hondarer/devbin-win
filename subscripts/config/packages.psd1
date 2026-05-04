@@ -156,14 +156,14 @@ endlocal
             DefaultChecked = $true
         },
 
-        # get-pip.py (Python に関連するが独立したダウンロード)
+        # pip.pyz (Python に関連するが独立したダウンロード)
         @{
-            Name = "get-pip.py"
+            Name = "pip.pyz"
             ShortName = "get-pip"
-            Version = "26.0.1"
-            ArchivePattern = "get-pip-26\.0\.1\.py$"
+            Version = "26.1"
+            ArchivePattern = "^pip-26\.1\.pyz$"
             ExtractStrategy = "CopyToPackages"
-            DownloadUrl = "https://bootstrap.pypa.io/pip/26.0.1/get-pip.py"
+            DownloadUrl = "https://bootstrap.pypa.io/pip/zipapp/pip-26.1.pyz"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
