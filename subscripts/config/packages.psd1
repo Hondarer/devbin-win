@@ -368,7 +368,7 @@ endlocal
             ArchivePattern = "^clang\+llvm-.*-x86_64-pc-windows-msvc\.tar\.xz$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
-            FilePattern = "^(clang-format\.exe|git-clang-format|git-clang-format\.cmd)$"
+            FilePattern = "^(clang-format\.exe|git-clang-format|git-clang-format\.bat)$"
             PostSetupScript = "clang-format-setup.ps1"
             DownloadUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz"
             DependsOn = @()

@@ -200,7 +200,7 @@ tar.xz アーカイブと PostSetupScript を使用した例:
 }
 ```
 
-この例では、大きな LLVM アーカイブから 3 ファイルのみを抽出し、`clang-format-setup.ps1` で `git-clang-format.cmd` 内の `py` コマンドを `python3` に置換します。
+この例では、大きな LLVM アーカイブから 3 ファイルのみを抽出し、`clang-format-setup.ps1` で `git-clang-format.bat` 内の `py` コマンドを `python3` に置換します。
 
 #### 適用パッケージ
 
