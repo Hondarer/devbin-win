@@ -32,7 +32,7 @@ function Expand-ArchiveToTemp {
     if ($fileExtension -eq ".zip") {
         Expand-Archive -Path $ArchiveFile -DestinationPath $TempDir -Force
     }
-    elseif ($fileExtension -in @(".7z", ".zst")) {
+    elseif ($fileExtension -in @(".7z", ".zst", ".xz")) {
         $tarPath = "$env:WINDIR\System32\tar.exe"
         if (Test-Path $tarPath) {
             Write-Host "Using Windows built-in tar.exe (libarchive) for $fileExtension extraction..."
@@ -749,16 +749,13 @@ function Invoke-ExtractStrategy {
 
         # PostSetupScript 実行
         if ($PackageConfig.PostSetupScript) {
-            if (-not $targetPath) {
-                Write-Host "Warning: targetPath is not set for PostSetupScript" -ForegroundColor Yellow
+            $scriptTargetPath = if ($targetPath) { $targetPath } else { $BinDir }
+            $scriptPath = Join-Path $ScriptDir "config\templates\$($PackageConfig.PostSetupScript)"
+            if (Test-Path $scriptPath) {
+                Write-Host "Running post-setup script: $($PackageConfig.PostSetupScript)"
+                & $scriptPath -TargetPath $scriptTargetPath
             } else {
-                $scriptPath = Join-Path $ScriptDir "config\templates\$($PackageConfig.PostSetupScript)"
-                if (Test-Path $scriptPath) {
-                    Write-Host "Running post-setup script: $($PackageConfig.PostSetupScript)"
-                    & $scriptPath -TargetPath $targetPath
-                } else {
-                    Write-Host "Warning: Post-setup script not found: $scriptPath" -ForegroundColor Yellow
-                }
+                Write-Host "Warning: Post-setup script not found: $scriptPath" -ForegroundColor Yellow
             }
         }
 

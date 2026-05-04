@@ -17,7 +17,7 @@ subscripts/Setup-Strategies.psm1
 | 戦略名 | 説明 | 主な用途 |
 |--------|------|---------|
 | Standard | ZIP を展開し、すべてを bin に配置 | Node.js, Pandoc, Doxygen |
-| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, iconv |
+| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, iconv, clang-format |
 | SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code |
@@ -44,7 +44,7 @@ function Unblock-ArchiveFile {
 
 ### Expand-ArchiveToTemp
 
-アーカイブを一時ディレクトリに展開します。ZIP、7z、zstd 圧縮 tar (.pkg.tar.zst) 形式をサポートします。
+アーカイブを一時ディレクトリに展開します。ZIP、7z、zstd 圧縮 tar (.pkg.tar.zst)、xz 圧縮 tar (.tar.xz) 形式をサポートします。
 
 ```powershell
 function Expand-ArchiveToTemp {
@@ -102,7 +102,7 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 
 ### Subdirectory 戦略
 
-アーカイブを展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) にも対応しています。
+アーカイブを展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) や tar.xz 形式にも対応しています。
 
 #### パラメータ
 
@@ -111,6 +111,7 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 | ExtractPath | 抽出するサブディレクトリのパス | string | ✅ |
 | FilePattern | 抽出するファイル名のパターン (正規表現) | string | ❌ |
 | RenameFiles | コピー時にファイル名を変更するマッピング | hashtable | ❌ |
+| PostSetupScript | 抽出後に実行するスクリプトのファイル名 (BinDir を TargetPath として渡す) | string | ❌ |
 
 #### 処理フロー
 
@@ -184,9 +185,26 @@ RenameFiles を使用してファイル名を変更する例:
 
 MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。`Get-ExtractedSourcePath` が `mingw64` を単一フォルダとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
 
+tar.xz アーカイブと PostSetupScript を使用した例:
+
+```powershell
+@{
+    Name = "clang-format"
+    ShortName = "clang-format"
+    ArchivePattern = "^clang\+llvm-.*-x86_64-pc-windows-msvc\.tar\.xz$"
+    ExtractStrategy = "Subdirectory"
+    ExtractPath = "bin"
+    FilePattern = "^(clang-format\.exe|git-clang-format|git-clang-format\.cmd)$"
+    PostSetupScript = "clang-format-setup.ps1"
+    DownloadUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz"
+}
+```
+
+この例では、大きな LLVM アーカイブから 3 ファイルのみを抽出し、`clang-format-setup.ps1` で `git-clang-format.cmd` 内の `py` コマンドを `python3` に置換します。
+
 #### 適用パッケージ
 
-nkf, CMake, GNU Make, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, mingw-w64-x86_64-libiconv, mingw-w64-x86_64-gettext-runtime
+nkf, CMake, GNU Make, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, mingw-w64-x86_64-libiconv, mingw-w64-x86_64-gettext-runtime, clang-format
 
 ### SubdirectoryToTarget 戦略
 

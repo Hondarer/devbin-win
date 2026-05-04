@@ -126,6 +126,13 @@ from [CMake](https://cmake.org/)
             - Windows x64 ZIP
                 - [cmake-4.3.1-windows-x86_64.zip](https://github.com/Kitware/CMake/releases/download/v4.3.1/cmake-4.3.1-windows-x86_64.zip)
 
+### clang-format
+
+from [LLVM Project](https://github.com/llvm/llvm-project)
+
+- [/releases/tag/llvmorg-22.1.4](https://github.com/llvm/llvm-project/releases/tag/llvmorg-22.1.4)
+    - [clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz](https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz)
+
 ### NuGet
 
 from [NuGet](https://www.nuget.org/)
