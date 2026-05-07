@@ -1,4 +1,4 @@
-# Python Post-Setup Script
+﻿# Python Post-Setup Script
 # Python 埋め込みパッケージのセットアップを実行
 # パラメータ: $TargetPath - Python がインストールされたディレクトリ
 
@@ -22,123 +22,171 @@ if ((Test-Path $pythonExe) -and !(Test-Path $python3Exe)) {
     }
 }
 
-# pip.pyz が存在する場合はコピー
-$pipPyzFile = Get-ChildItem "packages\pip-*.pyz" | Select-Object -First 1
-$pipPyzPath = if ($pipPyzFile) { $pipPyzFile.FullName } else { "" }
-if ($pipPyzPath -and (Test-Path $pipPyzPath)) {
-    $pipPyzDestination = Join-Path $TargetPath "pip.pyz"
-    Copy-Item -Path $pipPyzPath -Destination $pipPyzDestination -Force
-    Write-Host "Copied pip.pyz to Python directory"
+# site-packages を有効にするため pth ファイルをパッチ
+$pthFiles = Get-ChildItem -Path $TargetPath -Filter "*._pth"
+foreach ($pthFile in $pthFiles) {
+    Write-Host "Patching pth file: $($pthFile.Name)"
 
-    # site-packages を有効にするため pth ファイルをパッチ
-    $pthFiles = Get-ChildItem -Path $TargetPath -Filter "*._pth"
-    foreach ($pthFile in $pthFiles) {
-        Write-Host "Patching pth file: $($pthFile.Name)"
+    $pthContent = Get-Content $pthFile.FullName
+    $newContent = @()
+    $sitePackagesAdded = $false
 
-        $pthContent = Get-Content $pthFile.FullName
-        $newContent = @()
-        $sitePackagesAdded = $false
-
-        foreach ($line in $pthContent) {
-            # import site に関するコメント行をスキップ
-            if ($line -match "^#.*import.*site") {
-                continue
-            }
-            # "Uncomment to run site.main()" コメントをスキップ
-            elseif ($line -match "^#.*Uncomment.*site\.main") {
-                continue
-            }
-            # 最後に追加するため既存の import site 行をスキップ
-            elseif ($line -match "^import\s+site") {
-                continue
-            } else {
-                $newContent += $line
-            }
-
-            # site-packages が既に存在するかチェック
-            if ($line -match "Lib\\site-packages") {
-                $sitePackagesAdded = $true
-            }
+    foreach ($line in $pthContent) {
+        # import site に関するコメント行をスキップ
+        if ($line -match "^#.*import.*site") {
+            continue
+        }
+        # "Uncomment to run site.main()" コメントをスキップ
+        elseif ($line -match "^#.*Uncomment.*site\.main") {
+            continue
+        }
+        # 最後に追加するため既存の import site 行をスキップ
+        elseif ($line -match "^import\s+site") {
+            continue
+        } else {
+            $newContent += $line
         }
 
-        # 標準ライブラリの zip を最初に追加
-        $zipFiles = Get-ChildItem -Path $TargetPath -Filter "python*.zip"
-        if ($zipFiles) {
-            $zipFile = $zipFiles[0].Name
-            if (-not ($newContent -contains $zipFile)) {
-                $newContent = @($zipFile) + $newContent
-                Write-Host "  Added standard library: $zipFile"
-            }
+        # site-packages が既に存在するかチェック
+        if ($line -match "Lib\\site-packages") {
+            $sitePackagesAdded = $true
         }
-
-        # 見つからない場合は site-packages を追加
-        if (-not $sitePackagesAdded) {
-            $newContent += "Lib\site-packages"
-            Write-Host "  Added Lib\site-packages path"
-        }
-
-        # 最後に import site を追加 (適切なコメント付き)
-        $newContent += ""
-        $newContent += "# Uncomment to run site.main() automatically"
-        $newContent += "import site"
-        Write-Host "  Enabled 'import site'"
-
-        # 変更された内容を書き戻し (BOM なし UTF-8)
-        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-        [System.IO.File]::WriteAllText($pthFile.FullName, ($newContent -join "`r`n"), $utf8NoBom)
     }
 
-    # pip をインストール
-    Write-Host "Installing pip..."
-    $pythonExe = Join-Path $TargetPath "python.exe"
-    if (Test-Path $pythonExe) {
-        try {
-            # pip-packages フォルダが存在する場合はオフラインインストール
-            $pipPackagesDir = "packages\pip-packages"
-            $offlineMode = Test-Path $pipPackagesDir
+    # 標準ライブラリの zip を最初に追加
+    $zipFiles = Get-ChildItem -Path $TargetPath -Filter "python*.zip"
+    if ($zipFiles) {
+        $zipFile = $zipFiles[0].Name
+        if (-not ($newContent -contains $zipFile)) {
+            $newContent = @($zipFile) + $newContent
+            Write-Host "  Added standard library: $zipFile"
+        }
+    }
 
-            if ($offlineMode) {
-                Write-Host "Using offline installation with local wheel files..."
-                $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
-                & $pythonExe $pipPyzDestination install --no-warn-script-location `
-                    --no-index --find-links=$pipPackagesAbsPath pip setuptools wheel
-            } else {
-                Write-Host "Using online installation (downloading from PyPI)..."
+    # 見つからない場合は site-packages を追加
+    if (-not $sitePackagesAdded) {
+        $newContent += "Lib\site-packages"
+        Write-Host "  Added Lib\site-packages path"
+    }
 
-                # pip.pyz でオンラインインストール
-                & $pythonExe $pipPyzDestination install --no-warn-script-location pip setuptools wheel
+    # 最後に import site を追加 (適切なコメント付き)
+    $newContent += ""
+    $newContent += "# Uncomment to run site.main() automatically"
+    $newContent += "import site"
+    Write-Host "  Enabled 'import site'"
 
-                # インストール後に wheel を取得して次回オフライン用に保存
-                $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
-                New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+    # 変更された内容を書き戻し (BOM なし UTF-8)
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($pthFile.FullName, ($newContent -join "`r`n"), $utf8NoBom)
+}
 
-                & $pythonExe -m pip download pip setuptools wheel --dest $tempDir --no-deps 2>$null
+$pipArchiveFile = Get-ChildItem "packages\pip-*.tar.gz" | Select-Object -First 1
+$pipArchivePath = if ($pipArchiveFile) { $pipArchiveFile.FullName } else { "" }
+if (-not $pipArchivePath -or -not (Test-Path $pipArchivePath)) {
+    Write-Host "Warning: pip source tarball not found at $pipArchivePath, skipping pip installation"
+    Write-Host "Python post-setup completed."
+    return
+}
 
-                if (Test-Path $tempDir) {
-                    New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
-                    Copy-Item -Path "$tempDir\*.whl" -Destination $pipPackagesDir -Force
-                    Write-Host "Saved wheel files to $pipPackagesDir for future offline use"
-                    Remove-Item -Path $tempDir -Recurse -Force
-                }
+# pip をインストール
+Write-Host "Installing pip..."
+$pythonExe = Join-Path $TargetPath "python.exe"
+if (Test-Path $pythonExe) {
+    $extractRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("devbin-pip-src-" + [guid]::NewGuid().ToString("N"))
+    $originalPythonHome = $env:PYTHONHOME
+    $originalPythonPath = $env:PYTHONPATH
+    $hadPythonHome = Test-Path Env:PYTHONHOME
+    $hadPythonPath = Test-Path Env:PYTHONPATH
+
+    try {
+        New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
+        Write-Host "Extracting pip source tarball..."
+
+        $extractScript = @"
+import pathlib
+import sys
+import tarfile
+
+archive_path = pathlib.Path(sys.argv[1])
+extract_root = pathlib.Path(sys.argv[2])
+with tarfile.open(archive_path, "r:gz") as archive:
+    archive.extractall(extract_root)
+"@
+        & $pythonExe -c $extractScript $pipArchivePath $extractRoot
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to extract pip source tarball (exit code: $LASTEXITCODE)"
+        }
+
+        $pipRootDir = Get-ChildItem -Path $extractRoot -Directory | Select-Object -First 1
+        if (-not $pipRootDir) {
+            throw "pip source root directory not found under $extractRoot"
+        }
+
+        $pipSourcePath = Join-Path $pipRootDir.FullName "src"
+        if (-not (Test-Path $pipSourcePath)) {
+            throw "pip source directory not found: $pipSourcePath"
+        }
+
+        Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
+        $env:PYTHONPATH = if ([string]::IsNullOrWhiteSpace($originalPythonPath)) {
+            $pipSourcePath
+        } else {
+            "$pipSourcePath$([System.IO.Path]::PathSeparator)$originalPythonPath"
+        }
+
+        # pip-packages フォルダが存在する場合はオフラインインストール
+        $pipPackagesDir = "packages\pip-packages"
+        $offlineMode = Test-Path $pipPackagesDir
+
+        if ($offlineMode) {
+            Write-Host "Using offline installation with local wheel files..."
+            $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
+            & $pythonExe -m pip install --no-warn-script-location `
+                --no-index --find-links=$pipPackagesAbsPath pip setuptools wheel
+        } else {
+            Write-Host "Using online installation (downloading from PyPI)..."
+            & $pythonExe -m pip install --no-warn-script-location pip setuptools wheel
+
+            # インストール後に wheel を取得して次回オフライン用に保存
+            $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
+            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+            & $pythonExe -m pip download pip setuptools wheel --dest $tempDir --no-deps 2>$null
+
+            if (Test-Path $tempDir) {
+                New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
+                Copy-Item -Path "$tempDir\*.whl" -Destination $pipPackagesDir -Force
+                Write-Host "Saved wheel files to $pipPackagesDir for future offline use"
+                Remove-Item -Path $tempDir -Recurse -Force
             }
+        }
 
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "pip installed successfully"
-            } else {
-                Write-Host "Warning: pip installation may have issues (exit code: $LASTEXITCODE)"
-            }
-        } catch {
-            Write-Host "Warning: Failed to install pip: $($_.Exception.Message)"
-        } finally {
-            # 環境変数をクリーンアップ
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "pip installed successfully"
+        } else {
+            Write-Host "Warning: pip installation may have issues (exit code: $LASTEXITCODE)"
+        }
+    } catch {
+        Write-Host "Warning: Failed to install pip: $($_.Exception.Message)"
+    } finally {
+        if ($hadPythonHome) {
+            $env:PYTHONHOME = $originalPythonHome
+        } else {
             Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
+        }
+
+        if ($hadPythonPath) {
+            $env:PYTHONPATH = $originalPythonPath
+        } else {
             Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
         }
-    } else {
-        Write-Host "Warning: python.exe not found, skipping pip installation"
+
+        if (Test-Path $extractRoot) {
+            Remove-Item -Path $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 } else {
-    Write-Host "Warning: pip.pyz not found at $pipPyzPath, skipping pip installation"
+    Write-Host "Warning: python.exe not found, skipping pip installation"
 }
 
 Write-Host "Python post-setup completed."

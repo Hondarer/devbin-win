@@ -123,7 +123,7 @@ Uninstall-Bin.cmd
 
 ### 自動対応の仕組み
 
-`Get-Packages.ps1` の実行により、pip インストールに必要な wheel ファイルが自動的に準備されます。
+`Get-Packages.ps1` の実行により、pip source tarball と、pip インストールに必要な wheel ファイルが自動的に準備されます。
 
 #### Python がインストール済みの環境
 

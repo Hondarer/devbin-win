@@ -67,9 +67,10 @@ from [python.org](https://www.python.org/)
     - [Python 3.13.13](https://www.python.org/downloads/release/python-31313/)
         - [Windows embeddable package (64-bit)](https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip)
 
-- [pip-26.1.pyz](https://bootstrap.pypa.io/pip/zipapp/pip-26.1.pyz)
+- [pip 26.1](https://pypi.org/project/pip/26.1/)
+    - [pip-26.1.tar.gz](https://files.pythonhosted.org/packages/73/7e/d2b04004e1068ad4fdfa2f227b839b5d03e602e47cdbbf49de71137c9546/pip-26.1.tar.gz)
 
-完全オフライン環境での pip インストールに対応しています。pip wheel ファイルは Get-Packages.ps1 実行時に自動的に packages/pip-packages フォルダにダウンロードされます。詳細は [offline-pip-design.md](./docs-src/offline-pip-design.md) を参照してください。
+完全オフライン環境での pip インストールに対応しています。pip source tarball は Get-Packages.ps1 で `packages` に保存され、pip wheel ファイルは `packages/pip-packages` に自動ダウンロードされます。詳細は [offline-pip-design.md](./docs-src/offline-pip-design.md) を参照してください。
 
 ### .NET SDK
 
@@ -99,7 +100,7 @@ from [MSYS2 Packages](https://packages.msys2.org/)
 make.exe と実行に必要な DLL を MSYS2 MinGW パッケージから取得します。mingw32-make.exe を make.exe にリネームして配置します。
 
 - [mingw-w64-x86_64-gcc-libs](https://packages.msys2.org/packages/mingw-w64-x86_64-gcc-libs) (GCC ランタイム DLL)
-    - [mingw-w64-x86_64-gcc-libs-15.2.0-14-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-15.2.0-14-any.pkg.tar.zst)
+    - [mingw-w64-x86_64-gcc-libs-16.1.0-2-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-16.1.0-2-any.pkg.tar.zst)
 - [mingw-w64-x86_64-libiconv](https://packages.msys2.org/packages/mingw-w64-x86_64-libiconv) (libiconv DLL)
     - [mingw-w64-x86_64-libiconv-1.19-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.19-1-any.pkg.tar.zst)
 - [mingw-w64-x86_64-gettext-runtime](https://packages.msys2.org/packages/mingw-w64-x86_64-gettext-runtime) (gettext ランタイム DLL)

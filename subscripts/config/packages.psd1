@@ -156,14 +156,14 @@ endlocal
             DefaultChecked = $true
         },
 
-        # pip.pyz (Python に関連するが独立したダウンロード)
+        # pip source tarball (Python に関連するが独立したダウンロード)
         @{
-            Name = "pip.pyz"
+            Name = "pip source tarball"
             ShortName = "get-pip"
             Version = "26.1"
-            ArchivePattern = "^pip-26\.1\.pyz$"
+            ArchivePattern = "^pip-26\.1\.tar\.gz$"
             ExtractStrategy = "CopyToPackages"
-            DownloadUrl = "https://bootstrap.pypa.io/pip/zipapp/pip-26.1.pyz"
+            DownloadUrl = "https://files.pythonhosted.org/packages/73/7e/d2b04004e1068ad4fdfa2f227b839b5d03e602e47cdbbf49de71137c9546/pip-26.1.tar.gz"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -262,12 +262,12 @@ endlocal
         @{
             Name = "mingw-w64-x86_64-gcc-libs"
             ShortName = "mingw64-gcc-libs"
-            Version = "15.2.0-14"
+            Version = "16.1.0-2"
             ArchivePattern = "^mingw-w64-x86_64-gcc-libs-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
             FilePattern = "\.dll$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-15.2.0-14-any.pkg.tar.zst"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-16.1.0-2-any.pkg.tar.zst"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}

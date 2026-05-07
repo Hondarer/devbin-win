@@ -1,4 +1,5 @@
 /.claude
+/.codex-tmp
 /packages/*
 !/packages/Add-MinGW-Path.cmd
 !/packages/Add-MinGW-Path.ps1
