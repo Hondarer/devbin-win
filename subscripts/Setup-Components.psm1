@@ -351,33 +351,72 @@ function Install-Component {
     $archiveFile = $null
 
     if ($pkg.ExtractStrategy -ne "VSBuildTools") {
+        $baseFileName = Get-PackageBaseFileName -Package $pkg
+        $downloadFileName = ""
+        if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {
+            $downloadFileName = $baseFileName
+            $version = if ($pkg.ContainsKey("Version")) { [string]$pkg.Version } else { "" }
+            if (-not [string]::IsNullOrWhiteSpace($version) -and $baseFileName -notlike "*$version*") {
+                $compoundExtensions = @(".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".7z.exe")
+                $matchedCompoundExtension = $compoundExtensions | Where-Object {
+                    $baseFileName.EndsWith($_, [StringComparison]::OrdinalIgnoreCase)
+                } | Select-Object -First 1
+
+                if ($matchedCompoundExtension) {
+                    $nameWithoutExtension = $baseFileName.Substring(0, $baseFileName.Length - $matchedCompoundExtension.Length)
+                    $downloadFileName = "$nameWithoutExtension-$version$matchedCompoundExtension"
+                } else {
+                    $extension = [System.IO.Path]::GetExtension($baseFileName)
+                    if ([string]::IsNullOrEmpty($extension)) {
+                        $downloadFileName = "$baseFileName-$version"
+                    } else {
+                        $nameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($baseFileName)
+                        $downloadFileName = "$nameWithoutExtension-$version$extension"
+                    }
+                }
+            }
+        }
+
         $archiveFiles = Get-ChildItem -Path $packagesDir -File -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -match $pkg.ArchivePattern }
 
         if ($archiveFiles -and $archiveFiles.Count -gt 0) {
             $archiveFile = $archiveFiles[0].FullName
         } else {
-            # アーカイブが見つからない場合はダウンロードを試みる
-            Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
-            $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
-            if (Test-Path $getPackagesScript) {
-                $downloadTargets = @(Resolve-Dependencies -ShortName $ShortName -Packages $Packages | Select-Object -Unique)
-                if (-not $downloadTargets -or $downloadTargets.Count -eq 0) {
-                    $downloadTargets = @($ShortName)
+            $fallbackPath = $null
+            if (-not [string]::IsNullOrWhiteSpace($baseFileName) -and $baseFileName -ne $downloadFileName) {
+                $candidatePath = Join-Path $packagesDir $baseFileName
+                if (Test-Path $candidatePath -PathType Leaf) {
+                    $fallbackPath = $candidatePath
                 }
-
-                Write-Host "  ダウンロード対象: $($downloadTargets -join ', ')"
-                & $getPackagesScript -PackageShortNames $downloadTargets
             }
 
-            $archiveFiles = Get-ChildItem -Path $packagesDir -File -ErrorAction SilentlyContinue |
-                Where-Object { $_.Name -match $pkg.ArchivePattern }
-
-            if ($archiveFiles -and $archiveFiles.Count -gt 0) {
-                $archiveFile = $archiveFiles[0].FullName
+            if ($fallbackPath) {
+                $archiveFile = $fallbackPath
+                Write-Host "  Warning: ArchivePattern に一致しないため元ファイル名へフォールバックします: $(Split-Path $fallbackPath -Leaf)" -ForegroundColor Yellow
             } else {
-                Write-Host "Error: Archive not found for '$ShortName' (pattern: $($pkg.ArchivePattern))" -ForegroundColor Red
-                return $false
+                # アーカイブが見つからない場合はダウンロードを試みる
+                Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
+                $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
+                if (Test-Path $getPackagesScript) {
+                    $downloadTargets = @(Resolve-Dependencies -ShortName $ShortName -Packages $Packages | Select-Object -Unique)
+                    if (-not $downloadTargets -or $downloadTargets.Count -eq 0) {
+                        $downloadTargets = @($ShortName)
+                    }
+
+                    Write-Host "  ダウンロード対象: $($downloadTargets -join ', ')"
+                    & $getPackagesScript -PackageShortNames $downloadTargets
+                }
+
+                $archiveFiles = Get-ChildItem -Path $packagesDir -File -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -match $pkg.ArchivePattern }
+
+                if ($archiveFiles -and $archiveFiles.Count -gt 0) {
+                    $archiveFile = $archiveFiles[0].FullName
+                } else {
+                    Write-Host "Error: Archive not found for '$ShortName' (pattern: $($pkg.ArchivePattern))" -ForegroundColor Red
+                    return $false
+                }
             }
         }
     }

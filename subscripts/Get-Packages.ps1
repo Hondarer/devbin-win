@@ -160,15 +160,18 @@ function Get-File {
     }
 }
 
-function Get-PackageDownloadFileName {
+function Get-PackageBaseFileName {
     param(
         [hashtable]$Package
     )
 
-    $url = $Package.DownloadUrl
+    $url = if ($Package.ContainsKey("DownloadUrl")) { [string]$Package.DownloadUrl } else { "" }
+    if ([string]::IsNullOrWhiteSpace($url)) {
+        return ""
+    }
+
     $uri = [Uri]$url
-    $fileName = if ($Package.ContainsKey("DownloadFileName")) { $Package.DownloadFileName } else { "" }
-    $version = if ($Package.ContainsKey("Version")) { [string]$Package.Version } else { "" }
+    $fileName = if ($Package.ContainsKey("DownloadFileName")) { [string]$Package.DownloadFileName } else { "" }
 
     if ([string]::IsNullOrWhiteSpace($fileName)) {
         $fileName = [System.IO.Path]::GetFileName($uri.AbsolutePath)
@@ -188,6 +191,17 @@ function Get-PackageDownloadFileName {
         $tagName = $tagName -replace '^v', ''
         $fileName = "$repoName-$tagName$extension"
     }
+
+    return $fileName
+}
+
+function Get-PackageDownloadFileName {
+    param(
+        [hashtable]$Package
+    )
+
+    $fileName = Get-PackageBaseFileName -Package $Package
+    $version = if ($Package.ContainsKey("Version")) { [string]$Package.Version } else { "" }
 
     if (-not [string]::IsNullOrWhiteSpace($version) -and $fileName -notlike "*$version*") {
         $compoundExtensions = @(".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".7z.exe")
@@ -232,6 +246,19 @@ function Remove-OldPackageFiles {
             Write-Host "  Removed old package file: $($oldFile.Name)"
         } catch {
             Write-Host "  Warning: Failed to remove old package file $($oldFile.Name): $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+
+    $baseFileName = Get-PackageBaseFileName -Package $Package
+    if (-not [string]::IsNullOrWhiteSpace($baseFileName) -and $baseFileName -ne $CurrentFileName) {
+        $baseFilePath = Join-Path $PackagesDir $baseFileName
+        if (Test-Path $baseFilePath -PathType Leaf) {
+            try {
+                Remove-Item -LiteralPath $baseFilePath -Force -ErrorAction Stop
+                Write-Host "  Removed base package file: $baseFileName"
+            } catch {
+                Write-Host "  Warning: Failed to remove base package file ${baseFileName}: $($_.Exception.Message)" -ForegroundColor Yellow
+            }
         }
     }
 }

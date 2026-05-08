@@ -60,6 +60,38 @@ function Test-CommandExists {
     }
 }
 
+function Get-PackageBaseFileName {
+    param(
+        [hashtable]$Package
+    )
+
+    $url = if ($Package.ContainsKey("DownloadUrl")) { [string]$Package.DownloadUrl } else { "" }
+    if ([string]::IsNullOrWhiteSpace($url)) {
+        return ""
+    }
+
+    $uri = [Uri]$url
+    $fileName = if ($Package.ContainsKey("DownloadFileName")) { [string]$Package.DownloadFileName } else { "" }
+
+    if ([string]::IsNullOrWhiteSpace($fileName)) {
+        $fileName = [System.IO.Path]::GetFileName($uri.AbsolutePath)
+    }
+
+    if ($fileName -eq "download" -and $uri.Host -like "*sourceforge.net*") {
+        $pathSegments = $uri.AbsolutePath.Split('/', [StringSplitOptions]::RemoveEmptyEntries)
+        $fileName = $pathSegments[-2]
+    }
+    elseif ($uri.Host -eq "github.com" -and $uri.AbsolutePath -match '/([^/]+)/([^/]+)/archive/refs/tags/(.+)$') {
+        $repoName = $matches[2]
+        $tagName = [System.IO.Path]::GetFileNameWithoutExtension($matches[3])
+        $extension = [System.IO.Path]::GetExtension($matches[3])
+        $tagName = $tagName -replace '^v', ''
+        $fileName = "$repoName-$tagName$extension"
+    }
+
+    return $fileName
+}
+
 # ユーザー PATH にディレクトリを追加する関数
 function Add-ToUserPath {
     param([string[]]$Directories)
@@ -809,6 +841,7 @@ function Remove-SinglePathDir {
 
 Export-ModuleMember -Function @(
     'Test-CommandExists',
+    'Get-PackageBaseFileName',
     'Add-ToUserPath',
     'Remove-FromUserPath',
     'Add-SinglePathDir',
