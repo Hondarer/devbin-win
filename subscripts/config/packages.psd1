@@ -160,10 +160,10 @@ endlocal
         @{
             Name = "pip source tarball"
             ShortName = "get-pip"
-            Version = "26.1"
-            ArchivePattern = "^pip-26\.1\.tar\.gz$"
+            Version = "26.1.1"
+            ArchivePattern = "^pip-26\.1\.1\.tar\.gz$"
             ExtractStrategy = "CopyToPackages"
-            DownloadUrl = "https://files.pythonhosted.org/packages/73/7e/d2b04004e1068ad4fdfa2f227b839b5d03e602e47cdbbf49de71137c9546/pip-26.1.tar.gz"
+            DownloadUrl = "https://files.pythonhosted.org/packages/b6/48/cb9b7a682f6fe01a4221e1728941dd4ac3cd9090a17db3779d6ff490b602/pip-26.1.1.tar.gz"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}

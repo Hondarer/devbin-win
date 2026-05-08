@@ -67,8 +67,8 @@ from [python.org](https://www.python.org/)
     - [Python 3.13.13](https://www.python.org/downloads/release/python-31313/)
         - [Windows embeddable package (64-bit)](https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip)
 
-- [pip 26.1](https://pypi.org/project/pip/26.1/)
-    - [pip-26.1.tar.gz](https://files.pythonhosted.org/packages/73/7e/d2b04004e1068ad4fdfa2f227b839b5d03e602e47cdbbf49de71137c9546/pip-26.1.tar.gz)
+- [pip 26.1.1](https://pypi.org/project/pip/26.1.1/)
+    - [pip-26.1.1.tar.gz](https://files.pythonhosted.org/packages/b6/48/cb9b7a682f6fe01a4221e1728941dd4ac3cd9090a17db3779d6ff490b602/pip-26.1.1.tar.gz)
 
 完全オフライン環境での pip インストールに対応しています。pip source tarball は Get-Packages.ps1 で `packages` に保存され、pip wheel ファイルは `packages/pip-packages` に自動ダウンロードされます。詳細は [offline-pip-design.md](./docs-src/offline-pip-design.md) を参照してください。
 

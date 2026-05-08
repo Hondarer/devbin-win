@@ -4,7 +4,7 @@
 
 本文書では、完全オフライン環境での pip インストールを実現するための実装方針を説明します。
 
-pip 本体として PyPI の source tarball `pip-26.1.tar.gz` を取得します。`python-setup.ps1` はこの tarball を一時展開し、`src` ディレクトリを `PYTHONPATH` に追加した状態で `python -m pip` を実行します。pip、setuptools、wheel の wheel ファイルは `packages/pip-packages` に保存し、オフラインインストールに利用します。
+pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得します。`python-setup.ps1` はこの tarball を一時展開し、`src` ディレクトリを `PYTHONPATH` に追加した状態で `python -m pip` を実行します。pip、setuptools、wheel の wheel ファイルは `packages/pip-packages` に保存し、オフラインインストールに利用します。
 
 ## 採用理由
 
@@ -19,7 +19,7 @@ pip 本体として PyPI の source tarball `pip-26.1.tar.gz` を取得します
 @startuml オフライン pip インストールのアーキテクチャ
 caption オフライン pip インストールのアーキテクチャ
 package "packages フォルダ" {
-  [pip-26.1.tar.gz]
+  [pip-26.1.1.tar.gz]
   folder "pip-packages" {
     [pip-*.whl]
     [setuptools-*.whl]
@@ -31,14 +31,14 @@ package "処理層" {
   [Get-Packages.ps1] as getpkg
   [python-setup.ps1] as pysetup
   folder "temp" {
-    [pip-26.1/src]
+    [pip-26.1.1/src]
   }
 }
 
-getpkg --> [pip-26.1.tar.gz] : ダウンロード
+getpkg --> [pip-26.1.1.tar.gz] : ダウンロード
 getpkg --> [pip-packages] : wheel をダウンロード
-pysetup --> [pip-26.1.tar.gz] : 一時展開
-pysetup --> [pip-26.1/src] : PYTHONPATH に追加
+pysetup --> [pip-26.1.1.tar.gz] : 一時展開
+pysetup --> [pip-26.1.1/src] : PYTHONPATH に追加
 pysetup --> [pip-packages] : find-links 指定
 @enduml
 ```
@@ -47,16 +47,16 @@ pysetup --> [pip-packages] : find-links 指定
 
 ### packages.psd1
 
-`get-pip` パッケージは、以下の定義で `pip-26.1.tar.gz` を保持します。
+`get-pip` パッケージは、以下の定義で `pip-26.1.1.tar.gz` を保持します。
 
 ```powershell
 @{
     Name = "pip source tarball"
     ShortName = "get-pip"
-    Version = "26.1"
-    ArchivePattern = "^pip-26\.1\.tar\.gz$"
+    Version = "26.1.1"
+    ArchivePattern = "^pip-26\.1\.1\.tar\.gz$"
     ExtractStrategy = "CopyToPackages"
-    DownloadUrl = "https://files.pythonhosted.org/packages/73/7e/d2b04004e1068ad4fdfa2f227b839b5d03e602e47cdbbf49de71137c9546/pip-26.1.tar.gz"
+    DownloadUrl = "https://files.pythonhosted.org/packages/b6/48/cb9b7a682f6fe01a4221e1728941dd4ac3cd9090a17db3779d6ff490b602/pip-26.1.1.tar.gz"
     Hidden = $true
 }
 ```
@@ -65,7 +65,7 @@ pysetup --> [pip-packages] : find-links 指定
 
 `Get-Packages.ps1` は以下を行います。
 
-1. `pip-26.1.tar.gz` を `packages` にダウンロード
+1. `pip-26.1.1.tar.gz` を `packages` にダウンロード
 2. Python が利用可能なら `pip download pip setuptools wheel --dest packages/pip-packages --no-deps` を実行
 
 ### python-setup.ps1
@@ -75,7 +75,7 @@ pysetup --> [pip-packages] : find-links 指定
 1. 埋め込み Python の `._pth` を更新し、`Lib\site-packages` と `import site` を有効化
 2. `packages\pip-*.tar.gz` を検出
 3. tarball を一時ディレクトリへ展開
-4. 展開先の `pip-26.1\src` を `PYTHONPATH` に追加
+4. 展開先の `pip-26.1.1\src` を `PYTHONPATH` に追加
 5. `python -m pip install ...` を実行
 6. オンライン時は追加で wheel を `packages/pip-packages` に保存
 7. `PYTHONHOME` / `PYTHONPATH` と一時展開ディレクトリを cleanup
@@ -102,7 +102,7 @@ participant "Get-Packages.ps1" as GetPkg
 participant "PyPI (Internet)" as PyPI
 
 User -> GetPkg: ダウンロード実行
-GetPkg -> PyPI: pip-26.1.tar.gz をダウンロード
+GetPkg -> PyPI: pip-26.1.1.tar.gz をダウンロード
 GetPkg -> GetPkg: packages/ に保存
 GetPkg -> GetPkg: Python の有無を確認
 
@@ -124,8 +124,8 @@ caption オフライン pip インストールフロー
 actor User
 participant "Setup-Bin.ps1" as Setup
 participant "python-setup.ps1" as PySetup
-participant "pip-26.1.tar.gz" as PipSrc
-participant "pip-26.1/src" as PipModule
+participant "pip-26.1.1.tar.gz" as PipSrc
+participant "pip-26.1.1/src" as PipModule
 
 User -> Setup: インストール実行
 Setup -> Setup: Python を展開
@@ -146,8 +146,8 @@ caption 初回オンライン pip インストールフロー
 actor User
 participant "Setup-Bin.ps1" as Setup
 participant "python-setup.ps1" as PySetup
-participant "pip-26.1.tar.gz" as PipSrc
-participant "pip-26.1/src" as PipModule
+participant "pip-26.1.1.tar.gz" as PipSrc
+participant "pip-26.1.1/src" as PipModule
 participant "PyPI (Internet)" as PyPI
 
 User -> Setup: インストール実行
@@ -182,10 +182,10 @@ pip download pip setuptools wheel --dest packages/pip-packages --no-deps
 ```text
 packages/
 ├─ pip-packages/
-│  ├─ pip-26.1-py3-none-any.whl
+│  ├─ pip-26.1.1-py3-none-any.whl
 │  ├─ setuptools-*.whl
 │  └─ wheel-*.whl
-└─ pip-26.1.tar.gz
+└─ pip-26.1.1.tar.gz
 ```
 
 ## まとめ
