@@ -129,10 +129,11 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 @{
     Name = "nkf"
     ShortName = "nkf"
-    ArchivePattern = "nkf-bin-.*\.zip$"
+    ArchivePattern = "^nkf-bin-v2_1_5-windows\.zip$"
     ExtractStrategy = "Subdirectory"
-    ExtractPath = "bin\mingw64"
-    DownloadUrl = "https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip"
+    ExtractPath = ""
+    FilePattern = "^nkf\.exe$"
+    DownloadUrl = "https://github.com/Hondarer/nkf-bin/releases/download/v2_1_5/nkf-bin-v2_1_5-windows.zip"
 }
 ```
 

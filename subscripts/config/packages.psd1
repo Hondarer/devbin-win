@@ -431,10 +431,11 @@ endlocal
             Name = "nkf"
             ShortName = "nkf"
             Version = "2.1.5"
-            ArchivePattern = "nkf-bin-.*\.zip$"
+            ArchivePattern = "nkf-bin-.*-windows\.zip$"
             ExtractStrategy = "Subdirectory"
-            ExtractPath = "bin\mingw64"
-            DownloadUrl = "https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip"
+            ExtractPath = ""
+            FilePattern = "^nkf\.exe$"
+            DownloadUrl = "https://github.com/Hondarer/nkf-bin/releases/download/v2_1_5/nkf-bin-v2_1_5-windows.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}

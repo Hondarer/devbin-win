@@ -200,10 +200,25 @@ function Get-PackageDownloadFileName {
         [hashtable]$Package
     )
 
+    function Test-FileNameContainsVersion {
+        param(
+            [string]$FileName,
+            [string]$Version
+        )
+
+        if ([string]::IsNullOrWhiteSpace($FileName) -or [string]::IsNullOrWhiteSpace($Version)) {
+            return $false
+        }
+
+        $normalizedFileName = $FileName.ToLowerInvariant() -replace '[_-]', '.'
+        $normalizedVersion = $Version.ToLowerInvariant() -replace '[_-]', '.'
+        return $normalizedFileName.Contains($normalizedVersion)
+    }
+
     $fileName = Get-PackageBaseFileName -Package $Package
     $version = if ($Package.ContainsKey("Version")) { [string]$Package.Version } else { "" }
 
-    if (-not [string]::IsNullOrWhiteSpace($version) -and $fileName -notlike "*$version*") {
+    if (-not [string]::IsNullOrWhiteSpace($version) -and -not (Test-FileNameContainsVersion -FileName $fileName -Version $version)) {
         $compoundExtensions = @(".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".7z.exe")
         $matchedCompoundExtension = $compoundExtensions | Where-Object { $fileName.EndsWith($_, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
 

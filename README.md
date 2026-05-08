@@ -152,8 +152,8 @@ from [AlDanial/cloc](https://github.com/AlDanial/cloc)
 
 from [nkf-bin](https://github.com/Hondarer/nkf-bin)
 
-- [/releases/tag/v2.1.5-96c3371](https://github.com/Hondarer/nkf-bin/releases/tag/v2.1.5-96c3371)
-    - [nkf-bin-2.1.5-96c3371.zip](https://github.com/Hondarer/nkf-bin/archive/refs/tags/v2.1.5-96c3371.zip)
+- [/releases/tag/v2_1_5](https://github.com/Hondarer/nkf-bin/releases/tag/v2_1_5)
+    - [nkf-bin-v2_1_5-windows.zip](https://github.com/Hondarer/nkf-bin/releases/download/v2_1_5/nkf-bin-v2_1_5-windows.zip)
 
 ### innoextract
 
