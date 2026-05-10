@@ -109,7 +109,7 @@ import tarfile
 
 archive_path = pathlib.Path(sys.argv[1])
 extract_root = pathlib.Path(sys.argv[2])
-with tarfile.open(archive_path, "r:gz") as archive:
+with tarfile.open(archive_path, 'r:gz') as archive:
     archive.extractall(extract_root)
 "@
         & $pythonExe -c $extractScript $pipArchivePath $extractRoot
