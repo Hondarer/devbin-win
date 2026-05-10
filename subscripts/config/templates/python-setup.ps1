@@ -9,6 +9,85 @@ param(
 
 Write-Host "Running Python post-setup..."
 
+function Set-PthFileContent {
+    param(
+        [string]$Path,
+        [string[]]$Lines
+    )
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($Path, ($Lines -join "`r`n"), $utf8NoBom)
+}
+
+function Get-NormalizedPthContent {
+    param(
+        [string[]]$Content,
+        [string[]]$AdditionalEntries = @()
+    )
+
+    $newContent = @()
+    $sitePackagesAdded = $false
+
+    foreach ($line in $Content) {
+        # import site に関するコメント行をスキップ
+        if ($line -match "^#.*import.*site") {
+            continue
+        }
+        # "Uncomment to run site.main()" コメントをスキップ
+        elseif ($line -match "^#.*Uncomment.*site\.main") {
+            continue
+        }
+        # 最後に追加するため既存の import site 行をスキップ
+        elseif ($line -match "^import\s+site") {
+            continue
+        } else {
+            $newContent += $line
+        }
+
+        if ($line -match "Lib\\site-packages") {
+            $sitePackagesAdded = $true
+        }
+    }
+
+    # 見つからない場合は site-packages を追加
+    if (-not $sitePackagesAdded) {
+        $newContent += "Lib\site-packages"
+    }
+
+    foreach ($entry in $AdditionalEntries) {
+        if (-not [string]::IsNullOrWhiteSpace($entry) -and -not ($newContent -contains $entry)) {
+            $newContent += $entry
+        }
+    }
+
+    $newContent += ""
+    $newContent += "# Uncomment to run site.main() automatically"
+    $newContent += "import site"
+    return $newContent
+}
+
+function Test-PipWheelPackages {
+    param(
+        [string]$DirectoryPath
+    )
+
+    $requiredPatterns = @(
+        "pip-*.whl",
+        "setuptools-*.whl",
+        "wheel-*.whl",
+        "packaging-*.whl"
+    )
+
+    $missing = @()
+    foreach ($pattern in $requiredPatterns) {
+        if (-not (Get-ChildItem -Path $DirectoryPath -Filter $pattern -File -ErrorAction SilentlyContinue | Select-Object -First 1)) {
+            $missing += $pattern
+        }
+    }
+
+    return $missing
+}
+
 # python3.exe のコピーを作成
 $pythonExe = Join-Path $TargetPath "python.exe"
 $python3Exe = Join-Path $TargetPath "python3.exe"
@@ -28,30 +107,8 @@ foreach ($pthFile in $pthFiles) {
     Write-Host "Patching pth file: $($pthFile.Name)"
 
     $pthContent = Get-Content $pthFile.FullName
-    $newContent = @()
-    $sitePackagesAdded = $false
-
-    foreach ($line in $pthContent) {
-        # import site に関するコメント行をスキップ
-        if ($line -match "^#.*import.*site") {
-            continue
-        }
-        # "Uncomment to run site.main()" コメントをスキップ
-        elseif ($line -match "^#.*Uncomment.*site\.main") {
-            continue
-        }
-        # 最後に追加するため既存の import site 行をスキップ
-        elseif ($line -match "^import\s+site") {
-            continue
-        } else {
-            $newContent += $line
-        }
-
-        # site-packages が既に存在するかチェック
-        if ($line -match "Lib\\site-packages") {
-            $sitePackagesAdded = $true
-        }
-    }
+    $newContent = Get-NormalizedPthContent -Content $pthContent
+    $hadSitePackagesPath = $pthContent -contains "Lib\site-packages"
 
     # 標準ライブラリの zip を最初に追加
     $zipFiles = Get-ChildItem -Path $TargetPath -Filter "python*.zip"
@@ -63,21 +120,12 @@ foreach ($pthFile in $pthFiles) {
         }
     }
 
-    # 見つからない場合は site-packages を追加
-    if (-not $sitePackagesAdded) {
-        $newContent += "Lib\site-packages"
+    if (-not $hadSitePackagesPath) {
         Write-Host "  Added Lib\site-packages path"
     }
 
-    # 最後に import site を追加 (適切なコメント付き)
-    $newContent += ""
-    $newContent += "# Uncomment to run site.main() automatically"
-    $newContent += "import site"
     Write-Host "  Enabled 'import site'"
-
-    # 変更された内容を書き戻し (BOM なし UTF-8)
-    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-    [System.IO.File]::WriteAllText($pthFile.FullName, ($newContent -join "`r`n"), $utf8NoBom)
+    Set-PthFileContent -Path $pthFile.FullName -Lines $newContent
 }
 
 $pipArchiveFile = Get-ChildItem "packages\pip-*.tar.gz" | Select-Object -First 1
@@ -94,9 +142,8 @@ $pythonExe = Join-Path $TargetPath "python.exe"
 if (Test-Path $pythonExe) {
     $extractRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("devbin-pip-src-" + [guid]::NewGuid().ToString("N"))
     $originalPythonHome = $env:PYTHONHOME
-    $originalPythonPath = $env:PYTHONPATH
     $hadPythonHome = Test-Path Env:PYTHONHOME
-    $hadPythonPath = Test-Path Env:PYTHONPATH
+    $pthSnapshots = @()
 
     try {
         New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
@@ -127,16 +174,31 @@ with tarfile.open(archive_path, 'r:gz') as archive:
             throw "pip source directory not found: $pipSourcePath"
         }
 
-        Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
-        $env:PYTHONPATH = if ([string]::IsNullOrWhiteSpace($originalPythonPath)) {
-            $pipSourcePath
-        } else {
-            "$pipSourcePath$([System.IO.Path]::PathSeparator)$originalPythonPath"
+        foreach ($pthFile in $pthFiles) {
+            $originalContent = Get-Content $pthFile.FullName
+            $pthSnapshots += [PSCustomObject]@{
+                Path = $pthFile.FullName
+                Content = @($originalContent)
+            }
+
+            $patchedContent = Get-NormalizedPthContent -Content $originalContent -AdditionalEntries @($pipSourcePath)
+            Set-PthFileContent -Path $pthFile.FullName -Lines $patchedContent
         }
+        Write-Host "Temporarily added pip source path to embedded Python search paths"
 
         # pip-packages フォルダが存在する場合はオフラインインストール
         $pipPackagesDir = "packages\pip-packages"
         $offlineMode = Test-Path $pipPackagesDir
+        $missingWheels = @()
+
+        if ($offlineMode) {
+            $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir
+            if ($missingWheels.Count -gt 0) {
+                Write-Host "Warning: Offline wheel cache is incomplete: $($missingWheels -join ', ')"
+                Write-Host "Falling back to online installation."
+                $offlineMode = $false
+            }
+        }
 
         if ($offlineMode) {
             Write-Host "Using offline installation with local wheel files..."
@@ -151,7 +213,7 @@ with tarfile.open(archive_path, 'r:gz') as archive:
             $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
             New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
-            & $pythonExe -m pip download pip setuptools wheel --dest $tempDir --no-deps 2>$null
+            & $pythonExe -m pip download --only-binary=:all: pip setuptools wheel --dest $tempDir 2>$null
 
             if (Test-Path $tempDir) {
                 New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
@@ -175,10 +237,8 @@ with tarfile.open(archive_path, 'r:gz') as archive:
             Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
         }
 
-        if ($hadPythonPath) {
-            $env:PYTHONPATH = $originalPythonPath
-        } else {
-            Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+        foreach ($snapshot in $pthSnapshots) {
+            Set-PthFileContent -Path $snapshot.Path -Lines $snapshot.Content
         }
 
         if (Test-Path $extractRoot) {

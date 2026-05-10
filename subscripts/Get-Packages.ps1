@@ -278,6 +278,42 @@ function Remove-OldPackageFiles {
     }
 }
 
+function Save-PipWheelPackages {
+    param(
+        [string]$PythonCommandPath,
+        [string]$DestinationDir
+    )
+
+    if (!(Test-Path $DestinationDir)) {
+        New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
+    }
+
+    & $PythonCommandPath -m pip download --only-binary=:all: pip setuptools wheel --dest $DestinationDir | Out-Host
+    return $LASTEXITCODE
+}
+
+function Test-PipWheelPackages {
+    param(
+        [string]$DirectoryPath
+    )
+
+    $requiredPatterns = @(
+        "pip-*.whl",
+        "setuptools-*.whl",
+        "wheel-*.whl",
+        "packaging-*.whl"
+    )
+
+    $missing = @()
+    foreach ($pattern in $requiredPatterns) {
+        if (-not (Get-ChildItem -Path $DirectoryPath -Filter $pattern -File -ErrorAction SilentlyContinue | Select-Object -First 1)) {
+            $missing += $pattern
+        }
+    }
+
+    return $missing
+}
+
 # Visual Studio Build Tools のダウンロード処理
 $vsbtPackage = $TargetPackages | Where-Object { $_.ExtractStrategy -eq "VSBuildTools" } | Select-Object -First 1
 if ($vsbtPackage) {
@@ -409,18 +445,18 @@ if (-not $pythonExe) {
     Write-Host "Python found. Downloading pip wheel files..."
 
     $pipPackagesDir = "packages\pip-packages"
-    if (!(Test-Path $pipPackagesDir)) {
-        New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
-    }
 
     try {
-        # pip download で wheel ファイルを取得
-        & $pythonExe -m pip download pip setuptools wheel --dest $pipPackagesDir --no-deps
+        # pip download で依存を含む wheel ファイルを取得
+        $downloadExitCode = Save-PipWheelPackages -PythonCommandPath $pythonExe.Source -DestinationDir $pipPackagesDir
+        $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir
 
-        if ($LASTEXITCODE -eq 0) {
+        if ($downloadExitCode -eq 0 -and $missingWheels.Count -eq 0) {
             Write-Host "Successfully downloaded wheel files to $pipPackagesDir"
+        } elseif ($downloadExitCode -eq 0) {
+            Write-Host "Warning: Wheel cache is missing required files: $($missingWheels -join ', ')" -ForegroundColor Yellow
         } else {
-            Write-Host "Warning: Failed to download some wheel files (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+            Write-Host "Warning: Failed to download some wheel files (exit code: $downloadExitCode)" -ForegroundColor Yellow
         }
     } catch {
         Write-Host "Warning: Failed to download wheel files: $($_.Exception.Message)" -ForegroundColor Yellow

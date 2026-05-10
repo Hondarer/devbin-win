@@ -4,7 +4,7 @@
 
 本文書では、完全オフライン環境での pip インストールを実現するための実装方針を説明します。
 
-pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得します。`python-setup.ps1` はこの tarball を一時展開し、`src` ディレクトリを `PYTHONPATH` に追加した状態で `python -m pip` を実行します。pip、setuptools、wheel の wheel ファイルは `packages/pip-packages` に保存し、オフラインインストールに利用します。
+pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得します。`python-setup.ps1` はこの tarball を一時展開し、埋め込み Python の `._pth` に `src` を一時追加した状態で `python -m pip` を実行します。`packages/pip-packages` には `pip`、`setuptools`、`wheel` と、その解決に必要な依存 wheel を保存し、オフラインインストールに利用します。
 
 ## 採用理由
 
@@ -24,6 +24,7 @@ package "packages フォルダ" {
     [pip-*.whl]
     [setuptools-*.whl]
     [wheel-*.whl]
+    [packaging-*.whl]
   }
 }
 
@@ -38,7 +39,7 @@ package "処理層" {
 getpkg --> [pip-26.1.1.tar.gz] : ダウンロード
 getpkg --> [pip-packages] : wheel をダウンロード
 pysetup --> [pip-26.1.1.tar.gz] : 一時展開
-pysetup --> [pip-26.1.1/src] : PYTHONPATH に追加
+pysetup --> [pip-26.1.1/src] : `._pth` に一時追加
 pysetup --> [pip-packages] : find-links 指定
 @enduml
 ```
@@ -66,7 +67,7 @@ pysetup --> [pip-packages] : find-links 指定
 `Get-Packages.ps1` は以下を行います。
 
 1. `pip-26.1.1.tar.gz` を `packages` にダウンロード
-2. Python が利用可能なら `pip download pip setuptools wheel --dest packages/pip-packages --no-deps` を実行
+2. Python が利用可能なら `pip download --only-binary=:all: pip setuptools wheel --dest packages/pip-packages` を実行し、依存 wheel も保存
 
 ### python-setup.ps1
 
@@ -75,10 +76,10 @@ pysetup --> [pip-packages] : find-links 指定
 1. 埋め込み Python の `._pth` を更新し、`Lib\site-packages` と `import site` を有効化
 2. `packages\pip-*.tar.gz` を検出
 3. tarball を一時ディレクトリへ展開
-4. 展開先の `pip-26.1.1\src` を `PYTHONPATH` に追加
+4. 展開先の `pip-26.1.1\src` を埋め込み Python の `._pth` に一時追加
 5. `python -m pip install ...` を実行
-6. オンライン時は追加で wheel を `packages/pip-packages` に保存
-7. `PYTHONHOME` / `PYTHONPATH` と一時展開ディレクトリを cleanup
+6. オンライン時は追加で依存込み wheel を `packages/pip-packages` に保存
+7. `._pth` と一時展開ディレクトリを cleanup
 
 実行コマンドは以下の 2 系統です。
 
@@ -107,7 +108,7 @@ GetPkg -> GetPkg: packages/ に保存
 GetPkg -> GetPkg: Python の有無を確認
 
 alt Python が利用可能
-    GetPkg -> PyPI: pip download で wheel を取得
+    GetPkg -> PyPI: pip download で依存込み wheel を取得
     GetPkg -> GetPkg: packages/pip-packages/ に保存
     GetPkg --> User: 完了 (完全オフライン対応)
 else Python が見つからない
@@ -131,7 +132,7 @@ User -> Setup: インストール実行
 Setup -> Setup: Python を展開
 Setup -> PySetup: PostSetupScript 実行
 PySetup -> PipSrc: 一時展開
-PySetup -> PipModule: PYTHONPATH に追加
+PySetup -> PySetup: `._pth` に pip source を一時追加
 PySetup -> PipModule: python -m pip install\n(--no-index --find-links)
 PipModule -> PipModule: packages/pip-packages/ から\nwheel を読み込み
 PipModule --> PySetup: 完了
@@ -154,11 +155,11 @@ User -> Setup: インストール実行
 Setup -> Setup: Python を展開
 Setup -> PySetup: PostSetupScript 実行
 PySetup -> PipSrc: 一時展開
-PySetup -> PipModule: PYTHONPATH に追加
+PySetup -> PySetup: `._pth` に pip source を一時追加
 PySetup -> PipModule: python -m pip install
 PipModule -> PyPI: pip, setuptools, wheel を\nダウンロード・インストール
 PipModule --> PySetup: 完了
-PySetup -> PyPI: pip download で wheel を取得
+PySetup -> PyPI: pip download で依存込み wheel を取得
 PySetup -> PySetup: wheel を packages/pip-packages/ に保存
 @enduml
 ```
@@ -176,7 +177,7 @@ Python が利用可能な環境では、`Get-Packages.ps1` 実行時点で wheel
 ### 手動での wheel 取得
 
 ```bash
-pip download pip setuptools wheel --dest packages/pip-packages --no-deps
+pip download --only-binary=:all: pip setuptools wheel --dest packages/pip-packages
 ```
 
 ```text
@@ -185,9 +186,10 @@ packages/
 │  ├─ pip-26.1.1-py3-none-any.whl
 │  ├─ setuptools-*.whl
 │  └─ wheel-*.whl
+│  └─ packaging-*.whl
 └─ pip-26.1.1.tar.gz
 ```
 
 ## まとめ
 
-本設計では、`Get-Packages.ps1` が source tarball と wheel を準備し、`python-setup.ps1` は一時展開した `src` から `python -m pip` を実行します。これにより、PyPI を正本とした完全オフライン pip 導入を実現します。
+本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して `python -m pip` を実行します。これにより、PyPI を正本とした完全オフライン pip 導入を実現します。
