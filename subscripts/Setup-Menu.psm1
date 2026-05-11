@@ -762,7 +762,10 @@ function Toggle-CheckedItem {
 
 # Apply: 差分計算 → 確認 → 実行
 function Apply-CheckedState {
-    param([hashtable]$State)
+    param(
+        [hashtable]$State,
+        [hashtable]$InputModeState
+    )
 
     $toInstall   = [System.Collections.Generic.List[object]]::new()
     $toUninstall = [System.Collections.Generic.List[object]]::new()
@@ -833,6 +836,7 @@ function Apply-CheckedState {
     # TUI を一時停止してスクロール表示へ切替
     [Console]::Clear()
     [Console]::CursorVisible = $true
+    Restore-ConsoleInputMode -InputModeState $InputModeState
 
     Write-Host ""
     Write-Host "=== 適用内容の確認 ==="
@@ -1022,6 +1026,14 @@ function Apply-CheckedState {
         $State.Checked[$item.ShortName] = $false
     }
 
+    # メニュー復帰前にマウス入力モードを再有効化
+    $newInputModeState = Enable-ConsoleMouseInput
+    if ($newInputModeState.Enabled) {
+        $InputModeState.Handle = $newInputModeState.Handle
+        $InputModeState.OriginalMode = $newInputModeState.OriginalMode
+        $InputModeState.Enabled = $true
+    }
+
     [Console]::CursorVisible = $false
     $State.NeedRedraw = $true
 }
@@ -1030,7 +1042,8 @@ function Apply-CheckedState {
 function Handle-KeyInput {
     param(
         [hashtable]$State,
-        [System.ConsoleKeyInfo]$KeyInfo
+        [System.ConsoleKeyInfo]$KeyInfo,
+        [hashtable]$InputModeState
     )
 
     switch ($KeyInfo.Key) {
@@ -1058,7 +1071,7 @@ function Handle-KeyInput {
         }
 
         "Enter" {
-            Apply-CheckedState -State $State
+            Apply-CheckedState -State $State -InputModeState $InputModeState
         }
 
         "Escape" {
@@ -1148,7 +1161,7 @@ function Invoke-MenuLoop {
                     $result = "continue"
                 }
                 default {
-                    $result = Handle-KeyInput -State $state -KeyInfo $inputEvent.KeyInfo
+                    $result = Handle-KeyInput -State $state -KeyInfo $inputEvent.KeyInfo -InputModeState $inputModeState
                 }
             }
 
