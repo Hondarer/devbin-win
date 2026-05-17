@@ -545,9 +545,9 @@ endlocal
             Name = "editorconfig-checker"
             ShortName = "editorconfig-checker"
             Version = "3.6.1"
-            ArchivePattern = "^ec-windows-amd64\.zip$"
+            ArchivePattern = "^ec-windows-amd64-.*\.zip$"
             ExtractStrategy = "Subdirectory"
-            ExtractPath = "bin"
+            ExtractPath = ""
             FilePattern = "^ec-windows-amd64\.exe$"
             RenameFiles = @{ "ec-windows-amd64.exe" = "editorconfig-checker.exe" }
             DownloadUrl = "https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.6.1/ec-windows-amd64.zip"
