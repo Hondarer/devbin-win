@@ -183,6 +183,13 @@ from [microsoft/vswhere](https://github.com/microsoft/vswhere)
 - [/releases/tag/3.1.7](https://github.com/microsoft/vswhere/releases/tag/3.1.7)
     - [vswhere.exe](https://github.com/microsoft/vswhere/releases/download/3.1.7/vswhere.exe)
 
+### editorconfig-checker
+
+from [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig-checker/editorconfig-checker)
+
+- [/releases/tag/v3.6.1](https://github.com/editorconfig-checker/editorconfig-checker/releases/tag/v3.6.1)
+    - [ec-windows-amd64.zip](https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.6.1/ec-windows-amd64.zip)
+
 ### Visual Studio BUild Tools (VS 2022 C++ toolset 14.44 & Windows SDK v26100)
 
 ## TODO

@@ -37,6 +37,7 @@ code --version
 cloc --version
 vswhere -?
 clang-format --version
+editorconfig-checker --version
 ```
 
 #### cloc について
@@ -65,6 +66,15 @@ clang-format はソースコードを自動整形する LLVM ツールです。`
 - **配置ファイル**: `bin\clang-format.exe`、`bin\git-clang-format`、`bin\git-clang-format.bat`
 - **バージョン**: 22.1.4
 - **プロジェクト**: [llvm/llvm-project](https://github.com/llvm/llvm-project)
+
+#### editorconfig-checker について
+
+editorconfig-checker は `.editorconfig` の定義に対してファイルのフォーマットを検証するツールです。
+
+- **用途**: `.editorconfig` ルールへの準拠チェック (インデント、改行コード、末尾空白など)
+- **配置ファイル**: `bin\editorconfig-checker.exe`
+- **バージョン**: 3.6.1
+- **プロジェクト**: [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig-checker/editorconfig-checker)
 
 ## アンインストール
 

@@ -538,6 +538,24 @@ endlocal
             DetectFiles = @("fonts\UDEVGothicHSRFJPDOC\UDEVGothicHSRFJPDOC-Regular.ttf")
             DisableIfFont = "UDEV Gothic HSRFJPDOC"
             DefaultChecked = $true
+        },
+
+        # editorconfig-checker - Subdirectory extraction
+        @{
+            Name = "editorconfig-checker"
+            ShortName = "editorconfig-checker"
+            Version = "3.6.1"
+            ArchivePattern = "^ec-windows-amd64\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = "bin"
+            FilePattern = "^ec-windows-amd64\.exe$"
+            RenameFiles = @{ "ec-windows-amd64.exe" = "editorconfig-checker.exe" }
+            DownloadUrl = "https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.6.1/ec-windows-amd64.zip"
+            DependsOn = @()
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("editorconfig-checker.exe")
+            DefaultChecked = $true
         }
     )
 }
