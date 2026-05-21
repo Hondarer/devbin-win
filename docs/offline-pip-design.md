@@ -4,7 +4,7 @@
 
 本文書では、完全オフライン環境での pip インストールを実現するための実装方針を説明します。
 
-pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得します。`python-setup.ps1` はこの tarball を一時展開し、埋め込み Python の `._pth` に `src` を一時追加した状態で `python -m pip` を実行します。`packages/pip-packages` には `pip`、`setuptools`、`wheel` と、その解決に必要な依存 wheel を保存し、オフラインインストールに利用します。
+pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得します。`python-setup.ps1` はこの tarball を一時展開し、埋め込み Python の `._pth` に `src` を一時追加した状態で `python -m pip` を実行します。`packages/pip-packages` には `pip`、`setuptools`、`wheel`、`yamllint` と、それぞれの依存 wheel を保存し、オフラインインストールに利用します。
 
 ## 採用理由
 
@@ -25,6 +25,9 @@ package "packages フォルダ" {
     [setuptools-*.whl]
     [wheel-*.whl]
     [packaging-*.whl]
+    [yamllint-*.whl]
+    [pathspec-*.whl]
+    [PyYAML-*.whl]
   }
 }
 
@@ -37,7 +40,7 @@ package "処理層" {
 }
 
 getpkg --> [pip-26.1.1.tar.gz] : ダウンロード
-getpkg --> [pip-packages] : wheel をダウンロード
+getpkg --> [pip-packages] : pip/setuptools/wheel/yamllint wheel をダウンロード
 pysetup --> [pip-26.1.1.tar.gz] : 一時展開
 pysetup --> [pip-26.1.1/src] : `._pth` に一時追加
 pysetup --> [pip-packages] : find-links 指定
@@ -67,7 +70,7 @@ pysetup --> [pip-packages] : find-links 指定
 `Get-Packages.ps1` は以下を行います。
 
 1. `pip-26.1.1.tar.gz` を `packages` にダウンロード
-2. Python が利用可能なら `pip download --only-binary=:all: pip setuptools wheel --dest packages/pip-packages` を実行し、依存 wheel も保存
+2. Python が利用可能なら `pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel yamllint pyyaml --dest packages/pip-packages` を実行し、依存 wheel も保存。`<ver>` は packages.psd1 の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従する
 
 ### python-setup.ps1
 
@@ -177,19 +180,33 @@ Python が利用可能な環境では、`Get-Packages.ps1` 実行時点で wheel
 ### 手動での wheel 取得
 
 ```bash
-pip download --only-binary=:all: pip setuptools wheel --dest packages/pip-packages
+pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel yamllint pyyaml --dest packages/pip-packages
 ```
+
+`<ver>` には packages.psd1 の Python バージョン (例: `3.13`) を指定してください。`Get-Packages.ps1` はこの値を自動取得して渡します。`--python-version` を省略すると実行環境の Python バージョン向け wheel が取得され、devbin Python でのオフラインインストールが失敗する場合があります。すでに不適切なバージョンの wheel を取得済みの場合は `packages/pip-packages/` を削除してから再実行してください。
 
 ```text
 packages/
 ├─ pip-packages/
 │  ├─ pip-26.1.1-py3-none-any.whl
 │  ├─ setuptools-*.whl
-│  └─ wheel-*.whl
-│  └─ packaging-*.whl
+│  ├─ wheel-*.whl
+│  ├─ packaging-*.whl
+│  ├─ yamllint-*.whl
+│  ├─ pathspec-*.whl
+│  └─ PyYAML-*.whl
 └─ pip-26.1.1.tar.gz
 ```
 
+## pip パッケージの追加
+
+pip 経由でインストールする新しいツールを追加する際は、以下の 2 箇所を変更します。
+
+1. `packages.psd1` に `ExtractStrategy = "PipInstall"` のエントリを追加 (詳細は [packages-psd1-specification.md](./packages-psd1-specification.md) を参照)
+2. `Get-Packages.ps1` の `Save-PipWheelPackages` 内の `pip download` コマンドに新しいパッケージ名を追加
+
+`python-setup.ps1` は pip 本体と setuptools/wheel のインストールのみを担うため、変更不要です。
+
 ## まとめ
 
-本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して `python -m pip` を実行します。これにより、PyPI を正本とした完全オフライン pip 導入を実現します。
+本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して `python -m pip` を実行します。pip パッケージ型のツール (yamllint 等) は `Setup-Strategies.psm1` の `PipInstall` 戦略がインストールを担います。これにより、PyPI を正本とした完全オフライン pip 導入を実現します。

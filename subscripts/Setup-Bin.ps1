@@ -122,6 +122,7 @@ function Get-PathDirectories {
         "$BaseDir\jdk-25\bin",
         "$BaseDir\graphviz",
         "$BaseDir\python-3.13",
+        "$BaseDir\python-3.13\Scripts",
         "$BaseDir\dotnet10sdk",
         "$BaseDir\git",
         "$BaseDir\git\bin",
@@ -241,8 +242,8 @@ if (!(Test-Path $packagesDir)) {
 # 必要なパッケージファイルが存在するかチェック
 $missingPackages = @()
 foreach ($packageConfig in $Packages) {
-    # VSBuildTools は戦略内でダウンロードされるためスキップ
-    if ($packageConfig.ExtractStrategy -eq "VSBuildTools") {
+    # VSBuildTools / PipInstall は archive ファイルを使わないためスキップ
+    if ($packageConfig.ExtractStrategy -eq "VSBuildTools" -or $packageConfig.ExtractStrategy -eq "PipInstall") {
         continue
     }
 
@@ -322,6 +323,24 @@ foreach ($packageConfig in $Packages) {
         $totalCount++
 
         # パッケージを抽出 (ArchiveFile パラメーターはダミー)
+        $result = Invoke-ExtractStrategy `
+            -PackageConfig $packageConfig `
+            -ArchiveFile "" `
+            -BinDir $InstallDir `
+            -ScriptDir $ScriptDir
+
+        if ($result) {
+            $successCount++
+        }
+
+        Write-Host ""
+        continue
+    }
+
+    # PipInstall 戦略の場合は pip install に処理を委譲
+    if ($strategy -eq "PipInstall") {
+        $totalCount++
+
         $result = Invoke-ExtractStrategy `
             -PackageConfig $packageConfig `
             -ArchiveFile "" `
@@ -433,7 +452,7 @@ if ($Install) {
                     Test-ComponentFiles -InstallDir $InstallDir -DetectFiles $detectFiles
                 } else { $true }
 
-                if ($filesExist -or $pkg.ExtractStrategy -eq "CopyToPackages") {
+                if ($filesExist -or $pkg.ExtractStrategy -eq "CopyToPackages" -or $pkg.ExtractStrategy -eq "PipInstall") {
                     $pathDirsForPkg = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
                     $envVarsForPkg = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
                     $versionForPkg = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }

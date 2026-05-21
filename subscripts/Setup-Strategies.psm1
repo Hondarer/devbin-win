@@ -679,6 +679,62 @@ function Invoke-VSBuildToolsExtract {
     }
 }
 
+# PipInstall 戦略: python -m pip install でパッケージをインストール
+function Invoke-PipInstallStrategy {
+    param(
+        [string]$BinDir,
+        [hashtable]$Config
+    )
+
+    $pipPackage = $Config.PipPackage
+    $version = if ($Config.ContainsKey("Version")) { $Config.Version } else { "" }
+    $packageSpec = if (-not [string]::IsNullOrWhiteSpace($version)) { "$pipPackage==$version" } else { $pipPackage }
+
+    Write-Host "Installing $($Config.Name) via pip ($packageSpec)..."
+
+    $pythonExe = Join-Path $BinDir "python-3.13\python.exe"
+    if (-not (Test-Path $pythonExe)) {
+        Write-Host "Error: Python not found at: $pythonExe" -ForegroundColor Red
+        return $false
+    }
+
+    try {
+        $pipPackagesDir = "packages\pip-packages"
+
+        if (Test-Path $pipPackagesDir) {
+            Write-Host "Using offline installation with local wheel files..."
+            $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
+            & $pythonExe -m pip install --no-warn-script-location `
+                --no-index --find-links=$pipPackagesAbsPath $packageSpec
+        } else {
+            Write-Host "Using online installation (downloading from PyPI)..."
+            & $pythonExe -m pip install --no-warn-script-location $packageSpec
+
+            # 次回オフライン用に wheel を保存
+            $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
+            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+            & $pythonExe -m pip download --only-binary=:all: $pipPackage --dest $tempDir 2>$null
+            if (Test-Path $tempDir) {
+                New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
+                Get-ChildItem -Path $tempDir -Filter "*.whl" | Copy-Item -Destination $pipPackagesDir -Force
+                Write-Host "Saved wheel files to $pipPackagesDir for future offline use"
+                Remove-Item -Path $tempDir -Recurse -Force
+            }
+        }
+
+        if ($LASTEXITCODE -eq 0 -or $null -eq $LASTEXITCODE) {
+            Write-Host "$($Config.Name) installation completed."
+            return $true
+        } else {
+            Write-Host "Warning: pip install may have issues (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+            return $false
+        }
+    } catch {
+        Write-Host "Error: Failed to install $($Config.Name): $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    }
+}
+
 # メイン関数: 抽出戦略を実行
 function Invoke-ExtractStrategy {
     [CmdletBinding()]
@@ -741,6 +797,9 @@ function Invoke-ExtractStrategy {
             "VSBuildTools" {
                 return Invoke-VSBuildToolsExtract -BinDir $BinDir -ScriptDir $ScriptDir -Config $PackageConfig
             }
+            "PipInstall" {
+                return Invoke-PipInstallStrategy -BinDir $BinDir -Config $PackageConfig
+            }
             default {
                 Write-Host "Unknown strategy: $strategy" -ForegroundColor Red
                 return $false
@@ -776,4 +835,4 @@ function Invoke-ExtractStrategy {
     }
 }
 
-Export-ModuleMember -Function 'Invoke-ExtractStrategy'
+Export-ModuleMember -Function 'Invoke-ExtractStrategy', 'Invoke-PipInstallStrategy'

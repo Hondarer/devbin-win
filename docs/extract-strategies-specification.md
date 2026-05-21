@@ -26,6 +26,7 @@ subscripts/Setup-Strategies.psm1
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
 | InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
+| PipInstall | python -m pip install でパッケージをインストール | yamllint |
 
 ## 共通関数
 
@@ -594,6 +595,46 @@ VSBTConfig の詳細:
 #### 適用パッケージ
 
 Visual Studio Build Tools
+
+### PipInstall 戦略
+
+`python -m pip install` を実行して Python パッケージをインストールします。アーカイブファイルを使わず、pip の依存解決に委ねます。オフライン用 wheel は `packages/pip-packages/` から読み込みます。
+
+#### パラメータ
+
+| パラメータ | 説明 | 型 | 必須 |
+|-----------|------|-----|------|
+| PipPackage | pip パッケージ名 | string | ✅ |
+| Version | インストールするバージョン (指定時は `==Version` として渡す) | string | ❌ |
+
+#### 処理フロー
+
+1. `$BinDir\python-3.13\python.exe` を特定
+2. `packages\pip-packages\` が存在すればオフラインインストール (`--no-index --find-links`)
+3. 存在しなければオンラインインストール、完了後に wheel を `packages\pip-packages\` へ保存
+
+#### オフライン対応
+
+`Get-Packages.ps1` 実行時に Python が利用可能であれば、yamllint と依存パッケージ (pathspec, pyyaml) の wheel が `packages/pip-packages/` に保存されます。これにより、インターネット接続なしでのインストールが可能です。
+
+#### 使用例
+
+```powershell
+@{
+    Name = "yamllint"
+    ShortName = "yamllint"
+    Version = "1.38.0"
+    ArchivePattern = "^$"
+    ExtractStrategy = "PipInstall"
+    PipPackage = "yamllint"
+    DependsOn = @("python")
+    DetectFiles = @("python-3.13\Scripts\yamllint.exe")
+}
+```
+
+#### 適用パッケージ
+
+yamllint
 
 ## 新しい戦略の追加
 

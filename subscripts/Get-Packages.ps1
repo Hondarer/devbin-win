@@ -281,14 +281,22 @@ function Remove-OldPackageFiles {
 function Save-PipWheelPackages {
     param(
         [string]$PythonCommandPath,
-        [string]$DestinationDir
+        [string]$DestinationDir,
+        [string]$TargetPythonVersion = ""
     )
 
     if (!(Test-Path $DestinationDir)) {
         New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
     }
 
-    & $PythonCommandPath -m pip download --only-binary=:all: pip setuptools wheel --dest $DestinationDir | Out-Host
+    if (-not [string]::IsNullOrWhiteSpace($TargetPythonVersion)) {
+        & $PythonCommandPath -m pip download --only-binary=:all: `
+            --python-version $TargetPythonVersion --implementation cp --platform win_amd64 `
+            pip setuptools wheel yamllint pyyaml --dest $DestinationDir | Out-Host
+    } else {
+        & $PythonCommandPath -m pip download --only-binary=:all: `
+            pip setuptools wheel yamllint pyyaml --dest $DestinationDir | Out-Host
+    }
     return $LASTEXITCODE
 }
 
@@ -426,7 +434,7 @@ if ($successCount -eq $totalCount) {
 $shouldDownloadPipWheels = $true
 if ($PackageShortNames -and $PackageShortNames.Count -gt 0) {
     $targetShortNames = @($TargetPackages | ForEach-Object { $_.ShortName })
-    $shouldDownloadPipWheels = ($targetShortNames -contains "python") -or ($targetShortNames -contains "get-pip")
+    $shouldDownloadPipWheels = ($targetShortNames -contains "python") -or ($targetShortNames -contains "get-pip") -or ($targetShortNames -contains "yamllint")
 }
 
 if (-not $shouldDownloadPipWheels) {
@@ -447,8 +455,16 @@ if (-not $pythonExe) {
     $pipPackagesDir = "packages\pip-packages"
 
     try {
+        # devbin の Python バージョンを packages.psd1 から取得
+        $pythonPkg = $Packages | Where-Object { $_.ShortName -eq "python" } | Select-Object -First 1
+        $targetPythonVersion = ""
+        if ($pythonPkg -and $pythonPkg.Version) {
+            $versionParts = ([string]$pythonPkg.Version) -split '\.'
+            $targetPythonVersion = "$($versionParts[0]).$($versionParts[1])"
+        }
+
         # pip download で依存を含む wheel ファイルを取得
-        $downloadExitCode = Save-PipWheelPackages -PythonCommandPath $pythonExe.Source -DestinationDir $pipPackagesDir
+        $downloadExitCode = Save-PipWheelPackages -PythonCommandPath $pythonExe.Source -DestinationDir $pipPackagesDir -TargetPythonVersion $targetPythonVersion
         $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir
 
         if ($downloadExitCode -eq 0 -and $missingWheels.Count -eq 0) {

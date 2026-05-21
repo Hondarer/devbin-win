@@ -149,7 +149,7 @@ endlocal
             PostSetupScript = "python-setup.ps1"
             DownloadUrl = "https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip"
             DependsOn = @("get-pip")
-            PathDirs = @("python-3.13")
+            PathDirs = @("python-3.13", "python-3.13\Scripts")
             EnvVars = @{}
             DetectFiles = @("python-3.13\python.exe")
             SkipIfCommand = "python"
@@ -555,6 +555,21 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("editorconfig-checker.exe")
+            DefaultChecked = $true
+        },
+
+        # yamllint - pip install
+        @{
+            Name = "yamllint"
+            ShortName = "yamllint"
+            Version = "1.38.0"
+            ArchivePattern = "^$"
+            ExtractStrategy = "PipInstall"
+            PipPackage = "yamllint"
+            DependsOn = @("python")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("python-3.13\Scripts\yamllint.exe")
             DefaultChecked = $true
         }
     )

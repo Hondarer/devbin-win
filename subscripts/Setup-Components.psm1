@@ -350,7 +350,7 @@ function Install-Component {
     $packagesDir = "packages"
     $archiveFile = $null
 
-    if ($pkg.ExtractStrategy -ne "VSBuildTools") {
+    if ($pkg.ExtractStrategy -ne "VSBuildTools" -and $pkg.ExtractStrategy -ne "PipInstall") {
         $baseFileName = Get-PackageBaseFileName -Package $pkg
         $downloadFileName = ""
         if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {
