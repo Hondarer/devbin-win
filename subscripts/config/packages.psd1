@@ -19,10 +19,10 @@
         @{
             Name = "Pandoc"
             ShortName = "pandoc"
-            Version = "3.9"
+            Version = "3.9.0.2"
             ArchivePattern = "pandoc-.*-windows-x86_64\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.9/pandoc-3.9-windows-x86_64.zip"
+            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -34,10 +34,10 @@
         @{
             Name = "pandoc-crossref"
             ShortName = "pandoc-crossref"
-            Version = "0.3.23a"
+            Version = "0.3.24a"
             ArchivePattern = "pandoc-crossref-Windows-X64-.*\.7z$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.23a/pandoc-crossref-Windows-X64.7z"
+            DownloadUrl = "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.24a/pandoc-crossref-Windows-X64.7z"
             DependsOn = @("pandoc")
             PathDirs = @()
             EnvVars = @{}

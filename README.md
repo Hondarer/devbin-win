@@ -15,15 +15,15 @@ from [https://nodejs.org/en](https://nodejs.org/en)
 
 from [https://github.com/jgm/pandoc](https://github.com/jgm/pandoc)
 
-- [/releases/tag/3.9](https://github.com/jgm/pandoc/releases/tag/3.9)
-    - [pandoc-3.9-windows-x86_64.zip](https://github.com/jgm/pandoc/releases/download/3.9/pandoc-3.9-windows-x86_64.zip)
+- [/releases/tag/3.9.0.2](https://github.com/jgm/pandoc/releases/tag/3.9.0.2)
+    - [pandoc-3.9.0.2-windows-x86_64.zip](https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip)
 
 ### pandoc-crossref
 
 from [lierdakil/pandoc-crossref](https://github.com/lierdakil/pandoc-crossref)
 
-- [/releases/tag/v0.3.23a](https://github.com/lierdakil/pandoc-crossref/releases/tag/v0.3.23a)
-    - [pandoc-crossref-Windows-X64.7z](https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.23a/pandoc-crossref-Windows-X64.7z)
+- [/releases/tag/v0.3.24a](https://github.com/lierdakil/pandoc-crossref/releases/tag/v0.3.24a)
+    - [pandoc-crossref-Windows-X64.7z](https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.24a/pandoc-crossref-Windows-X64.7z)
 
 ### doxygen
 

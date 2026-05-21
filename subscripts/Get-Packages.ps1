@@ -255,8 +255,14 @@ function Remove-OldPackageFiles {
             $_.Name -match $Package.ArchivePattern -and $_.Name -ne $CurrentFileName
         }
 
+    if ($oldFiles) {
+        Write-Host "  Old package cleanup for $($Package.ShortName): $($oldFiles.Count) file(s)"
+        Write-Host "    Current package file: $CurrentFileName"
+    }
+
     foreach ($oldFile in $oldFiles) {
         try {
+            Write-Host "    Removing old package file: $($oldFile.Name)"
             Remove-Item -LiteralPath $oldFile.FullName -Force -ErrorAction Stop
             Write-Host "  Removed old package file: $($oldFile.Name)"
         } catch {
@@ -269,6 +275,7 @@ function Remove-OldPackageFiles {
         $baseFilePath = Join-Path $PackagesDir $baseFileName
         if (Test-Path $baseFilePath -PathType Leaf) {
             try {
+                Write-Host "  Original package file cleanup for $($Package.ShortName): $baseFileName"
                 Remove-Item -LiteralPath $baseFilePath -Force -ErrorAction Stop
                 Write-Host "  Removed base package file: $baseFileName"
             } catch {
