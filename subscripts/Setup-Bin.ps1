@@ -242,8 +242,8 @@ if (!(Test-Path $packagesDir)) {
 # 必要なパッケージファイルが存在するかチェック
 $missingPackages = @()
 foreach ($packageConfig in $Packages) {
-    # VSBuildTools / PipInstall は archive ファイルを使わないためスキップ
-    if ($packageConfig.ExtractStrategy -eq "VSBuildTools" -or $packageConfig.ExtractStrategy -eq "PipInstall") {
+    # VSBuildTools / PipInstall / NpmInstall は archive ファイルを使わないためスキップ
+    if ($packageConfig.ExtractStrategy -eq "VSBuildTools" -or $packageConfig.ExtractStrategy -eq "PipInstall" -or $packageConfig.ExtractStrategy -eq "NpmInstall") {
         continue
     }
 
@@ -337,8 +337,8 @@ foreach ($packageConfig in $Packages) {
         continue
     }
 
-    # PipInstall 戦略の場合は pip install に処理を委譲
-    if ($strategy -eq "PipInstall") {
+    # PipInstall / NpmInstall 戦略の場合は各パッケージマネージャーに処理を委譲
+    if ($strategy -eq "PipInstall" -or $strategy -eq "NpmInstall") {
         $totalCount++
 
         $result = Invoke-ExtractStrategy `
@@ -452,7 +452,7 @@ if ($Install) {
                     Test-ComponentFiles -InstallDir $InstallDir -DetectFiles $detectFiles
                 } else { $true }
 
-                if ($filesExist -or $pkg.ExtractStrategy -eq "CopyToPackages" -or $pkg.ExtractStrategy -eq "PipInstall") {
+                if ($filesExist -or $pkg.ExtractStrategy -eq "CopyToPackages" -or $pkg.ExtractStrategy -eq "PipInstall" -or $pkg.ExtractStrategy -eq "NpmInstall") {
                     $pathDirsForPkg = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
                     $envVarsForPkg = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
                     $versionForPkg = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }

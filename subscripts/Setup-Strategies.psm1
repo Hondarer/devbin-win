@@ -735,6 +735,118 @@ function Invoke-PipInstallStrategy {
     }
 }
 
+# NpmInstall 戦略: npm install -g でパッケージを devbin 配下にインストール
+function Invoke-NpmInstallStrategy {
+    param(
+        [string]$BinDir,
+        [hashtable]$Config
+    )
+
+    $npmPackage = $Config.NpmPackage
+    if ([string]::IsNullOrWhiteSpace($npmPackage)) {
+        Write-Host "Error: NpmPackage not specified in config" -ForegroundColor Red
+        return $false
+    }
+
+    $version = if ($Config.ContainsKey("Version")) { $Config.Version } else { "" }
+    $packageSpec = if (-not [string]::IsNullOrWhiteSpace($version)) { "$npmPackage@$version" } else { $npmPackage }
+
+    Write-Host "Installing $($Config.Name) via npm ($packageSpec)..."
+
+    $npmCmd = Join-Path $BinDir "npm.cmd"
+    if (-not (Test-Path $npmCmd)) {
+        Write-Host "Error: npm not found at: $npmCmd" -ForegroundColor Red
+        return $false
+    }
+
+    $ignoreScripts = $true
+    if ($Config.ContainsKey("NpmIgnoreScripts")) {
+        $ignoreScripts = [bool]$Config.NpmIgnoreScripts
+    }
+
+    try {
+        $npmPackagesDir = "packages\npm-packages"
+        $npmTempCacheDir = Join-Path $BinDir ".npm-cache"
+        $args = @("install", "-g", "--prefix", $BinDir)
+
+        if ($ignoreScripts) {
+            $args += "--ignore-scripts"
+        }
+
+        $archiveFile = $null
+        if ($Config.ContainsKey("ArchivePattern") -and (Test-Path $npmPackagesDir)) {
+            $archiveFiles = Get-ChildItem -Path $npmPackagesDir -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match $Config.ArchivePattern } |
+                Sort-Object Name
+            if ($archiveFiles -and $archiveFiles.Count -gt 0) {
+                $archiveFile = $archiveFiles[0].FullName
+            }
+        }
+
+        if ($archiveFile) {
+            Write-Host "Using local npm package archive: $(Split-Path $archiveFile -Leaf)"
+            New-Item -ItemType Directory -Path $npmTempCacheDir -Force | Out-Null
+            $args += @("--cache", $npmTempCacheDir, "--offline")
+
+            $dependencyArchives = @()
+            $npmDependencies = if ($Config.ContainsKey("NpmDependencies")) { @($Config.NpmDependencies) } else { @() }
+            foreach ($dependencySpec in $npmDependencies) {
+                $dependencyName = [string]$dependencySpec
+                if ($dependencyName.StartsWith("@")) {
+                    $versionSeparatorIndex = $dependencyName.IndexOf("@", 1)
+                    if ($versionSeparatorIndex -gt 0) {
+                        $dependencyName = $dependencyName.Substring(0, $versionSeparatorIndex)
+                    }
+                } else {
+                    $dependencyName = ($dependencyName -split '@')[0]
+                }
+
+                if ([string]::IsNullOrWhiteSpace($dependencyName)) {
+                    continue
+                }
+
+                $dependencyArchivePrefix = ($dependencyName -replace '^@', '') -replace '/', '-'
+                $dependencyArchive = Get-ChildItem -Path $npmPackagesDir -File -Filter "$dependencyArchivePrefix-*.tgz" -ErrorAction SilentlyContinue |
+                    Sort-Object Name |
+                    Select-Object -First 1
+
+                if ($dependencyArchive) {
+                    $dependencyArchives += $dependencyArchive.FullName
+                } else {
+                    Write-Host "Warning: npm dependency archive not found: $dependencySpec" -ForegroundColor Yellow
+                }
+            }
+
+            if ($dependencyArchives.Count -gt 0) {
+                $args += $dependencyArchives
+            }
+            $args += $archiveFile
+        } else {
+            Write-Host "Using online installation (downloading from npm registry)..."
+            New-Item -ItemType Directory -Path $npmTempCacheDir -Force | Out-Null
+            $args += @("--cache", $npmTempCacheDir, "--offline=false")
+            $args += $packageSpec
+        }
+
+        & $npmCmd @args
+
+        if ($LASTEXITCODE -eq 0 -or $null -eq $LASTEXITCODE) {
+            Write-Host "$($Config.Name) installation completed."
+            return $true
+        } else {
+            Write-Host "Warning: npm install may have issues (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+            return $false
+        }
+    } catch {
+        Write-Host "Error: Failed to install $($Config.Name): $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    } finally {
+        if ($npmTempCacheDir -and (Test-Path $npmTempCacheDir)) {
+            Remove-Item -Path $npmTempCacheDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 # メイン関数: 抽出戦略を実行
 function Invoke-ExtractStrategy {
     [CmdletBinding()]
@@ -800,6 +912,9 @@ function Invoke-ExtractStrategy {
             "PipInstall" {
                 return Invoke-PipInstallStrategy -BinDir $BinDir -Config $PackageConfig
             }
+            "NpmInstall" {
+                return Invoke-NpmInstallStrategy -BinDir $BinDir -Config $PackageConfig
+            }
             default {
                 Write-Host "Unknown strategy: $strategy" -ForegroundColor Red
                 return $false
@@ -835,4 +950,4 @@ function Invoke-ExtractStrategy {
     }
 }
 
-Export-ModuleMember -Function 'Invoke-ExtractStrategy', 'Invoke-PipInstallStrategy'
+Export-ModuleMember -Function 'Invoke-ExtractStrategy', 'Invoke-PipInstallStrategy', 'Invoke-NpmInstallStrategy'

@@ -350,7 +350,7 @@ function Install-Component {
     $packagesDir = "packages"
     $archiveFile = $null
 
-    if ($pkg.ExtractStrategy -ne "VSBuildTools" -and $pkg.ExtractStrategy -ne "PipInstall") {
+    if ($pkg.ExtractStrategy -ne "VSBuildTools" -and $pkg.ExtractStrategy -ne "PipInstall" -and $pkg.ExtractStrategy -ne "NpmInstall") {
         $baseFileName = Get-PackageBaseFileName -Package $pkg
         $downloadFileName = ""
         if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {
@@ -533,6 +533,21 @@ function Uninstall-Component {
 
     Write-Host ""
     Write-Host "=== $($pkg.Name) をアンインストール中 ==="
+
+    if ($pkg.ExtractStrategy -eq "NpmInstall") {
+        $npmPackage = if ($pkg.ContainsKey("NpmPackage")) { [string]$pkg.NpmPackage } else { "" }
+        $npmCmd = Join-Path $InstallDir "npm.cmd"
+
+        if (-not [string]::IsNullOrWhiteSpace($npmPackage) -and (Test-Path $npmCmd)) {
+            Write-Host "  npm uninstall を実行中: $npmPackage"
+            & $npmCmd uninstall -g --prefix $InstallDir $npmPackage
+            if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+                Write-Host "Warning: npm uninstall exited with code $LASTEXITCODE" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "  npm uninstall をスキップしました (npm または NpmPackage が見つかりません)" -ForegroundColor Yellow
+        }
+    }
 
     # VS Code: data フォルダをバックアップ
     $isVSCode = $ShortName -eq "vscode"

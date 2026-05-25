@@ -27,6 +27,7 @@ subscripts/Setup-Strategies.psm1
 | InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 | PipInstall | python -m pip install でパッケージをインストール | yamllint |
+| NpmInstall | npm install -g で npm パッケージをインストール | pnpm, @antfu/ni |
 
 ## 共通関数
 
@@ -635,6 +636,53 @@ Visual Studio Build Tools
 #### 適用パッケージ
 
 yamllint
+
+### NpmInstall 戦略
+
+`npm install -g --prefix <InstallDir>` を実行して npm パッケージを devbin-win のインストール先へインストールします。`packages\npm-packages\` 配下の npm パッケージアーカイブ (`*.tgz`) を優先します。
+
+#### パラメータ
+
+| パラメータ | 説明 | 型 | 必須 |
+|-----------|------|-----|------|
+| NpmPackage | npm パッケージ名 | string | ✅ |
+| Version | インストールするバージョン (指定時は `@Version` として渡す) | string | ❌ |
+| NpmDependencies | 一緒に取得・インストールする npm 依存パッケージ spec | string[] | ❌ |
+| NpmIgnoreScripts | npm lifecycle scripts を無効化するか。未指定時は `$true` | bool | ❌ |
+
+#### 処理フロー
+
+1. `$BinDir\npm.cmd` を特定
+2. `packages\npm-packages\` に対象の `.tgz` があればそれをインストール対象にする
+3. `NpmDependencies` があれば一致する `.tgz` も一緒に npm install に渡す
+4. `.tgz` がなければ `NpmPackage@Version` をオンラインインストール対象にする
+
+#### オフライン対応
+
+`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージ本体と `NpmDependencies` は `packages\npm-packages/*.tgz` に保存されます。npm が見つからない場合は npm パッケージ準備をスキップし、インストール時にオンライン取得します。
+
+#### 使用例
+
+```powershell
+@{
+    Name = "@antfu/ni"
+    ShortName = "antfu-ni"
+    Version = "30.1.0"
+    ArchivePattern = "^antfu-ni-\d+\.\d+\.\d+\.tgz$"
+    ExtractStrategy = "NpmInstall"
+    NpmPackage = "@antfu/ni"
+    DependsOn = @("pnpm")
+    DetectFiles = @("ni.cmd", "nr.cmd")
+}
+```
+
+#### 適用パッケージ
+
+pnpm, @antfu/ni
+
+#### 注意事項
+
+PowerShell の `ni` は `New-Item` alias と衝突します。devbin-win は profile を自動変更しないため、PowerShell で `ni` コマンドを優先したい場合は `Remove-Item Alias:ni -Force` を実行してください。
 
 ## 新しい戦略の追加
 

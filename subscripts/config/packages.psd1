@@ -15,6 +15,37 @@
             DefaultChecked = $true
         },
 
+        # pnpm - npm global install
+        @{
+            Name = "pnpm"
+            ShortName = "pnpm"
+            Version = "11.3.0"
+            ArchivePattern = "^pnpm-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "pnpm"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("pnpm.cmd", "pnpx.cmd")
+            DefaultChecked = $true
+        },
+
+        # @antfu/ni - npm global install
+        @{
+            Name = "@antfu/ni"
+            ShortName = "antfu-ni"
+            Version = "30.1.0"
+            ArchivePattern = "^antfu-ni-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "@antfu/ni"
+            NpmDependencies = @("fzf@^0.5.2", "package-manager-detector@^1.6.0", "tinyexec@^1.0.4", "tinyglobby@^0.2.15")
+            DependsOn = @("pnpm")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("ni.cmd", "nr.cmd")
+            DefaultChecked = $true
+        },
+
         # Pandoc - Standard extraction
         @{
             Name = "Pandoc"

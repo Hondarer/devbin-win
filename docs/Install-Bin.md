@@ -25,6 +25,8 @@ Install-Bin.cmd
 
 ```cmd
 node --version
+pnpm --version
+cmd /c ni --version
 pandoc --version
 doxygen --version
 java -version
@@ -39,6 +41,8 @@ vswhere -?
 clang-format --version
 editorconfig-checker --version
 ```
+
+PowerShell では `ni` が標準 alias (`New-Item`) と衝突します。PowerShell で `@antfu/ni` の `ni` コマンドを使う場合は、セッション内で `Remove-Item Alias:ni -Force` を実行してください。`cmd /c ni` や Git Bash ではこの衝突は発生しません。
 
 #### cloc について
 

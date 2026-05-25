@@ -329,6 +329,84 @@ function Test-PipWheelPackages {
     return $missing
 }
 
+function Get-NpmPackageArchiveFileName {
+    param(
+        [hashtable]$Package
+    )
+
+    $npmPackage = if ($Package.ContainsKey("NpmPackage")) { [string]$Package.NpmPackage } else { "" }
+    $version = if ($Package.ContainsKey("Version")) { [string]$Package.Version } else { "" }
+
+    if ([string]::IsNullOrWhiteSpace($npmPackage) -or [string]::IsNullOrWhiteSpace($version)) {
+        return ""
+    }
+
+    $normalizedName = $npmPackage -replace '^@', ''
+    $normalizedName = $normalizedName -replace '/', '-'
+    return "$normalizedName-$version.tgz"
+}
+
+function Save-NpmPackageArchives {
+    param(
+        [string]$NpmCommandPath,
+        [string]$DestinationDir,
+        [array]$PackagesToPack
+    )
+
+    if (-not $PackagesToPack -or $PackagesToPack.Count -eq 0) {
+        return 0
+    }
+
+    if (!(Test-Path $DestinationDir)) {
+        New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
+    }
+
+    $exitCode = 0
+    $packedSpecs = @{}
+    foreach ($pkg in $PackagesToPack) {
+        $npmPackage = if ($pkg.ContainsKey("NpmPackage")) { [string]$pkg.NpmPackage } else { "" }
+        $version = if ($pkg.ContainsKey("Version")) { [string]$pkg.Version } else { "" }
+        if ([string]::IsNullOrWhiteSpace($npmPackage)) {
+            continue
+        }
+
+        $packageSpecs = @()
+        $packageSpecs += if (-not [string]::IsNullOrWhiteSpace($version)) { "$npmPackage@$version" } else { $npmPackage }
+        if ($pkg.ContainsKey("NpmDependencies")) {
+            $packageSpecs += @($pkg.NpmDependencies)
+        }
+
+        foreach ($packageSpec in $packageSpecs) {
+            if ($packedSpecs.ContainsKey($packageSpec)) {
+                continue
+            }
+            $packedSpecs[$packageSpec] = $true
+
+            $expectedFileName = if ($packageSpec -eq $packageSpecs[0]) { Get-NpmPackageArchiveFileName -Package $pkg } else { "" }
+            $expectedPath = if ($expectedFileName) { Join-Path $DestinationDir $expectedFileName } else { "" }
+
+            if ($expectedPath -and (Test-Path $expectedPath) -and -not $Force) {
+                Write-Host "  $expectedFileName already exists. Skipping."
+                Remove-OldPackageFiles -Package $pkg -CurrentFileName $expectedFileName
+                continue
+            }
+
+            Write-Host "  Packing npm package: $packageSpec"
+            & $NpmCommandPath pack $packageSpec --pack-destination $DestinationDir --offline=false --ignore-scripts | Out-Host
+            if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+                $exitCode = $LASTEXITCODE
+                continue
+            }
+
+            if ($expectedFileName) {
+                Remove-OldPackageFiles -Package $pkg -CurrentFileName $expectedFileName
+            }
+        }
+    }
+
+    return $exitCode
+}
+
 # Visual Studio Build Tools のダウンロード処理
 $vsbtPackage = $TargetPackages | Where-Object { $_.ExtractStrategy -eq "VSBuildTools" } | Select-Object -First 1
 if ($vsbtPackage) {
@@ -368,6 +446,9 @@ if ($vsbtPackage) {
     Write-Host ""
 }
 
+# npm キャッシュ対象を packages.psd1 から取得
+$npmInstallPackages = @($TargetPackages | Where-Object { $_.ExtractStrategy -eq "NpmInstall" })
+
 # ダウンロード対象ファイルを packages.psd1 から取得
 $downloads = @()
 foreach ($package in $TargetPackages) {
@@ -380,7 +461,7 @@ foreach ($package in $TargetPackages) {
     }
 }
 
-if ($downloads.Count -eq 0 -and -not $vsbtPackage) {
+if ($downloads.Count -eq 0 -and -not $vsbtPackage -and $npmInstallPackages.Count -eq 0) {
     Write-Host "Error: No download URLs found in package configuration." -ForegroundColor Red
     exit 1
 }
@@ -435,6 +516,34 @@ if ($successCount -eq $totalCount) {
     Write-Host "`n$failedCount file(s) failed to download." -ForegroundColor Yellow
     Write-Host "Please check your network connection and try again."
     Write-Host "Use the -Force option to forcefully re-download existing files."
+}
+
+# npm キャッシュの自動ダウンロード
+if ($npmInstallPackages.Count -gt 0) {
+    Write-Host ""
+    Write-Host "=== npm Cache Download ===" -ForegroundColor Cyan
+    Write-Host ""
+
+    $npmCmd = Get-Command npm.cmd -ErrorAction SilentlyContinue
+    if (-not $npmCmd) {
+        Write-Host "npm not found. Skipping npm cache download."
+        Write-Host "npm packages will be downloaded during Setup-Bin.ps1 execution."
+    } else {
+        $npmPackagesDir = "packages\npm-packages"
+        $npmNames = @($npmInstallPackages | ForEach-Object { $_.ShortName })
+        Write-Host "npm found. Downloading npm package archives for: $($npmNames -join ', ')"
+
+        try {
+            $packExitCode = Save-NpmPackageArchives -NpmCommandPath $npmCmd.Source -DestinationDir $npmPackagesDir -PackagesToPack $npmInstallPackages
+            if ($packExitCode -eq 0 -or $null -eq $packExitCode) {
+                Write-Host "Successfully prepared npm package archives at $npmPackagesDir"
+            } else {
+                Write-Host "Warning: Failed to prepare some npm package archives (exit code: $packExitCode)" -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host "Warning: Failed to prepare npm package archives: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
 }
 
 # pip wheel ファイルの自動ダウンロード
