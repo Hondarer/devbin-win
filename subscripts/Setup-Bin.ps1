@@ -232,6 +232,119 @@ $InstallDir = $absoluteInstallDir
 Write-Host "Installation directory: $InstallDir"
 Write-Host ""
 
+function Get-NormalizedPipPackageName {
+    param([string]$Name)
+
+    return (([string]$Name).Trim().ToLowerInvariant() -replace '[-_.]+', '-')
+}
+
+function Get-PipWheelPackageNames {
+    param([hashtable]$PackageConfig)
+
+    $packageNames = @()
+    if ($PackageConfig.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$PackageConfig.PipPackage)) {
+        $pipPackage = [string]$PackageConfig.PipPackage
+        $version = if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
+        if (-not [string]::IsNullOrWhiteSpace($version)) {
+            $packageNames += "$pipPackage==$version"
+        } else {
+            $packageNames += $pipPackage
+        }
+    }
+
+    if ($PackageConfig.ContainsKey("PipDependencies")) {
+        $packageNames += @($PackageConfig.PipDependencies)
+    }
+
+    $seen = @{}
+    $result = @()
+    foreach ($packageName in $packageNames) {
+        $packageNameOnly = ([string]$packageName -split '==', 2)[0]
+        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
+        if ([string]::IsNullOrWhiteSpace($normalizedName) -or $seen.ContainsKey($normalizedName)) {
+            continue
+        }
+
+        $seen[$normalizedName] = $true
+        $result += [string]$packageName
+    }
+
+    return @($result)
+}
+
+function Test-PipWheelPackages {
+    param(
+        [string]$DirectoryPath,
+        [string[]]$PackageNames
+    )
+
+    $missing = @()
+    $wheelFiles = if (Test-Path $DirectoryPath) {
+        @(Get-ChildItem -Path $DirectoryPath -Filter "*.whl" -File -ErrorAction SilentlyContinue)
+    } else {
+        @()
+    }
+
+    foreach ($packageName in $PackageNames) {
+        if ([string]::IsNullOrWhiteSpace($packageName)) {
+            continue
+        }
+
+        $packageSpecParts = ([string]$packageName -split '==', 2)
+        $packageNameOnly = $packageSpecParts[0]
+        $requiredVersion = if ($packageSpecParts.Count -gt 1) { $packageSpecParts[1] } else { "" }
+        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
+        $found = $false
+        foreach ($wheelFile in $wheelFiles) {
+            $wheelNameParts = $wheelFile.Name -split '-', 3
+            $distributionName = $wheelNameParts[0]
+            $wheelVersion = if ($wheelNameParts.Count -gt 1) { $wheelNameParts[1] } else { "" }
+            if ((Get-NormalizedPipPackageName -Name $distributionName) -eq $normalizedName -and ([string]::IsNullOrWhiteSpace($requiredVersion) -or $wheelVersion -eq $requiredVersion)) {
+                $found = $true
+                break
+            }
+        }
+
+        if (-not $found) {
+            $missing += if ([string]::IsNullOrWhiteSpace($requiredVersion)) { "$packageNameOnly-*.whl" } else { "$packageNameOnly==$requiredVersion" }
+        }
+    }
+
+    return @($missing)
+}
+
+function Invoke-GetPackagesForPipInstall {
+    param(
+        [string]$ShortName,
+        [string]$InstallDir,
+        [string]$ScriptDir
+    )
+
+    $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
+    if (-not (Test-Path $getPackagesScript)) {
+        Write-Host "Error: Get-Packages.ps1 not found at: $getPackagesScript" -ForegroundColor Red
+        return
+    }
+
+    $originalPath = $env:PATH
+    $pythonDir = Join-Path $InstallDir "python-3.13"
+    $pythonScriptsDir = Join-Path $pythonDir "Scripts"
+
+    try {
+        if (Test-Path (Join-Path $pythonDir "python.exe")) {
+            $pathEntries = @($pythonDir, $pythonScriptsDir) | Where-Object { Test-Path $_ }
+            if ($pathEntries.Count -gt 0) {
+                $env:PATH = ($pathEntries -join ';') + ";" + $env:PATH
+            }
+        }
+
+        Write-Host "  ダウンロード対象: $ShortName"
+        & $getPackagesScript -PackageShortNames @($ShortName)
+    } finally {
+        $env:PATH = $originalPath
+    }
+}
+
 # packages ディレクトリをチェック
 $packagesDir = "packages"
 if (!(Test-Path $packagesDir)) {
@@ -242,8 +355,64 @@ if (!(Test-Path $packagesDir)) {
 # 必要なパッケージファイルが存在するかチェック
 $missingPackages = @()
 foreach ($packageConfig in $Packages) {
-    # VSBuildTools / PipInstall / NpmInstall は archive ファイルを使わないためスキップ
-    if ($packageConfig.ExtractStrategy -eq "VSBuildTools" -or $packageConfig.ExtractStrategy -eq "PipInstall" -or $packageConfig.ExtractStrategy -eq "NpmInstall") {
+    # VSBuildTools は archive ファイルを使わないためスキップ
+    if ($packageConfig.ExtractStrategy -eq "VSBuildTools") {
+        continue
+    }
+
+    if ($packageConfig.ExtractStrategy -eq "PipInstall") {
+        $pipPackagesDir = Join-Path $packagesDir "pip-packages"
+        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfig $packageConfig
+        $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
+        if ($missingPipWheels.Count -gt 0) {
+            $missingPackages += $packageConfig
+        }
+
+        continue
+    }
+
+    if ($packageConfig.ExtractStrategy -eq "NpmInstall") {
+        $npmPackagesDir = Join-Path $packagesDir "npm-packages"
+        $hasMissingNpmArchive = $false
+        $archivePattern = if ($packageConfig.ContainsKey("ArchivePattern")) { [string]$packageConfig.ArchivePattern } else { "" }
+
+        if ([string]::IsNullOrWhiteSpace($archivePattern) -or -not (Test-Path $npmPackagesDir) -or -not (Get-ChildItem -Path $npmPackagesDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $archivePattern } | Select-Object -First 1)) {
+            $hasMissingNpmArchive = $true
+        }
+
+        $npmDependencies = if ($packageConfig.ContainsKey("NpmDependencies")) { @($packageConfig.NpmDependencies) } else { @() }
+        foreach ($dependencySpec in $npmDependencies) {
+            $dependencyName = [string]$dependencySpec
+            if ($dependencyName.StartsWith("@")) {
+                $versionSeparatorIndex = $dependencyName.IndexOf("@", 1)
+                if ($versionSeparatorIndex -gt 0) {
+                    $dependencyName = $dependencyName.Substring(0, $versionSeparatorIndex)
+                }
+            } else {
+                $dependencyName = ($dependencyName -split '@')[0]
+            }
+
+            if ([string]::IsNullOrWhiteSpace($dependencyName)) {
+                continue
+            }
+
+            $dependencyArchivePrefix = ($dependencyName -replace '^@', '') -replace '/', '-'
+            $dependencyArchive = if (Test-Path $npmPackagesDir) {
+                Get-ChildItem -Path $npmPackagesDir -File -Filter "$dependencyArchivePrefix-*.tgz" -ErrorAction SilentlyContinue | Select-Object -First 1
+            } else {
+                $null
+            }
+
+            if (-not $dependencyArchive) {
+                $hasMissingNpmArchive = $true
+                break
+            }
+        }
+
+        if ($hasMissingNpmArchive) {
+            $missingPackages += $packageConfig
+        }
+
         continue
     }
 
@@ -340,6 +509,27 @@ foreach ($packageConfig in $Packages) {
     # PipInstall / NpmInstall 戦略の場合は各パッケージマネージャーに処理を委譲
     if ($strategy -eq "PipInstall" -or $strategy -eq "NpmInstall") {
         $totalCount++
+
+        if ($strategy -eq "PipInstall") {
+            $pipPackagesDir = Join-Path $packagesDir "pip-packages"
+            $requiredPipWheels = Get-PipWheelPackageNames -PackageConfig $packageConfig
+            $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
+
+            if ($missingPipWheels.Count -gt 0) {
+                Write-Host "  pip wheel ファイルが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
+                Write-Host "  不足: $($missingPipWheels -join ', ')"
+
+                Invoke-GetPackagesForPipInstall -ShortName $packageConfig.ShortName -InstallDir $InstallDir -ScriptDir $ScriptDir
+
+                $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
+                if ($missingPipWheels.Count -gt 0) {
+                    Write-Host "Error: pip wheel files not found for '$($packageConfig.ShortName)': $($missingPipWheels -join ', ')" -ForegroundColor Red
+                    Write-Host "Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $($packageConfig.ShortName)" -ForegroundColor Yellow
+                    Write-Host ""
+                    continue
+                }
+            }
+        }
 
         $result = Invoke-ExtractStrategy `
             -PackageConfig $packageConfig `

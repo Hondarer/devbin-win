@@ -200,13 +200,12 @@ packages/
 
 ## pip パッケージの追加
 
-pip 経由でインストールする新しいツールを追加する際は、以下の 2 箇所を変更します。
+pip 経由でインストールする新しいツールを追加する際は、`packages.psd1` に `ExtractStrategy = "PipInstall"` のエントリを追加します。
 
-1. `packages.psd1` に `ExtractStrategy = "PipInstall"` のエントリを追加 (詳細は [packages-psd1-specification.md](./packages-psd1-specification.md) を参照)
-2. `Get-Packages.ps1` の `Save-PipWheelPackages` 内の `pip download` コマンドに新しいパッケージ名を追加
+`PipPackage` に本体パッケージ名、`PipDependencies` にオフライン用に一緒に取得・確認する依存パッケージ名を指定します。`Get-Packages.ps1` はこれらの定義から `pip download` 対象を組み立てます。
 
 `python-setup.ps1` は pip 本体と setuptools/wheel のインストールのみを担うため、変更不要です。
 
 ## まとめ
 
-本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して `python -m pip` を実行します。pip パッケージ型のツール (yamllint 等) は `Setup-Strategies.psm1` の `PipInstall` 戦略がインストールを担います。これにより、PyPI を正本とした完全オフライン pip 導入を実現します。
+本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して `python -m pip` を実行します。pip パッケージ型のツール (yamllint 等) は `Setup-Strategies.psm1` の `PipInstall` 戦略が `packages/pip-packages` の wheel からインストールします。これにより、完全オフライン pip 導入を実現します。

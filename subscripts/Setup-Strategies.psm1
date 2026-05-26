@@ -680,6 +680,87 @@ function Invoke-VSBuildToolsExtract {
 }
 
 # PipInstall 戦略: python -m pip install でパッケージをインストール
+function Get-NormalizedPipPackageName {
+    param([string]$Name)
+
+    return (([string]$Name).Trim().ToLowerInvariant() -replace '[-_.]+', '-')
+}
+
+function Get-PipWheelPackageNames {
+    param([hashtable]$PackageConfig)
+
+    $packageNames = @()
+    if ($PackageConfig.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$PackageConfig.PipPackage)) {
+        $pipPackage = [string]$PackageConfig.PipPackage
+        $version = if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
+        if (-not [string]::IsNullOrWhiteSpace($version)) {
+            $packageNames += "$pipPackage==$version"
+        } else {
+            $packageNames += $pipPackage
+        }
+    }
+
+    if ($PackageConfig.ContainsKey("PipDependencies")) {
+        $packageNames += @($PackageConfig.PipDependencies)
+    }
+
+    $seen = @{}
+    $result = @()
+    foreach ($packageName in $packageNames) {
+        $packageNameOnly = ([string]$packageName -split '==', 2)[0]
+        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
+        if ([string]::IsNullOrWhiteSpace($normalizedName) -or $seen.ContainsKey($normalizedName)) {
+            continue
+        }
+
+        $seen[$normalizedName] = $true
+        $result += [string]$packageName
+    }
+
+    return @($result)
+}
+
+function Test-PipWheelPackages {
+    param(
+        [string]$DirectoryPath,
+        [string[]]$PackageNames
+    )
+
+    $missing = @()
+    $wheelFiles = if (Test-Path $DirectoryPath) {
+        @(Get-ChildItem -Path $DirectoryPath -Filter "*.whl" -File -ErrorAction SilentlyContinue)
+    } else {
+        @()
+    }
+
+    foreach ($packageName in $PackageNames) {
+        if ([string]::IsNullOrWhiteSpace($packageName)) {
+            continue
+        }
+
+        $packageSpecParts = ([string]$packageName -split '==', 2)
+        $packageNameOnly = $packageSpecParts[0]
+        $requiredVersion = if ($packageSpecParts.Count -gt 1) { $packageSpecParts[1] } else { "" }
+        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
+        $found = $false
+        foreach ($wheelFile in $wheelFiles) {
+            $wheelNameParts = $wheelFile.Name -split '-', 3
+            $distributionName = $wheelNameParts[0]
+            $wheelVersion = if ($wheelNameParts.Count -gt 1) { $wheelNameParts[1] } else { "" }
+            if ((Get-NormalizedPipPackageName -Name $distributionName) -eq $normalizedName -and ([string]::IsNullOrWhiteSpace($requiredVersion) -or $wheelVersion -eq $requiredVersion)) {
+                $found = $true
+                break
+            }
+        }
+
+        if (-not $found) {
+            $missing += if ([string]::IsNullOrWhiteSpace($requiredVersion)) { "$packageNameOnly-*.whl" } else { "$packageNameOnly==$requiredVersion" }
+        }
+    }
+
+    return @($missing)
+}
+
 function Invoke-PipInstallStrategy {
     param(
         [string]$BinDir,
@@ -687,6 +768,11 @@ function Invoke-PipInstallStrategy {
     )
 
     $pipPackage = $Config.PipPackage
+    if ([string]::IsNullOrWhiteSpace($pipPackage)) {
+        Write-Host "Error: PipPackage not specified in config" -ForegroundColor Red
+        return $false
+    }
+
     $version = if ($Config.ContainsKey("Version")) { $Config.Version } else { "" }
     $packageSpec = if (-not [string]::IsNullOrWhiteSpace($version)) { "$pipPackage==$version" } else { $pipPackage }
 
@@ -700,27 +786,19 @@ function Invoke-PipInstallStrategy {
 
     try {
         $pipPackagesDir = "packages\pip-packages"
+        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfig $Config
+        $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels
 
-        if (Test-Path $pipPackagesDir) {
-            Write-Host "Using offline installation with local wheel files..."
-            $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
-            & $pythonExe -m pip install --no-warn-script-location `
-                --no-index --find-links=$pipPackagesAbsPath $packageSpec
-        } else {
-            Write-Host "Using online installation (downloading from PyPI)..."
-            & $pythonExe -m pip install --no-warn-script-location $packageSpec
-
-            # 次回オフライン用に wheel を保存
-            $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
-            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-            & $pythonExe -m pip download --only-binary=:all: $pipPackage --dest $tempDir 2>$null
-            if (Test-Path $tempDir) {
-                New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
-                Get-ChildItem -Path $tempDir -Filter "*.whl" | Copy-Item -Destination $pipPackagesDir -Force
-                Write-Host "Saved wheel files to $pipPackagesDir for future offline use"
-                Remove-Item -Path $tempDir -Recurse -Force
-            }
+        if ($missingWheels.Count -gt 0) {
+            Write-Host "Error: pip wheel cache is incomplete: $($missingWheels -join ', ')" -ForegroundColor Red
+            Write-Host "Please run Get-Packages.ps1 to prepare packages\pip-packages." -ForegroundColor Yellow
+            return $false
         }
+
+        Write-Host "Using offline installation with local wheel files..."
+        $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
+        & $pythonExe -m pip install --no-warn-script-location `
+            --no-index --find-links=$pipPackagesAbsPath $packageSpec
 
         if ($LASTEXITCODE -eq 0 -or $null -eq $LASTEXITCODE) {
             Write-Host "$($Config.Name) installation completed."
@@ -813,7 +891,8 @@ function Invoke-NpmInstallStrategy {
                 if ($dependencyArchive) {
                     $dependencyArchives += $dependencyArchive.FullName
                 } else {
-                    Write-Host "Warning: npm dependency archive not found: $dependencySpec" -ForegroundColor Yellow
+                    Write-Host "Error: npm dependency archive not found: $dependencySpec" -ForegroundColor Red
+                    return $false
                 }
             }
 
@@ -822,10 +901,9 @@ function Invoke-NpmInstallStrategy {
             }
             $args += $archiveFile
         } else {
-            Write-Host "Using online installation (downloading from npm registry)..."
-            New-Item -ItemType Directory -Path $npmTempCacheDir -Force | Out-Null
-            $args += @("--cache", $npmTempCacheDir, "--offline=false")
-            $args += $packageSpec
+            Write-Host "Error: npm package archive not found for $packageSpec" -ForegroundColor Red
+            Write-Host "Please run Get-Packages.ps1 to prepare packages\npm-packages." -ForegroundColor Yellow
+            return $false
         }
 
         & $npmCmd @args

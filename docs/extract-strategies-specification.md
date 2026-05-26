@@ -599,24 +599,26 @@ Visual Studio Build Tools
 
 ### PipInstall 戦略
 
-`python -m pip install` を実行して Python パッケージをインストールします。アーカイブファイルを使わず、pip の依存解決に委ねます。オフライン用 wheel は `packages/pip-packages/` から読み込みます。
+`python -m pip install` を実行して Python パッケージをインストールします。アーカイブファイルを使わず、`packages/pip-packages/` の wheel を正本として読み込みます。
 
 #### パラメータ
 
 | パラメータ | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | PipPackage | pip パッケージ名 | string | ✅ |
+| PipDependencies | オフライン用に一緒に取得・確認する pip 依存パッケージ名 | string[] | ❌ |
 | Version | インストールするバージョン (指定時は `==Version` として渡す) | string | ❌ |
 
 #### 処理フロー
 
 1. `$BinDir\python-3.13\python.exe` を特定
-2. `packages\pip-packages\` が存在すればオフラインインストール (`--no-index --find-links`)
-3. 存在しなければオンラインインストール、完了後に wheel を `packages\pip-packages\` へ保存
+2. `packages\pip-packages\` に `PipPackage` と `PipDependencies` の wheel が揃っていることを確認
+3. `--no-index --find-links` でオフラインインストール
+4. wheel が不足していれば PyPI へ直接 fallback せずエラー
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に Python が利用可能であれば、yamllint と依存パッケージ (pathspec, pyyaml) の wheel が `packages/pip-packages/` に保存されます。これにより、インターネット接続なしでのインストールが可能です。
+`Get-Packages.ps1` 実行時に Python が利用可能であれば、`PipPackage` と `PipDependencies` の wheel が `packages/pip-packages/` に保存されます。インストール時に不足があれば `Get-Packages.ps1` で取得を試み、取得後も不足する場合はエラーで停止します。`PipInstall` は PyPI への直接 fallback は行いません。
 
 #### 使用例
 
@@ -628,6 +630,7 @@ Visual Studio Build Tools
     ArchivePattern = "^$"
     ExtractStrategy = "PipInstall"
     PipPackage = "yamllint"
+    PipDependencies = @("pathspec", "pyyaml")
     DependsOn = @("python")
     DetectFiles = @("python-3.13\Scripts\yamllint.exe")
 }
@@ -655,11 +658,11 @@ yamllint
 1. `$BinDir\npm.cmd` を特定
 2. `packages\npm-packages\` に対象の `.tgz` があればそれをインストール対象にする
 3. `NpmDependencies` があれば一致する `.tgz` も一緒に npm install に渡す
-4. `.tgz` がなければ `NpmPackage@Version` をオンラインインストール対象にする
+4. `.tgz` が不足していれば npm registry へ直接 fallback せずエラー
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージ本体と `NpmDependencies` は `packages\npm-packages/*.tgz` に保存されます。npm が見つからない場合は npm パッケージ準備をスキップし、インストール時にオンライン取得します。
+`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージ本体と `NpmDependencies` は `packages\npm-packages/*.tgz` に保存されます。インストール時に不足があれば `Get-Packages.ps1` で取得を試み、取得後も不足する場合はエラーで停止します。`NpmInstall` は npm registry への直接 fallback は行いません。
 
 #### 使用例
 
@@ -671,6 +674,7 @@ yamllint
     ArchivePattern = "^antfu-ni-\d+\.\d+\.\d+\.tgz$"
     ExtractStrategy = "NpmInstall"
     NpmPackage = "@antfu/ni"
+    NpmDependencies = @("fzf@^0.5.2", "package-manager-detector@^1.6.0", "tinyexec@^1.0.4", "tinyglobby@^0.2.15", "fdir@^6.5.0", "picomatch@^4.0.3")
     DependsOn = @("pnpm")
     DetectFiles = @("ni.cmd", "nr.cmd")
 }

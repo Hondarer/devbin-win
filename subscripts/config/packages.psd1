@@ -38,7 +38,7 @@
             ArchivePattern = "^antfu-ni-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "@antfu/ni"
-            NpmDependencies = @("fzf@^0.5.2", "package-manager-detector@^1.6.0", "tinyexec@^1.0.4", "tinyglobby@^0.2.15")
+            NpmDependencies = @("fzf@^0.5.2", "package-manager-detector@^1.6.0", "tinyexec@^1.0.4", "tinyglobby@^0.2.15", "fdir@^6.5.0", "picomatch@^4.0.3")
             DependsOn = @("pnpm")
             PathDirs = @()
             EnvVars = @{}
@@ -597,6 +597,7 @@ endlocal
             ArchivePattern = "^$"
             ExtractStrategy = "PipInstall"
             PipPackage = "yamllint"
+            PipDependencies = @("pathspec", "pyyaml")
             DependsOn = @("python")
             PathDirs = @()
             EnvVars = @{}

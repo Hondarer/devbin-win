@@ -289,40 +289,145 @@ function Save-PipWheelPackages {
     param(
         [string]$PythonCommandPath,
         [string]$DestinationDir,
-        [string]$TargetPythonVersion = ""
+        [string]$TargetPythonVersion = "",
+        [string[]]$PackageNames = @()
     )
 
     if (!(Test-Path $DestinationDir)) {
         New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($TargetPythonVersion)) {
-        & $PythonCommandPath -m pip download --only-binary=:all: `
-            --python-version $TargetPythonVersion --implementation cp --platform win_amd64 `
-            pip setuptools wheel yamllint pyyaml --dest $DestinationDir | Out-Host
-    } else {
-        & $PythonCommandPath -m pip download --only-binary=:all: `
-            pip setuptools wheel yamllint pyyaml --dest $DestinationDir | Out-Host
+    $downloadPackages = @($PackageNames | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    if ($downloadPackages.Count -eq 0) {
+        $downloadPackages = @("pip", "setuptools", "wheel", "packaging")
     }
+
+    $args = @("-m", "pip", "download", "--only-binary=:all:")
+    if (-not [string]::IsNullOrWhiteSpace($TargetPythonVersion)) {
+        $args += @("--python-version", $TargetPythonVersion, "--implementation", "cp", "--platform", "win_amd64")
+    }
+
+    $args += $downloadPackages
+    $args += @("--dest", $DestinationDir)
+
+    & $PythonCommandPath @args | Out-Host
     return $LASTEXITCODE
+}
+
+function Get-NormalizedPipPackageName {
+    param([string]$Name)
+
+    return (([string]$Name).Trim().ToLowerInvariant() -replace '[-_.]+', '-')
+}
+
+function Get-PipWheelPackageNames {
+    param(
+        [array]$PipInstallPackages,
+        [switch]$IncludeCorePackages
+    )
+
+    $packageNames = @()
+    if ($IncludeCorePackages) {
+        $packageNames += @("pip", "setuptools", "wheel", "packaging")
+    }
+
+    foreach ($package in $PipInstallPackages) {
+        if ($package.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$package.PipPackage)) {
+            $pipPackage = [string]$package.PipPackage
+            $version = if ($package.ContainsKey("Version")) { [string]$package.Version } else { "" }
+            if (-not [string]::IsNullOrWhiteSpace($version)) {
+                $packageNames += "$pipPackage==$version"
+            } else {
+                $packageNames += $pipPackage
+            }
+        }
+
+        if ($package.ContainsKey("PipDependencies")) {
+            $packageNames += @($package.PipDependencies)
+        }
+    }
+
+    $seen = @{}
+    $result = @()
+    foreach ($packageName in $packageNames) {
+        $packageNameOnly = ([string]$packageName -split '==', 2)[0]
+        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
+        if ([string]::IsNullOrWhiteSpace($normalizedName) -or $seen.ContainsKey($normalizedName)) {
+            continue
+        }
+
+        $seen[$normalizedName] = $true
+        $result += [string]$packageName
+    }
+
+    return @($result)
+}
+
+function Get-PipWheelDownloadSpecs {
+    param(
+        [array]$PipInstallPackages,
+        [switch]$IncludeCorePackages
+    )
+
+    $downloadSpecs = @()
+    if ($IncludeCorePackages) {
+        $downloadSpecs += @("pip", "setuptools", "wheel", "packaging")
+    }
+
+    foreach ($package in $PipInstallPackages) {
+        if ($package.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$package.PipPackage)) {
+            $pipPackage = [string]$package.PipPackage
+            $version = if ($package.ContainsKey("Version")) { [string]$package.Version } else { "" }
+            if (-not [string]::IsNullOrWhiteSpace($version)) {
+                $downloadSpecs += "$pipPackage==$version"
+            } else {
+                $downloadSpecs += $pipPackage
+            }
+        }
+
+        if ($package.ContainsKey("PipDependencies")) {
+            $downloadSpecs += @($package.PipDependencies)
+        }
+    }
+
+    return @($downloadSpecs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
 }
 
 function Test-PipWheelPackages {
     param(
-        [string]$DirectoryPath
-    )
-
-    $requiredPatterns = @(
-        "pip-*.whl",
-        "setuptools-*.whl",
-        "wheel-*.whl",
-        "packaging-*.whl"
+        [string]$DirectoryPath,
+        [string[]]$PackageNames = @("pip", "setuptools", "wheel", "packaging")
     )
 
     $missing = @()
-    foreach ($pattern in $requiredPatterns) {
-        if (-not (Get-ChildItem -Path $DirectoryPath -Filter $pattern -File -ErrorAction SilentlyContinue | Select-Object -First 1)) {
-            $missing += $pattern
+    $wheelFiles = if (Test-Path $DirectoryPath) {
+        @(Get-ChildItem -Path $DirectoryPath -Filter "*.whl" -File -ErrorAction SilentlyContinue)
+    } else {
+        @()
+    }
+
+    foreach ($packageName in $PackageNames) {
+        if ([string]::IsNullOrWhiteSpace($packageName)) {
+            continue
+        }
+
+        $packageSpecParts = ([string]$packageName -split '==', 2)
+        $packageNameOnly = $packageSpecParts[0]
+        $requiredVersion = if ($packageSpecParts.Count -gt 1) { $packageSpecParts[1] } else { "" }
+        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
+        $found = $false
+        foreach ($wheelFile in $wheelFiles) {
+            $wheelNameParts = $wheelFile.Name -split '-', 3
+            $distributionName = $wheelNameParts[0]
+            $wheelVersion = if ($wheelNameParts.Count -gt 1) { $wheelNameParts[1] } else { "" }
+            if ((Get-NormalizedPipPackageName -Name $distributionName) -eq $normalizedName -and ([string]::IsNullOrWhiteSpace($requiredVersion) -or $wheelVersion -eq $requiredVersion)) {
+                $found = $true
+                break
+            }
+        }
+
+        if (-not $found) {
+            $missing += if ([string]::IsNullOrWhiteSpace($requiredVersion)) { "$packageNameOnly-*.whl" } else { "$packageNameOnly==$requiredVersion" }
         }
     }
 
@@ -446,8 +551,9 @@ if ($vsbtPackage) {
     Write-Host ""
 }
 
-# npm キャッシュ対象を packages.psd1 から取得
+# npm / pip キャッシュ対象を packages.psd1 から取得
 $npmInstallPackages = @($TargetPackages | Where-Object { $_.ExtractStrategy -eq "NpmInstall" })
+$pipInstallPackages = @($TargetPackages | Where-Object { $_.ExtractStrategy -eq "PipInstall" })
 
 # ダウンロード対象ファイルを packages.psd1 から取得
 $downloads = @()
@@ -461,7 +567,7 @@ foreach ($package in $TargetPackages) {
     }
 }
 
-if ($downloads.Count -eq 0 -and -not $vsbtPackage -and $npmInstallPackages.Count -eq 0) {
+if ($downloads.Count -eq 0 -and -not $vsbtPackage -and $npmInstallPackages.Count -eq 0 -and $pipInstallPackages.Count -eq 0) {
     Write-Host "Error: No download URLs found in package configuration." -ForegroundColor Red
     exit 1
 }
@@ -580,8 +686,10 @@ if (-not $pythonExe) {
         }
 
         # pip download で依存を含む wheel ファイルを取得
-        $downloadExitCode = Save-PipWheelPackages -PythonCommandPath $pythonExe.Source -DestinationDir $pipPackagesDir -TargetPythonVersion $targetPythonVersion
-        $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir
+        $pipWheelPackageNames = Get-PipWheelPackageNames -PipInstallPackages $pipInstallPackages -IncludeCorePackages
+        $pipWheelDownloadSpecs = Get-PipWheelDownloadSpecs -PipInstallPackages $pipInstallPackages -IncludeCorePackages
+        $downloadExitCode = Save-PipWheelPackages -PythonCommandPath $pythonExe.Source -DestinationDir $pipPackagesDir -TargetPythonVersion $targetPythonVersion -PackageNames $pipWheelDownloadSpecs
+        $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $pipWheelPackageNames
 
         if ($downloadExitCode -eq 0 -and $missingWheels.Count -eq 0) {
             Write-Host "Successfully downloaded wheel files to $pipPackagesDir"
