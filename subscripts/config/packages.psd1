@@ -289,6 +289,30 @@ endlocal
             DefaultChecked = $false
         },
 
+        # Inkscape - SubdirectoryToTarget extraction
+        @{
+            Name = "Inkscape"
+            ShortName = "inkscape"
+            Version = "1.4.4"
+            ArchivePattern = "^inkscape-1\.4\.4-x64\.7z$"
+            ExtractStrategy = "SubdirectoryToTarget"
+            ExtractPath = ""
+            TargetDirectory = "inkscape"
+            DownloadUrl = "https://inkscape.org/gallery/item/59503/inkscape-1.4.4_2026-05-05_dcaf3e7-x64_mHK170m.7z"
+            DownloadFileName = "inkscape-1.4.4-x64.7z"
+            DownloadHeaders = @{
+                "User-Agent" = "Mozilla/5.0"
+                "Referer" = "https://inkscape.org/release/inkscape-1.4.4/windows/64-bit/compressed-7z/dl/"
+            }
+            DependsOn = @()
+            PathDirs = @("inkscape\bin")
+            EnvVars = @{}
+            DetectFiles = @("inkscape\bin\inkscape.exe")
+            SkipIfCommand = "inkscape"
+            DisableIfCommand = "inkscape"
+            DefaultChecked = $true
+        },
+
         # mingw-w64-x86_64-gcc-libs - Subdirectory extraction (MinGW package, make の依存)
         @{
             Name = "mingw-w64-x86_64-gcc-libs"

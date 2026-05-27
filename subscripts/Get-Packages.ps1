@@ -106,7 +106,8 @@ function Get-SourceForgeDownloadUrl {
 function Get-File {
     param(
         [string]$Url,
-        [string]$OutputPath
+        [string]$OutputPath,
+        [hashtable]$Headers = @{}
     )
 
     $fileName = Split-Path $OutputPath -Leaf
@@ -133,7 +134,18 @@ function Get-File {
             Write-Host "    Resolved to: $downloadUrl"
         }
 
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $OutputPath -UseBasicParsing -ErrorAction Stop
+        $requestArgs = @{
+            Uri = $downloadUrl
+            OutFile = $OutputPath
+            UseBasicParsing = $true
+            ErrorAction = 'Stop'
+        }
+
+        if ($Headers -and $Headers.Count -gt 0) {
+            $requestArgs.Headers = $Headers
+        }
+
+        Invoke-WebRequest @requestArgs
 
         if (Test-Path $OutputPath) {
             $fileSize = (Get-Item $OutputPath).Length
@@ -591,8 +603,9 @@ foreach ($download in $downloads) {
     $url = $download.Url
     $fileName = $download.FileName
     $outputPath = Join-Path "packages" $fileName
+    $headers = if ($download.Package.ContainsKey("DownloadHeaders")) { $download.Package.DownloadHeaders } else { @{} }
 
-    if (Get-File -Url $url -OutputPath $outputPath) {
+    if (Get-File -Url $url -OutputPath $outputPath -Headers $headers) {
         $successCount++
         Remove-OldPackageFiles -Package $download.Package -CurrentFileName $fileName
     }

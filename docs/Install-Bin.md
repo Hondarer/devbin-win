@@ -127,6 +127,11 @@ Uninstall-Bin.cmd
 - システムに `code.cmd` が存在する場合、VS Code への PATH は追加されません
 - 既存の VS Code インストールが優先されます
 
+### Inkscape
+
+- システムに `inkscape.exe` が存在する場合、Inkscape への PATH は追加されません
+- 既存の Inkscape インストールが優先されます
+
 ### その他のツール
 
 - Node.js、Pandoc、Doxygen、PlantUML、cloc、vswhere などは常に PATH に追加されます

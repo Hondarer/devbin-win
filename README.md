@@ -93,6 +93,13 @@ from [Visual Studio Code](https://code.visualstudio.com/)
 - [Download Visual Studio Code](https://code.visualstudio.com/Download)
     - [x64 archive 1.117.0](https://update.code.visualstudio.com/1.117.0/win32-x64-archive/stable)
 
+### Inkscape
+
+from [Inkscape](https://inkscape.org/)
+
+- [Inkscape 1.4.4 for Windows 64-bit compressed 7z](https://inkscape.org/release/inkscape-1.4.4/windows/64-bit/compressed-7z/dl/)
+    - [inkscape-1.4.4_2026-05-05_dcaf3e7-x64_mHK170m.7z](https://inkscape.org/gallery/item/59503/inkscape-1.4.4_2026-05-05_dcaf3e7-x64_mHK170m.7z)
+
 ### GNU Make
 
 from [MSYS2 Packages](https://packages.msys2.org/)
