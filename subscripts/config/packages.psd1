@@ -306,6 +306,7 @@ endlocal
             }
             DependsOn = @()
             PathDirs = @("inkscape\bin")
+            PathPosition = "Append"
             EnvVars = @{}
             DetectFiles = @("inkscape\bin\inkscape.exe")
             SkipIfCommand = "inkscape"

@@ -605,8 +605,11 @@ if ($Install) {
     }
 
     # ユーザー PATH に開発ツールのディレクトリを追加
-    $pathDirs = Get-PathDirectories -BaseDir $InstallDir -PackageList $Packages
-    Add-ToUserPath -Directories $pathDirs
+    Sync-ManagedUserPath `
+        -InstallDir $InstallDir `
+        -Packages $Packages `
+        -InstalledShortNames @($Packages | ForEach-Object { $_.ShortName }) `
+        -IncludeBaseDir
 
     # .NET 環境変数を設定
     Write-Host ""

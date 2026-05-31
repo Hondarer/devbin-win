@@ -327,6 +327,32 @@ function Remove-BasePathDir {
     Remove-FromUserPath -Directories @($InstallDir)
 }
 
+# コンポーネントマネージャーの現在状態から PATH を再構成する
+function Sync-ComponentManagerPath {
+    param(
+        [string]$InstallDir,
+        [array]$Packages,
+        [hashtable]$Manifest
+    )
+
+    $installedShortNames = if ($Manifest -and $Manifest.components) {
+        @($Manifest.components.Keys)
+    } else {
+        @()
+    }
+
+    $includeBaseDir = $false
+    if ($Manifest -and $Manifest.components -and $Manifest.components.Count -gt 0) {
+        $includeBaseDir = $true
+    }
+
+    Sync-ManagedUserPath `
+        -InstallDir $InstallDir `
+        -Packages $Packages `
+        -InstalledShortNames $installedShortNames `
+        -IncludeBaseDir:$includeBaseDir
+}
+
 function Invoke-PackageLifecycleScripts {
     param(
         [hashtable]$PackageConfig,
@@ -638,13 +664,7 @@ function Install-Component {
         $installedFiles = @($targetDir)
     }
 
-    # PATH 追加
     $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
-    if ($pathDirs.Count -gt 0) {
-        Write-Host ""
-        Write-Host "  PATH を更新中..."
-        Add-ComponentPathDirs -InstallDir $InstallDir -PackageConfig $pkg | Out-Null
-    }
 
     # 環境変数設定
     $envVarsConfig = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
@@ -654,9 +674,6 @@ function Install-Component {
         Write-Host "  環境変数を設定中..."
         $appliedEnvVars = Set-ComponentEnvVars -InstallDir $InstallDir -PackageConfig $pkg
     }
-
-    # ベース PATH を追加 (最初のコンポーネントインストール時)
-    Add-BasePathDir -InstallDir $InstallDir
 
     # マニフェストに記録
     $version = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
@@ -668,6 +685,10 @@ function Install-Component {
         -Files $installedFiles `
         -PathDirs $pathDirs `
         -EnvVars $appliedEnvVars
+
+    Write-Host ""
+    Write-Host "  PATH を更新中..."
+    Sync-ComponentManagerPath -InstallDir $InstallDir -Packages $Packages -Manifest $Manifest
 
     Invoke-PackageLifecycleScripts `
         -PackageConfig $pkg `
@@ -863,14 +884,6 @@ function Uninstall-Component {
         Restore-VSCodeData -InstallDirectory $InstallDir -BackupPath $vscodeBackup -Silent | Out-Null
     }
 
-    # PATH 削除
-    $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
-    if ($pathDirs.Count -gt 0) {
-        Write-Host ""
-        Write-Host "  PATH を更新中..."
-        Remove-ComponentPathDirs -InstallDir $InstallDir -PackageConfig $pkg
-    }
-
     # 環境変数削除
     $envVarsConfig = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
     if ($envVarsConfig.Count -gt 0) {
@@ -885,16 +898,9 @@ function Uninstall-Component {
     # 孤立した隠し依存パッケージを自動アンインストール
     Remove-OrphanDependencies -ShortName $ShortName -Packages $Packages -InstallDir $InstallDir -Manifest $Manifest
 
-    # 全コンポーネントがアンインストールされたらベース PATH も削除
-    $visibleInstalled = $Manifest.components.Keys | Where-Object {
-        $p = Get-PackageByShortName -ShortName $_ -Packages $Packages
-        $p -and -not ($p.ContainsKey("Hidden") -and $p.Hidden)
-    }
-    if (-not $visibleInstalled -or ($visibleInstalled | Measure-Object).Count -eq 0) {
-        if ($Manifest.components.Count -eq 0) {
-            Remove-BasePathDir -InstallDir $InstallDir
-        }
-    }
+    Write-Host ""
+    Write-Host "  PATH を更新中..."
+    Sync-ComponentManagerPath -InstallDir $InstallDir -Packages $Packages -Manifest $Manifest
 
     if ($ScriptDir) {
         Invoke-PackageLifecycleScripts `
@@ -973,6 +979,8 @@ function Update-Component {
 
     # アンインストール (依存元への影響を無視して強制実行)
     Remove-ComponentFromManifest -Manifest $Manifest -ShortName $ShortName
+    Write-Host "  PATH を更新中..."
+    Sync-ComponentManagerPath -InstallDir $InstallDir -Packages $Packages -Manifest $Manifest
 
     # TargetDirectory 系はディレクトリを削除してクリーンにする
     $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }

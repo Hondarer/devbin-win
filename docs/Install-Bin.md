@@ -16,7 +16,7 @@ Install-Bin.cmd
 ### インストール内容
 
 - **インストール先**: `C:\ProgramData\<ユーザー名>\devbin-win\bin`
-- **PATH環境変数**: 自動的にユーザー PATH に追加
+- **PATH環境変数**: パッケージ定義に基づいて自動的にユーザー PATH に追加。低優先度指定の項目は既存 PATH の後段に配置
 - **既存ツール保護**: システムに同じツールがある場合は既存を優先
 
 ### インストール後の確認
@@ -131,6 +131,8 @@ Uninstall-Bin.cmd
 
 - システムに `inkscape.exe` が存在する場合、Inkscape への PATH は追加されません
 - 既存の Inkscape インストールが優先されます
+- devbin-win の Inkscape は低優先度の PATH 項目として扱われ、既存の Python より後ろに配置されます
+- これにより Inkscape 同梱 `python.exe` が `python` コマンドを横取りしないようにしています
 
 ### その他のツール
 

@@ -51,12 +51,13 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 
 ## コンポーネント管理プロパティ
 
-コンポーネントマネージャー (`Manage-Bin.cmd`) が使用するプロパティです。一括インストール (`Install-Bin.cmd`) では無視されます。
+コンポーネントマネージャー (`Manage-Bin.cmd`) が主に使用するプロパティです。`PathDirs` / `PathPosition` / `SkipIfCommand` など PATH 制御に関わる項目は、一括インストール (`Install-Bin.cmd`) でも使用されます。
 
 | プロパティ | 説明 | 型 | 省略時の動作 |
 |-----------|------|-----|------------|
 | DependsOn | 依存パッケージの ShortName 配列 | string[] | `@()` (依存なし) |
 | PathDirs | PATH に追加するディレクトリ ($InstallDir からの相対パス) | string[] | `@()` (PATH 変更なし) |
+| PathPosition | `PathDirs` を既存 PATH の前後どちらに配置するか。`Prepend` または `Append` | string | `"Prepend"` |
 | EnvVars | 設定する環境変数のハッシュテーブル | hashtable | `@{}` (環境変数変更なし) |
 | EnvVarIsLiteral | リテラル値として扱う環境変数名の配列 | string[] | `@()` (全てパスとして結合) |
 | DetectFiles | インストール状態を検出するファイル ($InstallDir からの相対パス) | string[] | `@()` (ファイル検出なし) |
@@ -86,6 +87,20 @@ PathDirs = @("jdk-25\bin")            # bin/jdk-25/bin を PATH に追加
 PathDirs = @("git", "git\bin", "git\cmd")  # 複数ディレクトリを追加
 PathDirs = @()                        # PATH 変更なし (bin/ ルートは共通で追加される)
 ```
+
+`PathDirs` の並び順は宣言順のまま保持され、パッケージ一覧の順序と組み合わせて PATH 再構成時の優先順位になります。
+
+### PathPosition
+
+`PathDirs` を既存 PATH の前に置くか後ろに置くかを指定します。低優先度で公開したいランタイム同梱ディレクトリに使用します。
+
+```powershell
+PathDirs = @("inkscape\bin")
+PathPosition = "Append"              # 既存 PATH の後段に配置
+```
+
+- `Prepend` (既定): devbin-win 管理の高優先度 PATH ブロックへ追加
+- `Append`: 既存 PATH の後段へ追加。Inkscape 同梱 `python.exe` のような副作用を避けたい場合に使う
 
 ### EnvVars と EnvVarIsLiteral
 

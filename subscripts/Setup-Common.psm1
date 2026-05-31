@@ -1,63 +1,189 @@
 ﻿# Setup-Common.psm1
 # 共通関数モジュール
 
+# コマンド情報から実体パスを取得する
+function Get-CommandSourcePath {
+    param(
+        [System.Management.Automation.CommandInfo]$CommandInfo
+    )
+
+    if ($null -eq $CommandInfo) {
+        return $null
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($CommandInfo.Source)) {
+        return [string]$CommandInfo.Source
+    }
+
+    if ($CommandInfo.PSObject.Properties.Match("Path").Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($CommandInfo.Path)) {
+        return [string]$CommandInfo.Path
+    }
+
+    return $null
+}
+
+# PATH 比較用にディレクトリ文字列を正規化する
+function Get-NormalizedPathString {
+    param(
+        [string]$PathValue
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PathValue)) {
+        return $null
+    }
+
+    $normalized = $null
+    try {
+        if (Test-Path $PathValue) {
+            $normalized = (Resolve-Path $PathValue -ErrorAction Stop).Path
+        } else {
+            $normalized = [System.IO.Path]::GetFullPath($PathValue)
+        }
+    } catch {
+        $normalized = $PathValue.Trim()
+    }
+
+    if ($normalized.Length -gt 3) {
+        return $normalized.TrimEnd('\')
+    }
+
+    return $normalized
+}
+
+# Python コマンド候補が実体を持つかどうかを判定する
+function Test-PythonCommandCandidate {
+    param(
+        [string]$CommandPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CommandPath)) {
+        return $true
+    }
+
+    if ($CommandPath -notmatch "\\WindowsApps\\") {
+        return $true
+    }
+
+    Write-Host "  Detected Windows Store Python proxy: $CommandPath"
+    Write-Host "  Testing if Python is actually installed..."
+
+    try {
+        $null = Start-Process -FilePath $CommandPath -ArgumentList "--version" -NoNewWindow -Wait -PassThru -RedirectStandardError "stderr_temp.txt" -RedirectStandardOutput "stdout_temp.txt"
+
+        $stderrContent = ""
+        if (Test-Path "stderr_temp.txt") {
+            $stderrContent = Get-Content "stderr_temp.txt" -Raw -ErrorAction SilentlyContinue
+            Remove-Item "stderr_temp.txt" -ErrorAction SilentlyContinue
+        }
+
+        $stdoutContent = ""
+        if (Test-Path "stdout_temp.txt") {
+            $stdoutContent = Get-Content "stdout_temp.txt" -Raw -ErrorAction SilentlyContinue
+            Remove-Item "stdout_temp.txt" -ErrorAction SilentlyContinue
+        }
+
+        if ($stderrContent -match "^Python\s*$" -or ($stderrContent -match "Python" -and -not ($stderrContent -match "\d+\.\d+" -or $stdoutContent -match "\d+\.\d+"))) {
+            Write-Host "  Windows Store Python proxy detected - Python not actually installed"
+            return $false
+        }
+
+        if ($stdoutContent -match "\d+\.\d+" -or $stderrContent -match "\d+\.\d+") {
+            Write-Host "  Valid Python installation detected"
+            return $true
+        }
+
+        Write-Host "  Python proxy test failed - treating as not installed"
+        return $false
+
+    } catch {
+        Write-Host "  Failed to test Python proxy: $($_.Exception.Message)"
+        return $false
+    } finally {
+        Remove-Item "stderr_temp.txt" -ErrorAction SilentlyContinue
+        Remove-Item "stdout_temp.txt" -ErrorAction SilentlyContinue
+    }
+}
+
+# コマンド候補が有効かどうかを判定する
+function Test-CommandCandidate {
+    param(
+        [string]$CommandName,
+        [System.Management.Automation.CommandInfo]$CommandInfo
+    )
+
+    if ($null -eq $CommandInfo) {
+        return $false
+    }
+
+    if ($CommandName -match "^python3?$") {
+        return Test-PythonCommandCandidate -CommandPath (Get-CommandSourcePath -CommandInfo $CommandInfo)
+    }
+
+    return $true
+}
+
+# PATH 上の有効なコマンド候補を列挙する
+function Get-ValidCommandCandidates {
+    param(
+        [string]$CommandName
+    )
+
+    try {
+        return @(Get-Command $CommandName -All -ErrorAction Stop)
+    } catch {
+        return @()
+    }
+}
+
 # コマンドが PATH で既に利用可能かどうかをチェックする
 function Test-CommandExists {
     param([string]$CommandName)
-    try {
-        $command = Get-Command $CommandName -ErrorAction Stop
 
-        # Python/Python3 の場合、Windows Store アプリのプロキシかどうかをチェック
-        if ($CommandName -match "^python3?$") {
-            $commandPath = $command.Source
+    foreach ($command in Get-ValidCommandCandidates -CommandName $CommandName) {
+        if (Test-CommandCandidate -CommandName $CommandName -CommandInfo $command) {
+            return $true
+        }
+    }
 
-            # WindowsApps パスの場合、実際に実行可能かテスト
-            if ($commandPath -match "\\WindowsApps\\") {
-                Write-Host "  Detected Windows Store Python proxy: $commandPath"
-                Write-Host "  Testing if Python is actually installed..."
+    return $false
+}
 
-                try {
-                    $null = Start-Process -FilePath $commandPath -ArgumentList "--version" -NoNewWindow -Wait -PassThru -RedirectStandardError "stderr_temp.txt" -RedirectStandardOutput "stdout_temp.txt"
+# devbin-win 外部のコマンドが利用可能かどうかをチェックする
+function Test-ExternalCommandExists {
+    param(
+        [string]$CommandName,
+        [string]$InstallDir
+    )
 
-                    $stderrContent = ""
-                    if (Test-Path "stderr_temp.txt") {
-                        $stderrContent = Get-Content "stderr_temp.txt" -Raw -ErrorAction SilentlyContinue
-                        Remove-Item "stderr_temp.txt" -ErrorAction SilentlyContinue
-                    }
+    $normalizedInstallDir = Get-NormalizedPathString -PathValue $InstallDir
 
-                    $stdoutContent = ""
-                    if (Test-Path "stdout_temp.txt") {
-                        $stdoutContent = Get-Content "stdout_temp.txt" -Raw -ErrorAction SilentlyContinue
-                        Remove-Item "stdout_temp.txt" -ErrorAction SilentlyContinue
-                    }
+    foreach ($command in Get-ValidCommandCandidates -CommandName $CommandName) {
+        if (-not (Test-CommandCandidate -CommandName $CommandName -CommandInfo $command)) {
+            continue
+        }
 
-                    if ($stderrContent -match "^Python\s*$" -or ($stderrContent -match "Python" -and -not ($stderrContent -match "\d+\.\d+" -or $stdoutContent -match "\d+\.\d+"))) {
-                        Write-Host "  Windows Store Python proxy detected - Python not actually installed"
-                        return $false
-                    }
+        $commandPath = Get-CommandSourcePath -CommandInfo $command
+        if ([string]::IsNullOrWhiteSpace($commandPath)) {
+            return $true
+        }
 
-                    if ($stdoutContent -match "\d+\.\d+" -or $stderrContent -match "\d+\.\d+") {
-                        Write-Host "  Valid Python installation detected"
-                        return $true
-                    }
+        $normalizedCommandPath = Get-NormalizedPathString -PathValue $commandPath
+        if ([string]::IsNullOrWhiteSpace($normalizedInstallDir) -or [string]::IsNullOrWhiteSpace($normalizedCommandPath)) {
+            return $true
+        }
 
-                    Write-Host "  Python proxy test failed - treating as not installed"
-                    return $false
+        if ($normalizedCommandPath -eq $normalizedInstallDir) {
+            continue
+        }
 
-                } catch {
-                    Write-Host "  Failed to test Python proxy: $($_.Exception.Message)"
-                    return $false
-                } finally {
-                    Remove-Item "stderr_temp.txt" -ErrorAction SilentlyContinue
-                    Remove-Item "stdout_temp.txt" -ErrorAction SilentlyContinue
-                }
-            }
+        if ($normalizedCommandPath.StartsWith("$normalizedInstallDir\", [System.StringComparison]::OrdinalIgnoreCase)) {
+            continue
         }
 
         return $true
-    } catch {
-        return $false
     }
+
+    return $false
 }
 
 function Get-PackageBaseFileName {
@@ -839,8 +965,183 @@ function Remove-SinglePathDir {
     }
 }
 
+# packages.psd1 の PathPosition を解釈する
+function Get-PackagePathPosition {
+    param(
+        [hashtable]$PackageConfig
+    )
+
+    $position = if ($PackageConfig.ContainsKey("PathPosition")) { [string]$PackageConfig.PathPosition } else { "" }
+    if ([string]::IsNullOrWhiteSpace($position)) {
+        return "Prepend"
+    }
+
+    if ($position -in @("Prepend", "Append")) {
+        return $position
+    }
+
+    Write-Warning "Unknown PathPosition '$position' for package '$($PackageConfig.ShortName)'. Falling back to Prepend."
+    return "Prepend"
+}
+
+# devbin-win 管理下の PATH を宣言順で再構成する
+function Sync-ManagedUserPath {
+    param(
+        [string]$InstallDir,
+        [array]$Packages,
+        [string[]]$InstalledShortNames = @(),
+        [switch]$IncludeBaseDir
+    )
+
+    $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+    if (-not $currentPath) {
+        $currentPath = ""
+    }
+
+    $managedEntries = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $normalizedBaseDir = Get-NormalizedPathString -PathValue $InstallDir
+    if (-not [string]::IsNullOrWhiteSpace($normalizedBaseDir)) {
+        $null = $managedEntries.Add($normalizedBaseDir)
+    }
+
+    foreach ($package in $Packages) {
+        $pathDirs = if ($package.ContainsKey("PathDirs")) { @($package.PathDirs) } else { @() }
+        foreach ($relativeDir in $pathDirs) {
+            $fullPath = Join-Path $InstallDir $relativeDir
+            $normalizedPath = Get-NormalizedPathString -PathValue $fullPath
+            if (-not [string]::IsNullOrWhiteSpace($normalizedPath)) {
+                $null = $managedEntries.Add($normalizedPath)
+            }
+        }
+    }
+
+    $installedLookup = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($shortName in $InstalledShortNames) {
+        if (-not [string]::IsNullOrWhiteSpace($shortName)) {
+            $null = $installedLookup.Add($shortName)
+        }
+    }
+
+    $externalEntries = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in ($currentPath -split ';')) {
+        $trimmedEntry = $entry.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmedEntry)) {
+            continue
+        }
+
+        $normalizedEntry = Get-NormalizedPathString -PathValue $trimmedEntry
+        if (-not [string]::IsNullOrWhiteSpace($normalizedEntry) -and $managedEntries.Contains($normalizedEntry)) {
+            continue
+        }
+
+        $externalEntries.Add($trimmedEntry)
+    }
+
+    $prependEntries = [System.Collections.Generic.List[string]]::new()
+    $appendEntries = [System.Collections.Generic.List[string]]::new()
+
+    if ($IncludeBaseDir -and (Test-Path $InstallDir)) {
+        $prependEntries.Add((Resolve-Path $InstallDir -ErrorAction Stop).Path)
+    }
+
+    foreach ($package in $Packages) {
+        $shortName = if ($package.ContainsKey("ShortName")) { [string]$package.ShortName } else { "" }
+        if ([string]::IsNullOrWhiteSpace($shortName) -or -not $installedLookup.Contains($shortName)) {
+            continue
+        }
+
+        $pathDirs = if ($package.ContainsKey("PathDirs")) { @($package.PathDirs) } else { @() }
+        if ($pathDirs.Count -eq 0) {
+            continue
+        }
+
+        $skipCommand = if ($package.ContainsKey("SkipIfCommand")) { [string]$package.SkipIfCommand } else { "" }
+        if (-not [string]::IsNullOrWhiteSpace($skipCommand) -and (Test-ExternalCommandExists -CommandName $skipCommand -InstallDir $InstallDir)) {
+            Write-Host "  Skipped (external '$skipCommand' already available): $shortName"
+            continue
+        }
+
+        $pathPosition = Get-PackagePathPosition -PackageConfig $package
+        foreach ($relativeDir in $pathDirs) {
+            $fullPath = Join-Path $InstallDir $relativeDir
+            if (-not (Test-Path $fullPath)) {
+                Write-Host "  Directory not found: $relativeDir"
+                continue
+            }
+
+            $resolvedPath = (Resolve-Path $fullPath -ErrorAction Stop).Path
+            if ($pathPosition -eq "Append") {
+                $appendEntries.Add($resolvedPath)
+            } else {
+                $prependEntries.Add($resolvedPath)
+            }
+        }
+    }
+
+    $finalEntries = [System.Collections.Generic.List[string]]::new()
+    $seenEntries = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($entry in $prependEntries) {
+        $trimmedEntry = $entry.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmedEntry)) {
+            continue
+        }
+
+        $normalizedEntry = Get-NormalizedPathString -PathValue $trimmedEntry
+        if ([string]::IsNullOrWhiteSpace($normalizedEntry)) {
+            $normalizedEntry = $trimmedEntry
+        }
+
+        if ($seenEntries.Add($normalizedEntry)) {
+            $finalEntries.Add($trimmedEntry)
+        }
+    }
+
+    foreach ($entry in $externalEntries) {
+        $trimmedEntry = $entry.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmedEntry)) {
+            continue
+        }
+
+        $normalizedEntry = Get-NormalizedPathString -PathValue $trimmedEntry
+        if ([string]::IsNullOrWhiteSpace($normalizedEntry)) {
+            $normalizedEntry = $trimmedEntry
+        }
+
+        if ($seenEntries.Add($normalizedEntry)) {
+            $finalEntries.Add($trimmedEntry)
+        }
+    }
+
+    foreach ($entry in $appendEntries) {
+        $trimmedEntry = $entry.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmedEntry)) {
+            continue
+        }
+
+        $normalizedEntry = Get-NormalizedPathString -PathValue $trimmedEntry
+        if ([string]::IsNullOrWhiteSpace($normalizedEntry)) {
+            $normalizedEntry = $trimmedEntry
+        }
+
+        if ($seenEntries.Add($normalizedEntry)) {
+            $finalEntries.Add($trimmedEntry)
+        }
+    }
+
+    $newPath = $finalEntries -join ';'
+    if ($newPath -ne $currentPath) {
+        [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
+        Write-Host "User PATH updated successfully."
+        Write-Host "Note: Restart your terminal for PATH changes to take effect."
+    } else {
+        Write-Host "No PATH changes needed."
+    }
+}
+
 Export-ModuleMember -Function @(
     'Test-CommandExists',
+    'Sync-ManagedUserPath',
     'Get-PackageBaseFileName',
     'Add-ToUserPath',
     'Remove-FromUserPath',
