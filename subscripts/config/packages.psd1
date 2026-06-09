@@ -289,6 +289,36 @@ endlocal
             DefaultChecked = $false
         },
 
+        # PsTools - TargetDirectory extraction
+        @{
+            Name = "PsTools"
+            ShortName = "pstools"
+            Version = ""
+            DownloadVersion = "2.43"
+            ArchivePattern = "^PSTools-.*\.zip$"
+            ExtractStrategy = "TargetDirectory"
+            TargetDirectory = "pstools"
+            DownloadUrl = "https://download.sysinternals.com/files/PSTools.zip"
+            DownloadFileName = "PSTools-2.43.zip"
+            VersionSource = @{
+                Type = "ZipEntry"
+                Path = "psversion.txt"
+                Pattern = "\d+(?:\.\d+)+"
+            }
+            DependsOn = @()
+            PathDirs = @("pstools")
+            EnvVars = @{}
+            PostInstallScripts = @(
+                @{
+                    Path = "config\templates\pstools-accept-eula.ps1"
+                    Arguments = @("-InstallDir", "<InstallDir>")
+                }
+            )
+            RunPostInstallInBatch = $true
+            DetectFiles = @("pstools\PsExec.exe", "pstools\PsPing.exe")
+            DefaultChecked = $true
+        },
+
         # Inkscape - SubdirectoryToTarget extraction
         @{
             Name = "Inkscape"

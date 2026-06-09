@@ -241,7 +241,8 @@ function Compare-PackageVersion {
 function Test-ComponentUpdateable {
     param(
         [hashtable]$Manifest,
-        [hashtable]$PackageConfig
+        [hashtable]$PackageConfig,
+        [string]$PackagesDir = "packages"
     )
 
     $shortName = $PackageConfig.ShortName
@@ -251,7 +252,15 @@ function Test-ComponentUpdateable {
 
     $installedComponent = $Manifest.components[$shortName]
     $installedVersion = if ($installedComponent.ContainsKey("version")) { [string]$installedComponent.version } else { "" }
-    $packageVersion = if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
+    $packageVersion = if (Get-Command Resolve-PackageVersion -ErrorAction SilentlyContinue) {
+        Resolve-PackageVersion -PackageConfig $PackageConfig -PackagesDir $PackagesDir
+    } else {
+        if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($packageVersion)) {
+        return $false
+    }
 
     $comparison = Compare-PackageVersion -LeftVersion $packageVersion -RightVersion $installedVersion
     return $comparison -eq 1
@@ -262,7 +271,8 @@ function Get-ComponentStatus {
     param(
         [hashtable]$Manifest,
         [string]$InstallDir,
-        [hashtable]$PackageConfig
+        [hashtable]$PackageConfig,
+        [string]$PackagesDir = "packages"
     )
 
     $shortName = $PackageConfig.ShortName
@@ -273,14 +283,14 @@ function Get-ComponentStatus {
 
     if ($inManifest) {
         if ($detectFiles.Count -eq 0) {
-            if (Test-ComponentUpdateable -Manifest $Manifest -PackageConfig $PackageConfig) {
+            if (Test-ComponentUpdateable -Manifest $Manifest -PackageConfig $PackageConfig -PackagesDir $PackagesDir) {
                 return "Updateable"
             }
             return "Installed"
         }
         $filesExist = Test-ComponentFiles -InstallDir $InstallDir -DetectFiles $detectFiles
         if ($filesExist) {
-            if (Test-ComponentUpdateable -Manifest $Manifest -PackageConfig $PackageConfig) {
+            if (Test-ComponentUpdateable -Manifest $Manifest -PackageConfig $PackageConfig -PackagesDir $PackagesDir) {
                 return "Updateable"
             }
             return "Installed"

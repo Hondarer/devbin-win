@@ -481,6 +481,7 @@ Write-Host ""
 
 $successCount = 0
 $totalCount = 0
+$successfulPackages = @()
 
 foreach ($packageConfig in $Packages) {
     $packageName = $packageConfig.Name
@@ -500,6 +501,7 @@ foreach ($packageConfig in $Packages) {
 
         if ($result) {
             $successCount++
+            $successfulPackages += $packageConfig
         }
 
         Write-Host ""
@@ -539,6 +541,7 @@ foreach ($packageConfig in $Packages) {
 
         if ($result) {
             $successCount++
+            $successfulPackages += $packageConfig
         }
 
         Write-Host ""
@@ -561,6 +564,7 @@ foreach ($packageConfig in $Packages) {
     # CopyToPackages 戦略の場合は、抽出処理は対象外
     if ($strategy -eq "CopyToPackages") {
         $successCount++
+        $successfulPackages += $packageConfig
         continue
     }
 
@@ -573,6 +577,7 @@ foreach ($packageConfig in $Packages) {
 
     if ($result) {
         $successCount++
+        $successfulPackages += $packageConfig
     }
 
     Write-Host ""
@@ -633,6 +638,16 @@ if ($Install) {
     # 環境変数を現在のプロセスに同期
     Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME") | Out-Null
 
+    if (Get-Command Invoke-PackageLifecycleScripts -ErrorAction SilentlyContinue) {
+        foreach ($packageConfig in ($successfulPackages | Where-Object { $_.ContainsKey("RunPostInstallInBatch") -and $_.RunPostInstallInBatch -eq $true })) {
+            Invoke-PackageLifecycleScripts `
+                -PackageConfig $packageConfig `
+                -Phase "Install" `
+                -InstallDir $InstallDir `
+                -ScriptDir $ScriptDir
+        }
+    }
+
     # マニフェストを生成/更新 (コンポーネントマネージャーへの移行用)
     if (Get-Command Read-Manifest -ErrorAction SilentlyContinue) {
         Write-Host ""
@@ -648,7 +663,11 @@ if ($Install) {
                 if ($filesExist -or $pkg.ExtractStrategy -eq "CopyToPackages" -or $pkg.ExtractStrategy -eq "PipInstall" -or $pkg.ExtractStrategy -eq "NpmInstall") {
                     $pathDirsForPkg = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
                     $envVarsForPkg = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
-                    $versionForPkg = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
+                    $versionForPkg = if (Get-Command Resolve-PackageVersion -ErrorAction SilentlyContinue) {
+                        Resolve-PackageVersion -PackageConfig $pkg -PackagesDir $packagesDir
+                    } else {
+                        if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
+                    }
                     Add-ComponentToManifest `
                         -Manifest $manifest `
                         -ShortName $pkg.ShortName `

@@ -93,6 +93,15 @@ from [Visual Studio Code](https://code.visualstudio.com/)
 - [Download Visual Studio Code](https://code.visualstudio.com/Download)
     - [x64 archive 1.117.0](https://update.code.visualstudio.com/1.117.0/win32-x64-archive/stable)
 
+### PsTools
+
+from [Microsoft Sysinternals](https://learn.microsoft.com/sysinternals/)
+
+- [PsTools](https://learn.microsoft.com/ja-jp/sysinternals/downloads/pstools)
+    - [PSTools.zip](https://download.sysinternals.com/files/PSTools.zip)
+
+`packages` には `PSTools-2.43.zip` のように、バージョンを付与して保存します。インストール時の実バージョンは ZIP 内の `psversion.txt` から読み取り、インストール後に Sysinternals EULA を `-accepteula` で自動受諾します。
+
 ### Inkscape
 
 from [Inkscape](https://inkscape.org/)

@@ -419,6 +419,18 @@ function Invoke-PackageLifecycleScripts {
     }
 }
 
+function Get-PackagesDirectory {
+    param([string]$ScriptDir)
+
+    if (-not [string]::IsNullOrWhiteSpace($ScriptDir)) {
+        $repoDir = Split-Path -Parent $ScriptDir
+        $candidate = Join-Path $repoDir "packages"
+        return $candidate
+    }
+
+    return "packages"
+}
+
 # コンポーネントをインストールする
 function Install-Component {
     param(
@@ -474,7 +486,12 @@ function Install-Component {
     # CopyToPackages 戦略はスキップ (ファイルは packages/ に留まる)
     if ($pkg.ExtractStrategy -eq "CopyToPackages") {
         $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
-        $version = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
+        $packagesDir = Get-PackagesDirectory -ScriptDir $ScriptDir
+        $version = if (Get-Command Resolve-PackageVersion -ErrorAction SilentlyContinue) {
+            Resolve-PackageVersion -PackageConfig $pkg -PackagesDir $packagesDir
+        } else {
+            if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
+        }
         Add-ComponentToManifest `
             -Manifest $Manifest `
             -ShortName $ShortName `
@@ -486,7 +503,7 @@ function Install-Component {
     }
 
     # アーカイブファイルを検索
-    $packagesDir = "packages"
+    $packagesDir = Get-PackagesDirectory -ScriptDir $ScriptDir
     $archiveFile = $null
 
     if ($pkg.ExtractStrategy -eq "NpmInstall") {
@@ -676,7 +693,11 @@ function Install-Component {
     }
 
     # マニフェストに記録
-    $version = if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
+    $version = if (Get-Command Resolve-PackageVersion -ErrorAction SilentlyContinue) {
+        Resolve-PackageVersion -PackageConfig $pkg -PackagesDir $packagesDir -ArchiveFile $(if ($archiveFile) { $archiveFile } else { "" })
+    } else {
+        if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
+    }
     Add-ComponentToManifest `
         -Manifest $Manifest `
         -ShortName $ShortName `
@@ -1053,6 +1074,7 @@ Export-ModuleMember -Function @(
     'Install-Component',
     'Uninstall-Component',
     'Update-Component',
+    'Invoke-PackageLifecycleScripts',
     'Add-ComponentPathDirs',
     'Remove-ComponentPathDirs',
     'Set-ComponentEnvVars',

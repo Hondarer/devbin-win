@@ -43,6 +43,8 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | Name | パッケージの表示名 | string | ✅ |
 | ShortName | パッケージの短縮名 (識別子) | string | ✅ |
 | Version | パッケージのバージョン番号。マニフェストに記録され、`Manage-Bin.cmd` ではこの値とマニフェスト記録値を比較して `Updateable` 判定に使用する。バージョン管理の対象外の場合は `""` を指定する | string | ✅ |
+| DownloadVersion | ダウンロード保存名を固定するためのバージョン。配布ファイル名にバージョンが含まれない場合に、`DownloadFileName` と組み合わせて使用する | string | ❌ |
+| VersionSource | インストール時/更新判定時にアーカイブ内容から実バージョンを読み取る定義 | hashtable | ❌ |
 | ArchivePattern | アーカイブファイルのパターン (正規表現) | string | ✅ |
 | ExtractStrategy | 抽出戦略名 | string | ✅ |
 | DownloadUrl | パッケージのダウンロード URL | string | ✅ |
@@ -62,6 +64,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | EnvVarIsLiteral | リテラル値として扱う環境変数名の配列 | string[] | `@()` (全てパスとして結合) |
 | DetectFiles | インストール状態を検出するファイル ($InstallDir からの相対パス) | string[] | `@()` (ファイル検出なし) |
 | PostInstallScripts | インストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
+| RunPostInstallInBatch | 一括インストール (`Install-Bin.cmd`) でも `PostInstallScripts` を実行するかどうか | bool | `$false` |
 | PostUninstallScripts | アンインストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
 | SkipIfCommand | このコマンドが PATH にある場合は PathDirs の追加をスキップ | string | なし (常に追加) |
 | DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |
@@ -211,6 +214,31 @@ DownloadHeaders = @{
 `DownloadFileName` を省略した場合、Get-Packages.ps1 は URL から保存ファイル名を決定します。`Version` が空でない場合は、保存ファイル名に同じバージョンが含まれていなければ、拡張子の直前に `-<Version>` を付与して packages フォルダ内の保存名を正規化します。バージョン比較では `.` / `_` / `-` の区切り揺れを同一として扱います（例: `2.1.5` と `2_1_5`）。
 
 `ArchivePattern` は、配布元の元ファイル名ではなく、packages フォルダへ保存される最終ファイル名に一致するように定義してください。`Install-Component` には互換フォールバックがあり、ArchivePattern に一致するファイルがない場合のみ、URL 由来の元ファイル名が packages にあればそれを使用できます。
+
+#### DownloadVersion と VersionSource
+
+配布元の ZIP ファイル名にバージョンが含まれないが、オフラインインストール用には版付きファイル名で保存したい場合は `DownloadVersion` と `DownloadFileName` を組み合わせます。
+
+`VersionSource` を指定すると、インストール時のマニフェスト記録と `Manage-Bin.cmd` の更新判定では、`Version` の固定値ではなく取得済みアーカイブから読み取った値を使用できます。現在サポートする `Type` は `ZipEntry` です。
+
+```powershell
+@{
+    Name = "PsTools"
+    ShortName = "pstools"
+    Version = ""
+    DownloadVersion = "2.43"
+    DownloadFileName = "PSTools-2.43.zip"
+    ArchivePattern = "^PSTools-.*\.zip$"
+    VersionSource = @{
+        Type = "ZipEntry"
+        Path = "psversion.txt"
+        Pattern = "\d+(?:\.\d+)+"
+    }
+    RunPostInstallInBatch = $true
+}
+```
+
+`ZipEntry` は `ArchivePattern` に一致する ZIP の中から `Path` の entry を読み取り、`Pattern` に最初に一致した文字列をバージョンとして使用します。該当 ZIP が `packages` にない場合は空文字列または `Version` の値にフォールバックするため、自動的な `Updateable` 判定は行われません。
 
 ## 戦略別の定義例
 

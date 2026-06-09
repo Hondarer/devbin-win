@@ -254,9 +254,10 @@ function Initialize-MenuState {
     $statuses = @{}
     $checked = @{}
     $anyInstalled = $false
+    $packagesDir = Join-Path (Split-Path -Parent $ScriptDir) "packages"
 
     foreach ($item in $items) {
-        $status = Get-ComponentStatus -Manifest $Manifest -InstallDir $InstallDir -PackageConfig $item
+        $status = Get-ComponentStatus -Manifest $Manifest -InstallDir $InstallDir -PackageConfig $item -PackagesDir $packagesDir
         $statuses[$item.ShortName] = $status
         if ($status -ne "NotInstalled") {
             $anyInstalled = $true
@@ -331,6 +332,7 @@ function Initialize-MenuState {
         Statuses     = $statuses
         Manifest     = $Manifest
         Packages     = $Packages
+        PackagesDir  = $packagesDir
         InstallDir   = $InstallDir
         ScriptDir    = $ScriptDir
         NeedRedraw   = $true
@@ -853,7 +855,7 @@ function Apply-CheckedState {
                 $seen[$dep] = $true
                 $depPkg = Get-PackageByShortName -ShortName $dep -Packages $State.Packages
                 if ($depPkg) {
-                    $depStatus = Get-ComponentStatus -Manifest $State.Manifest -InstallDir $State.InstallDir -PackageConfig $depPkg
+                    $depStatus = Get-ComponentStatus -Manifest $State.Manifest -InstallDir $State.InstallDir -PackageConfig $depPkg -PackagesDir $State.PackagesDir
                     if ($depStatus -ne "Installed" -and $depStatus -ne "Updateable") {
                         $resolvedInstall.Add($depPkg)
                     }
@@ -1005,7 +1007,8 @@ function Apply-CheckedState {
         $State.Statuses[$item.ShortName] = Get-ComponentStatus `
             -Manifest $State.Manifest `
             -InstallDir $State.InstallDir `
-            -PackageConfig $item
+            -PackageConfig $item `
+            -PackagesDir $State.PackagesDir
     }
 
     foreach ($item in $State.Items) {
