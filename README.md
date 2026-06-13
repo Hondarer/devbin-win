@@ -199,6 +199,15 @@ from [microsoft/vswhere](https://github.com/microsoft/vswhere)
 - [/releases/tag/3.1.7](https://github.com/microsoft/vswhere/releases/tag/3.1.7)
     - [vswhere.exe](https://github.com/microsoft/vswhere/releases/download/3.1.7/vswhere.exe)
 
+### UDEV Gothic HSRF JPDOC EM
+
+from [Hondarer/udev-gothic-rf](https://github.com/Hondarer/udev-gothic-rf)
+
+- [/releases/tag/v2.2.0](https://github.com/Hondarer/udev-gothic-rf/releases/tag/v2.2.0)
+    - [UDEVGothic_HSRF_EM_v2.2.0.zip](https://github.com/Hondarer/udev-gothic-rf/releases/download/v2.2.0/UDEVGothic_HSRF_EM_v2.2.0.zip)
+
+インストール対象フォントは `UDEVGothicHSRFJPDOCEM-{weight}.ttf` です。
+
 ### editorconfig-checker
 
 from [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig-checker/editorconfig-checker)

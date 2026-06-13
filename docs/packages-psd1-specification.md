@@ -152,7 +152,7 @@ Hidden = $true   # メニュー非表示・自動管理
 - UI 表示は原因を分けず `External` に統一する
 
 ```powershell
-DisableIfFont = "UDEV Gothic HSRFJPDOC"
+DisableIfFont = "UDEV Gothic HSRFJPDOCEM"
 ```
 
 ### 共通プロパティの詳細

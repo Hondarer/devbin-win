@@ -6,20 +6,20 @@ param(
 
 $targetFonts = @(
     @{
-        FileName = "UDEVGothicHSRFJPDOC-Bold.ttf"
-        RegistryName = "UDEV Gothic HSRFJPDOC Bold (TrueType)"
+        FileName = "UDEVGothicHSRFJPDOCEM-Bold.ttf"
+        RegistryName = "UDEV Gothic HSRFJPDOCEM Bold (TrueType)"
     },
     @{
-        FileName = "UDEVGothicHSRFJPDOC-BoldItalic.ttf"
-        RegistryName = "UDEV Gothic HSRFJPDOC Bold Italic (TrueType)"
+        FileName = "UDEVGothicHSRFJPDOCEM-BoldItalic.ttf"
+        RegistryName = "UDEV Gothic HSRFJPDOCEM BoldItalic (TrueType)"
     },
     @{
-        FileName = "UDEVGothicHSRFJPDOC-Italic.ttf"
-        RegistryName = "UDEV Gothic HSRFJPDOC Italic (TrueType)"
+        FileName = "UDEVGothicHSRFJPDOCEM-Italic.ttf"
+        RegistryName = "UDEV Gothic HSRFJPDOCEM Italic (TrueType)"
     },
     @{
-        FileName = "UDEVGothicHSRFJPDOC-Regular.ttf"
-        RegistryName = "UDEV Gothic HSRFJPDOC (TrueType)"
+        FileName = "UDEVGothicHSRFJPDOCEM-Regular.ttf"
+        RegistryName = "UDEV Gothic HSRFJPDOCEM Regular (TrueType)"
     }
 )
 $targetFontNames = @($targetFonts | ForEach-Object { $_.FileName })

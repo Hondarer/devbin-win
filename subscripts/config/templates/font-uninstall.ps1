@@ -11,20 +11,20 @@ if (-not (Test-Path $regPath)) {
 
 $fonts = @(
     @{
-        RegistryName = "UDEV Gothic HSRFJPDOC Bold (TrueType)"
-        RelativePath = "fonts\UDEVGothicHSRFJPDOC\UDEVGothicHSRFJPDOC-Bold.ttf"
+        RegistryName = "UDEV Gothic HSRFJPDOCEM Bold (TrueType)"
+        RelativePath = "fonts\UDEVGothicHSRFJPDOCEM\UDEVGothicHSRFJPDOCEM-Bold.ttf"
     },
     @{
-        RegistryName = "UDEV Gothic HSRFJPDOC Bold Italic (TrueType)"
-        RelativePath = "fonts\UDEVGothicHSRFJPDOC\UDEVGothicHSRFJPDOC-BoldItalic.ttf"
+        RegistryName = "UDEV Gothic HSRFJPDOCEM BoldItalic (TrueType)"
+        RelativePath = "fonts\UDEVGothicHSRFJPDOCEM\UDEVGothicHSRFJPDOCEM-BoldItalic.ttf"
     },
     @{
-        RegistryName = "UDEV Gothic HSRFJPDOC Italic (TrueType)"
-        RelativePath = "fonts\UDEVGothicHSRFJPDOC\UDEVGothicHSRFJPDOC-Italic.ttf"
+        RegistryName = "UDEV Gothic HSRFJPDOCEM Italic (TrueType)"
+        RelativePath = "fonts\UDEVGothicHSRFJPDOCEM\UDEVGothicHSRFJPDOCEM-Italic.ttf"
     },
     @{
-        RegistryName = "UDEV Gothic HSRFJPDOC (TrueType)"
-        RelativePath = "fonts\UDEVGothicHSRFJPDOC\UDEVGothicHSRFJPDOC-Regular.ttf"
+        RegistryName = "UDEV Gothic HSRFJPDOCEM Regular (TrueType)"
+        RelativePath = "fonts\UDEVGothicHSRFJPDOCEM\UDEVGothicHSRFJPDOCEM-Regular.ttf"
     }
 )
 

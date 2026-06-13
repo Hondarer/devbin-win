@@ -602,16 +602,16 @@ endlocal
             DefaultChecked = $true
         },
 
-        # UDEV Gothic HSRF JPDOC - Font package
+        # UDEV Gothic HSRF JPDOC EM - Font package
         @{
-            Name = "UDEV Gothic HSRF JPDOC"
-            ShortName = "udev-gothic-hsrf-jpdoc"
+            Name = "UDEV Gothic HSRF JPDOC EM"
+            ShortName = "udev-gothic-hsrf-jpdoc-em"
             Version = "2.2.0"
-            ArchivePattern = "^UDEVGothic_HSRF_v2\.2\.0\.zip$"
+            ArchivePattern = "^UDEVGothic_HSRF_EM_v2\.2\.0\.zip$"
             ExtractStrategy = "TargetDirectory"
-            TargetDirectory = "fonts\UDEVGothicHSRFJPDOC"
+            TargetDirectory = "fonts\UDEVGothicHSRFJPDOCEM"
             PostSetupScript = "font-setup.ps1"
-            DownloadUrl = "https://github.com/Hondarer/udev-gothic-rf/releases/download/v2.2.0/UDEVGothic_HSRF_v2.2.0.zip"
+            DownloadUrl = "https://github.com/Hondarer/udev-gothic-rf/releases/download/v2.2.0/UDEVGothic_HSRF_EM_v2.2.0.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -621,8 +621,8 @@ endlocal
                     Arguments = @("-InstallDir", "<InstallDir>")
                 }
             )
-            DetectFiles = @("fonts\UDEVGothicHSRFJPDOC\UDEVGothicHSRFJPDOC-Regular.ttf")
-            DisableIfFont = "UDEV Gothic HSRFJPDOC"
+            DetectFiles = @("fonts\UDEVGothicHSRFJPDOCEM\UDEVGothicHSRFJPDOCEM-Regular.ttf")
+            DisableIfFont = "UDEV Gothic HSRFJPDOCEM"
             DefaultChecked = $true
         },
 
