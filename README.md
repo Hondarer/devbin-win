@@ -215,6 +215,20 @@ from [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig
 - [/releases/tag/v3.6.1](https://github.com/editorconfig-checker/editorconfig-checker/releases/tag/v3.6.1)
     - [ec-windows-amd64.zip](https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.6.1/ec-windows-amd64.zip)
 
+### GitHub CLI
+
+from [cli/cli](https://github.com/cli/cli)
+
+- [/releases/tag/v2.95.0](https://github.com/cli/cli/releases/tag/v2.95.0)
+    - [gh_2.95.0_windows_amd64.zip](https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_windows_amd64.zip)
+
+### GitLab CLI
+
+from [gitlab-org/cli](https://gitlab.com/gitlab-org/cli)
+
+- [/releases/v1.105.0](https://gitlab.com/gitlab-org/cli/-/releases/v1.105.0)
+    - [glab_1.105.0_windows_amd64.zip](https://gitlab.com/gitlab-org/cli/-/releases/v1.105.0/downloads/glab_1.105.0_windows_amd64.zip)
+
 ### Visual Studio BUild Tools (VS 2022 C++ toolset 14.44 & Windows SDK v26100)
 
 ## TODO

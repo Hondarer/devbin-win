@@ -40,6 +40,8 @@ cloc --version
 vswhere -?
 clang-format --version
 editorconfig-checker --version
+gh --version
+glab --version
 ```
 
 PowerShell では `ni` が標準 alias (`New-Item`) と衝突します。PowerShell で `@antfu/ni` の `ni` コマンドを使う場合は、セッション内で `Remove-Item Alias:ni -Force` を実行してください。`cmd /c ni` や Git Bash ではこの衝突は発生しません。
@@ -79,6 +81,24 @@ editorconfig-checker は `.editorconfig` の定義に対してファイルのフ
 - **配置ファイル**: `bin\editorconfig-checker.exe`
 - **バージョン**: 3.6.1
 - **プロジェクト**: [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig-checker/editorconfig-checker)
+
+#### gh について
+
+gh は GitHub の Issue・Pull Request・リリース等をコマンドラインから操作する公式 CLI です。
+
+- **用途**: GitHub の Issue/PR/Release 操作、ワークフロー実行
+- **配置ファイル**: `bin\gh.exe`
+- **バージョン**: 2.95.0
+- **プロジェクト**: [cli/cli](https://github.com/cli/cli)
+
+#### glab について
+
+glab は GitLab の Issue・Merge Request・CI/CD パイプライン等をコマンドラインから操作する公式 CLI です。
+
+- **用途**: GitLab の Issue/MR/Pipeline 操作
+- **配置ファイル**: `bin\glab.exe`
+- **バージョン**: 1.105.0
+- **プロジェクト**: [gitlab-org/cli](https://gitlab.com/gitlab-org/cli)
 
 ## アンインストール
 

@@ -644,6 +644,40 @@ endlocal
             DefaultChecked = $true
         },
 
+        # gh - Subdirectory extraction (GitHub CLI)
+        @{
+            Name = "GitHub CLI"
+            ShortName = "gh"
+            Version = "2.95.0"
+            ArchivePattern = "^gh_.*_windows_amd64\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = ""
+            FilePattern = "^gh\.exe$"
+            DownloadUrl = "https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_windows_amd64.zip"
+            DependsOn = @()
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("gh.exe")
+            DefaultChecked = $true
+        },
+
+        # glab - Subdirectory extraction (GitLab CLI)
+        @{
+            Name = "GitLab CLI"
+            ShortName = "glab"
+            Version = "1.105.0"
+            ArchivePattern = "^glab_.*_windows_amd64\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = ""
+            FilePattern = "^glab\.exe$"
+            DownloadUrl = "https://gitlab.com/gitlab-org/cli/-/releases/v1.105.0/downloads/glab_1.105.0_windows_amd64.zip"
+            DependsOn = @()
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("glab.exe")
+            DefaultChecked = $true
+        },
+
         # yamllint - pip install
         @{
             Name = "yamllint"
