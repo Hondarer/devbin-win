@@ -147,6 +147,11 @@ Uninstall-Bin.cmd
 - システムに `code.cmd` が存在する場合、VS Code への PATH は追加されません
 - 既存の VS Code インストールが優先されます
 
+### FFmpeg
+
+- システムに `ffmpeg.exe` が存在する場合、FFmpeg への PATH は追加されません
+- 既存の FFmpeg インストールが優先されます
+
 ### Inkscape
 
 - システムに `inkscape.exe` が存在する場合、Inkscape への PATH は追加されません

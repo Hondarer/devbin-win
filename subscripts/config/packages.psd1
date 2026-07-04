@@ -142,6 +142,26 @@
             DefaultChecked = $true
         },
 
+        # FFmpeg - SubdirectoryToTarget extraction
+        @{
+            Name = "FFmpeg"
+            ShortName = "ffmpeg"
+            Version = "8.1.2"
+            ArchivePattern = "^ffmpeg-.*-essentials_build\.zip$"
+            ExtractStrategy = "SubdirectoryToTarget"
+            ExtractPath = "bin"
+            TargetDirectory = "ffmpeg"
+            DownloadUrl = "https://github.com/GyanD/codexffmpeg/releases/download/8.1.2/ffmpeg-8.1.2-essentials_build.zip"
+            DownloadFileName = "ffmpeg-8.1.2-essentials_build.zip"
+            DependsOn = @()
+            PathDirs = @("ffmpeg")
+            EnvVars = @{}
+            DetectFiles = @("ffmpeg\ffmpeg.exe", "ffmpeg\ffprobe.exe", "ffmpeg\ffplay.exe")
+            SkipIfCommand = "ffmpeg"
+            DisableIfCommand = "ffmpeg"
+            DefaultChecked = $true
+        },
+
         # PlantUML - JarWithWrapper extraction
         @{
             Name = "PlantUML"
