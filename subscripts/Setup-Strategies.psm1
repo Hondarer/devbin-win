@@ -543,7 +543,7 @@ function Invoke-SelfExtractingArchiveExtract {
     $extractArgs = @()
 
     foreach ($arg in $Config.ExtractArgs) {
-        $processedArg = $arg -replace '\{TargetPath\}', $resolvedTargetPath
+        $processedArg = $arg -replace '\{TargetPath\}', "`"$resolvedTargetPath`""
         $extractArgs += $processedArg
     }
 
@@ -597,7 +597,8 @@ function Invoke-InnoSetupExtract {
 
     # innoextract で解凍
     Write-Host "  Extracting with innoextract..."
-    $process = Start-Process -FilePath $innoextractPath -ArgumentList "-d", $TempDir, $ArchiveFile -Wait -PassThru -NoNewWindow
+    $innoextractArgs = @("-d", "`"$TempDir`"", "`"$ArchiveFile`"")
+    $process = Start-Process -FilePath $innoextractPath -ArgumentList $innoextractArgs -Wait -PassThru -NoNewWindow
 
     if ($process.ExitCode -ne 0) {
         throw "innoextract failed with exit code: $($process.ExitCode)"
