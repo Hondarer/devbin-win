@@ -34,6 +34,7 @@ plantuml --version
 python --version
 python3 --version
 dotnet --version
+pwsh -NoLogo -Command "$PSVersionTable.PSVersion"
 git --version
 code --version
 cloc --version
@@ -136,6 +137,12 @@ Uninstall-Bin.cmd
 
 - システムに `dotnet.exe` が存在する場合、.NET SDK への PATH は追加されません
 - 既存の .NET SDK インストールが優先されます
+
+### PowerShell 7
+
+- PowerShell 7.6.3 x64 ZIP を `bin\pwsh` に展開し、`pwsh` コマンドを提供します
+- Windows PowerShell 5.1 は置き換えず、並行して利用できます
+- システムに devbin-win 外の `pwsh.exe` が存在する場合、コンポーネントマネージャーでは `External` と表示して導入を無効化し、既存の PowerShell 7 を優先します
 
 ### Git
 

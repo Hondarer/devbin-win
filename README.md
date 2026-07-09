@@ -79,6 +79,14 @@ from [.NET のダウンロード](https://dotnet.microsoft.com/ja-jp/download/do
 - [.NET 10.0 のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet/10.0)
     - [dotnet-sdk-10.0.202-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.202/dotnet-sdk-10.0.202-win-x64.zip)
 
+### PowerShell 7
+
+from [PowerShell 7 installation on Windows](https://learn.microsoft.com/ja-jp/powershell/scripting/install/install-powershell-on-windows)
+
+- [PowerShell 7.6.3 x64 ZIP](https://github.com/PowerShell/PowerShell/releases/download/v7.6.3/PowerShell-7.6.3-win-x64.zip)
+
+ZIP アーカイブを `bin\pwsh` に展開して `pwsh` コマンドを提供します。Windows PowerShell 5.1 を置き換えずに共存します。外部の `pwsh` が PATH に存在する場合は、そのインストールを優先します。
+
 ### Git
 
 from [Git](https://git-scm.com/)

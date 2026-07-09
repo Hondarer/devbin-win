@@ -240,6 +240,24 @@ endlocal
             DefaultChecked = $true
         },
 
+
+        # PowerShell 7 - TargetDirectory extraction
+        @{
+            Name = "PowerShell 7"
+            ShortName = "pwsh"
+            Version = "7.6.3"
+            ArchivePattern = "^PowerShell-\d+\.\d+\.\d+-win-x64\.zip$"
+            ExtractStrategy = "TargetDirectory"
+            TargetDirectory = "pwsh"
+            DownloadUrl = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.3/PowerShell-7.6.3-win-x64.zip"
+            DependsOn = @()
+            PathDirs = @("pwsh")
+            EnvVars = @{}
+            DetectFiles = @("pwsh\pwsh.exe")
+            SkipIfCommand = "pwsh"
+            DisableIfCommand = "pwsh"
+            DefaultChecked = $true
+        },
         # Portable Git - SelfExtractingArchive extraction
         @{
             Name = "Portable Git"
