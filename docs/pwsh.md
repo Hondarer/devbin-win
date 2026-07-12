@@ -21,7 +21,7 @@
     "terminal.integrated.defaultProfile.windows": "pwsh",
     "terminal.integrated.profiles.windows": {
         "pwsh": {
-            "path": "pwsh",
+            "path": "${env:PROGRAMDATA}\\${env:USERNAME}\\devbin-win\\bin\\pwsh\\pwsh.exe",
             "icon": "terminal-powershell"
         },
         
@@ -36,5 +36,6 @@
 - 左側のメニューから [新しいプロファイルを追加します] を選択します。
 - [新しい空のプロファイル] を選択します。
 - [名前] を `pwsh` とします。任意の名前でも問題ありません。
-- [コマンド ライン] を `pwsh` とします。
+- [コマンド ライン] を `%ProgramData%\%USERNAME%\devbin-win\bin\pwsh\pwsh.exe` とします。
+- [アイコン] を [ファイル] とし、`%ProgramData%\%USERNAME%\devbin-win\bin\pwsh\pwsh.ico` を指定すると、タブに PowerShell 7 のアイコンが表示されます。
 - 常にこのpwshを標準で開きたい場合は、設定画面の「スタートアップ」にある「規定のプロファイル」から指定した名前のプロファイルを選択することで、ターミナル起動時のデフォルト シェルに設定できます。
