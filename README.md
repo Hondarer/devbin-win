@@ -211,8 +211,8 @@ from [microsoft/vswhere](https://github.com/microsoft/vswhere)
 
 from [Hondarer/udev-gothic-rf](https://github.com/Hondarer/udev-gothic-rf)
 
-- [/releases/tag/v2.2.0](https://github.com/Hondarer/udev-gothic-rf/releases/tag/v2.2.0)
-    - [UDEVGothic_HSRF_EM_v2.2.0.zip](https://github.com/Hondarer/udev-gothic-rf/releases/download/v2.2.0/UDEVGothic_HSRF_EM_v2.2.0.zip)
+- [/releases/tag/v2.2.0.1](https://github.com/Hondarer/udev-gothic-rf/releases/tag/v2.2.0.1)
+    - [UDEVGothic_HSRF_EM_v2.2.0.1.zip](https://github.com/Hondarer/udev-gothic-rf/releases/download/v2.2.0.1/UDEVGothic_HSRF_EM_v2.2.0.1.zip)
 
 インストール対象フォントは `UDEVGothicHSRFJPDOCEM-{weight}.ttf` です。
 

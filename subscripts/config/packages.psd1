@@ -644,12 +644,12 @@ endlocal
         @{
             Name = "UDEV Gothic HSRF JPDOC EM"
             ShortName = "udev-gothic-hsrf-jpdoc-em"
-            Version = "2.2.0"
-            ArchivePattern = "^UDEVGothic_HSRF_EM_v2\.2\.0\.zip$"
+            Version = "2.2.0.1"
+            ArchivePattern = "^UDEVGothic_HSRF_EM_v\d+(?:\.\d+)+\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "fonts\UDEVGothicHSRFJPDOCEM"
             PostSetupScript = "font-setup.ps1"
-            DownloadUrl = "https://github.com/Hondarer/udev-gothic-rf/releases/download/v2.2.0/UDEVGothic_HSRF_EM_v2.2.0.zip"
+            DownloadUrl = "https://github.com/Hondarer/udev-gothic-rf/releases/download/v2.2.0.1/UDEVGothic_HSRF_EM_v2.2.0.1.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
