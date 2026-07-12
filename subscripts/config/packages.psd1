@@ -263,12 +263,12 @@ endlocal
         @{
             Name = "Portable Git"
             ShortName = "git"
-            Version = "2.54.0"
+            Version = "2.55.0.2"
             ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
             ExtractStrategy = "SelfExtractingArchive"
             TargetDirectory = "git"
             ExtractArgs = @("-y", "-o{TargetPath}")
-            DownloadUrl = "https://sourceforge.net/projects/git-for-windows.mirror/files/v2.54.0.windows.1/PortableGit-2.54.0-64-bit.7z.exe/download"
+            DownloadUrl = "https://sourceforge.net/projects/git-for-windows.mirror/files/v2.55.0.windows.2/PortableGit-2.55.0.2-64-bit.7z.exe/download"
             PostExtract = @{
                 CopyFiles = @(
                     @{ Source = "packages\Add-MinGW-Path.cmd"; Destination = "Add-MinGW-Path.cmd" },
@@ -310,12 +310,12 @@ endlocal
         @{
             Name = "VS Code"
             ShortName = "vscode"
-            Version = "1.117.0"
+            Version = "1.128.0"
             ArchivePattern = "VSCode-win32-x64-.*\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "vscode"
-            DownloadUrl = "https://update.code.visualstudio.com/1.117.0/win32-x64-archive/stable"
-            DownloadFileName = "VSCode-win32-x64-1.117.0.zip"
+            DownloadUrl = "https://update.code.visualstudio.com/1.128.0/win32-x64-archive/stable"
+            DownloadFileName = "VSCode-win32-x64-1.128.0.zip"
             PostExtract = @{
                 CreateDirectories = @("data")
             }

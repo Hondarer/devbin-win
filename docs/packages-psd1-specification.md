@@ -438,7 +438,7 @@ endlocal
 
 NuGet、cloc、vswhere のように、配布物が単体の `.exe` で完結するツールに適しています。
 
-`DownloadFileName` は保存名を明示固定したい場合に指定します。たとえば VS Code の公式固定版 URL は末尾が `stable` になるため、`DownloadFileName = "VSCode-win32-x64-1.117.0.zip"` のように指定します。未指定時でも `Version` があれば、保存名は自動的に版付きへ正規化されます（`2.1.5` と `2_1_5` などの区切り揺れは同一版として判定）。
+`DownloadFileName` は保存名を明示固定したい場合に指定します。たとえば VS Code の公式固定版 URL は末尾が `stable` になるため、`DownloadFileName = "VSCode-win32-x64-1.128.0.zip"` のように指定します。未指定時でも `Version` があれば、保存名は自動的に版付きへ正規化されます（`2.1.5` と `2_1_5` などの区切り揺れは同一版として判定）。
 
 ### SelfExtractingArchive 戦略
 
