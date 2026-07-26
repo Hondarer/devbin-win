@@ -42,7 +42,8 @@ New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
 $itemsToInclude = @(
     "packages",
     "README.md",
-    "docs-src",
+    "LICENSE",
+    "docs",
     "subscripts",
     "Manage-Bin.cmd" #,
 #    "Setup-Home.cmd",
