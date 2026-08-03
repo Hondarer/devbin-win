@@ -93,6 +93,15 @@ if (-not ($Extract -or $Install -or $Uninstall -or $Manage)) {
     exit 0
 }
 
+# 昇格された管理者権限での実行を検出する (本スクリプトは非昇格ユーザーでの実行を想定)
+$currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$currentPrincipal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
+if ($currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "Warning: This script is not intended to be run with elevated administrator privileges." -ForegroundColor Yellow
+    Write-Host "Please run it from a non-elevated (standard user) shell." -ForegroundColor Yellow
+    exit 1
+}
+
 # 追加 / 削除すべき PATH ディレクトリを取得する
 function Get-PathDirectories {
     param(
