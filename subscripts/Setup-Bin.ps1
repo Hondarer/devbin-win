@@ -225,6 +225,11 @@ Write-Host "Synchronizing environment variables..."
 Sync-EnvironmentVariables -VariableNames @("PATH", "PYTHONHOME", "PYTHONPATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME") | Out-Null
 Write-Host ""
 
+# インストール処理中、スリープ/スクリーンセーバーが働かないよう Busy シグナルを開始する
+Start-BusySignal
+
+try {
+
 # 絶対パスに変換
 $absoluteInstallDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($InstallDir)
 $InstallDir = $absoluteInstallDir
@@ -700,4 +705,8 @@ if ($Install) {
     Write-Host ""
     Write-Host "To add tools to PATH, run:"
     Write-Host "  .\Setup-Bin.ps1 -Install"
+}
+
+} finally {
+    Stop-BusySignal
 }
