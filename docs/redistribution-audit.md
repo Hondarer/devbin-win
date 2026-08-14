@@ -24,13 +24,13 @@
 
 ### 2.1 対象
 
-- `subscripts/config/packages.psd1` の39パッケージ定義
+- `subscripts/config/packages.psd1` の40パッケージ定義
 - `packages/npm-packages` の8成果物
 - `packages/pip-packages` の9成果物
 - `packages/vsbt` の65ファイル
 - `Make-Dist.ps1` が `packages` とともに配布する devbin-win 固有ファイル
 
-実ファイル数は `packages` 直下39件（第三者成果物35件、devbin-win固有スクリプト4件）、npm 8件、pip 9件、VSBT 65件の合計121件である。devbin-win固有スクリプトと配布スクリプト群はリポジトリのMITライセンス対象であり、現行配布ZIPにはルートの `LICENSE` が収録される。
+実ファイル数は `packages` 直下40件（第三者成果物36件、devbin-win固有スクリプト4件）、npm 8件、pip 9件、VSBT 65件の合計122件である。devbin-win固有スクリプトと配布スクリプト群はリポジトリのMITライセンス対象であり、現行配布ZIPにはルートの `LICENSE` が収録される。
 
 本調査の判定は、取得済みのベンダーアーカイブを含む ZIP を無償で不特定多数へ公開する場合を対象とする。現行の個人利用・組織内利用に対する適否を一律に判定するものではない。インストール後の展開済み `bin` 一式を別製品として再配布する場合も対象外であり、別途調査が必要である。
 
@@ -74,6 +74,7 @@
 | `iconv` 1.19-1 | GPL-3.0-or-later | 条件付きで可 | `iconv.exe` の対応ソースを同等提供し、GPL本文を配布ページからも参照可能にする。[MSYS2 package](https://packages.msys2.org/packages/mingw-w64-x86_64-iconv) |
 | `make` 4.4.1-4 | GPL-3.0-or-later | 条件付きで可 | 対象版のMSYS2 source-only tarballをミラーする。最新版のsource packageで代用しない。[MSYS2 package](https://packages.msys2.org/packages/mingw-w64-x86_64-make) |
 | `cmake` 4.3.1 | BSD-3-Clauseおよび同梱第三者ライセンス | 再配布可 | ZIP内の `LICENSE.rst` と各 `COPYING`/`NOTICE` を保持する。[CMake](https://github.com/Kitware/CMake/tree/v4.3.1) |
+| `winflexbison` 2.5.25 | Flex は BSD、Bison とビルドスクリプトは GPL-3.0+、文書は FDL 1.3+ | 条件付きで可 | ZIP内の `COPYING`、`COPYING.flex`、`COPYING.bison`、`COPYING.DOC` を保持する。公開場所から [v2.5.25](https://github.com/lexxmark/winflexbison/tree/v2.5.25) の対応ソースへ同等にアクセスできる状態を配布者が維持する。[公式リポジトリ](https://github.com/lexxmark/winflexbison) / [リリース](https://github.com/lexxmark/winflexbison/releases/tag/v2.5.25) |
 | `clang-format` 22.1.4 | Apache-2.0 WITH LLVM-exceptionほか | 条件付きで可 | tar.xz内にLLVMライセンスがあるが深いパスにある。配布ルートのNOTICEから明示し、著作権・第三者表示を保持する。[LLVM licensing](https://llvm.org/docs/DeveloperPolicy.html#copyright-license-and-patents) |
 | `nuget` 7.3.1 | Apache-2.0 | 条件付きで可 | 単体exeにはライセンス文書がない。Apache-2.0本文、著作権、該当NOTICEを追加する。[NuGet.Client](https://github.com/NuGet/NuGet.Client/tree/7.3.1) |
 | `cloc` 2.08 | GPL-2.0 | 条件付きで可 | 単体exeにはライセンス・対応ソースを伴わない。GPL本文とv2.08の対応ソースを同等提供する。[cloc v2.08](https://github.com/AlDanial/cloc/tree/v2.08) |

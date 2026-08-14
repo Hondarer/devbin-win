@@ -485,6 +485,28 @@ endlocal
             DefaultChecked = $true
         },
 
+        # WinFlexBison - TargetDirectory extraction with flex/bison aliases
+        @{
+            Name = "WinFlexBison"
+            ShortName = "winflexbison"
+            Version = "2.5.25"
+            ArchivePattern = "^win_flex_bison-.*\.zip$"
+            ExtractStrategy = "TargetDirectory"
+            TargetDirectory = "winflexbison"
+            PostSetupScript = "winflexbison-setup.ps1"
+            DownloadUrl = "https://github.com/lexxmark/winflexbison/releases/download/v2.5.25/win_flex_bison-2.5.25.zip"
+            DependsOn = @()
+            PathDirs = @("winflexbison")
+            EnvVars = @{}
+            DetectFiles = @(
+                "winflexbison\win_flex.exe",
+                "winflexbison\win_bison.exe",
+                "winflexbison\flex.exe",
+                "winflexbison\bison.exe"
+            )
+            DefaultChecked = $true
+        },
+
         # clang-format - Subdirectory extraction (LLVM release package)
         @{
             Name = "clang-format"

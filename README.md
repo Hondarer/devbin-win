@@ -151,6 +151,15 @@ from [CMake](https://cmake.org/)
             - Windows x64 ZIP
                 - [cmake-4.3.1-windows-x86_64.zip](https://github.com/Kitware/CMake/releases/download/v4.3.1/cmake-4.3.1-windows-x86_64.zip)
 
+### WinFlexBison
+
+from [lexxmark/winflexbison](https://github.com/lexxmark/winflexbison)
+
+- [/releases/tag/v2.5.25](https://github.com/lexxmark/winflexbison/releases/tag/v2.5.25)
+    - [win_flex_bison-2.5.25.zip](https://github.com/lexxmark/winflexbison/releases/download/v2.5.25/win_flex_bison-2.5.25.zip)
+
+ZIP を in\\winflexbison に展開し、同じディレクトリへ lex.exe と ison.exe の別名コピーを置く。bison が参照する data/ は実行ファイルと同じ場所に残す。
+
 ### clang-format
 
 from [LLVM Project](https://github.com/llvm/llvm-project)

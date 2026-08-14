@@ -20,7 +20,7 @@ subscripts/Setup-Strategies.psm1
 | Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, iconv, clang-format |
 | SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz, FFmpeg |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
-| TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code |
+| TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
@@ -376,7 +376,7 @@ PostSetupScript を使用した例:
 
 #### 適用パッケージ
 
-.NET SDK, Python, VS Code, ReportGenerator
+.NET SDK, Python, VS Code, ReportGenerator, WinFlexBison
 
 ### JarWithWrapper 戦略
 

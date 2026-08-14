@@ -40,6 +40,10 @@ code --version
 cloc --version
 vswhere -?
 clang-format --version
+win_flex --version
+win_bison --version
+flex --version
+bison --version
 editorconfig-checker --version
 gh --version
 glab --version
@@ -73,6 +77,16 @@ clang-format はソースコードを自動整形する LLVM ツールです。`
 - **配置ファイル**: `bin\clang-format.exe`、`bin\git-clang-format`、`bin\git-clang-format.bat`
 - **バージョン**: 22.1.4
 - **プロジェクト**: [llvm/llvm-project](https://github.com/llvm/llvm-project)
+
+#### WinFlexBison について
+
+WinFlexBison は Flex と GNU Bison の Windows 移植です。lexer / parser 生成に使います。
+
+- **用途**: `flex` / `bison` による字句解析器と構文解析器の生成
+- **配置場所**: `bin\winflexbison`
+- **コマンド**: `win_flex.exe`、`win_bison.exe`。同じディレクトリに `flex.exe` と `bison.exe` の別名コピーを置く
+- **バージョン**: 2.5.25 (bison 3.8.2、flex 2.6.4)
+- **プロジェクト**: [lexxmark/winflexbison](https://github.com/lexxmark/winflexbison)
 
 #### editorconfig-checker について
 
