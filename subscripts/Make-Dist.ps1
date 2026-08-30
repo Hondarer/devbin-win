@@ -55,8 +55,7 @@ $itemsToInclude = @(
 
 # 除外対象のファイル一覧
 $excludeFiles = @(
-    "subscripts\Make-Dist.ps1",
-    "subscripts\Get-Packages.ps1"
+    "subscripts\Make-Dist.ps1"
 )
 
 $addedCount = 0

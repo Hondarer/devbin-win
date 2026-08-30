@@ -46,6 +46,132 @@
             DefaultChecked = $true
         },
 
+        # Marp CLI - npm global install with full dependency tree
+        @{
+            Name = "Marp CLI"
+            ShortName = "marp-cli"
+            Version = "4.4.0"
+            ArchivePattern = "^marp-team-marp-cli-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "@marp-team/marp-cli"
+            Browser = "Edge"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("marp.cmd")
+            DefaultChecked = $true
+        },
+
+        # Mermaid CLI - npm global install with full dependency tree
+        @{
+            Name = "Mermaid CLI"
+            ShortName = "mermaid-cli"
+            Version = "11.15.0"
+            ArchivePattern = "^mermaid-js-mermaid-cli-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "@mermaid-js/mermaid-cli"
+            Browser = "Edge"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("mmdc.cmd")
+            DefaultChecked = $true
+        },
+
+        # Widdershins - npm global install with full dependency tree
+        @{
+            Name = "Widdershins"
+            ShortName = "widdershins"
+            Version = "4.0.1"
+            ArchivePattern = "^widdershins-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "widdershins"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("widdershins.cmd")
+            DefaultChecked = $true
+        },
+
+        # Puppeteer - npm global install with full dependency tree
+        @{
+            Name = "Puppeteer"
+            ShortName = "puppeteer"
+            Version = "24.43.1"
+            ArchivePattern = "^puppeteer-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "puppeteer"
+            Browser = "Edge"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{
+                "PUPPETEER_SKIP_DOWNLOAD" = "1"
+            }
+            EnvVarIsLiteral = @("PUPPETEER_SKIP_DOWNLOAD")
+            DetectFiles = @("node_modules\puppeteer\package.json")
+            DefaultChecked = $true
+        },
+
+        # MiniSearch - npm global install
+        @{
+            Name = "MiniSearch"
+            ShortName = "minisearch"
+            Version = "7.2.0"
+            ArchivePattern = "^minisearch-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "minisearch"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("node_modules\minisearch\package.json")
+            DefaultChecked = $true
+        },
+
+        # @plantuml/core - npm global install
+        @{
+            Name = "@plantuml/core"
+            ShortName = "plantuml-core"
+            Version = "1.2026.7"
+            ArchivePattern = "^plantuml-core-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "@plantuml/core"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("node_modules\@plantuml\core\package.json")
+            DefaultChecked = $true
+        },
+
+        # sharp - npm global install with platform optional packages
+        @{
+            Name = "sharp"
+            ShortName = "sharp"
+            Version = "0.34.5"
+            ArchivePattern = "^sharp-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "sharp"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("node_modules\sharp\package.json")
+            DefaultChecked = $true
+        },
+
+        # minimist - npm global install
+        @{
+            Name = "minimist"
+            ShortName = "minimist"
+            Version = "1.2.8"
+            ArchivePattern = "^minimist-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "minimist"
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("node_modules\minimist\package.json")
+            DefaultChecked = $true
+        },
+
         # Pandoc - Standard extraction
         @{
             Name = "Pandoc"

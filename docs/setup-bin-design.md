@@ -289,6 +289,9 @@ packages.psd1 からダウンロード URL を読み込み、パッケージを�
 3. DownloadHeaders が指定されていれば HTTP ヘッダーとして付与してファイルをダウンロード
 4. 対象パッケージの ArchivePattern に一致する過去バージョンのファイルと、不要になった元ファイル名を削除
 5. .exe ファイルをブロック解除
+6. `NpmInstall` 定義については `Setup-NpmCache.psm1` を呼び出し、ShortName ごとに依存木、`package-lock.json`、`npm-cache-manifest.json` を `packages/npm-packages/<ShortName>/` へ保存
+
+`NpmInstall` の導入時は manifest、lock、全 archive の SHA-512 を検証したうえで、一時 npm cache に archive を登録します。lockfile の `resolved` と `integrity` をローカル archive に差し替えた一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim をインストール先へマージします。キャッシュ不足時だけ `Get-Packages.ps1 -PackageShortNames` の自動実行を試み、取得後も不完全な場合は導入を開始しません。
 
 ### SourceForge URL 対応
 

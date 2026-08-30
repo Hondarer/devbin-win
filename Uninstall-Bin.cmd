@@ -70,6 +70,8 @@ if !PS_EXIT_CODE! equ 0 (
     echo - Removed PATH environment variables
     echo - Removed DOTNET_HOME environment variable
     echo - Removed DOTNET_CLI_TELEMETRY_OPTOUT environment variable
+    echo - Removed BROWSER_PATH when managed by devbin-win
+    echo - Removed PUPPETEER_EXECUTABLE_PATH when managed by devbin-win
     echo - Deleted installation directory: %INSTALL_DIR%
     if !PARENT_REMOVED! equ 1 (
         echo - Removed parent directory: !PARENT_DIR!

@@ -1,6 +1,26 @@
 ﻿# Setup-Components.psm1
 # コンポーネント単位のインストール/アンインストール/更新操作モジュール
 
+function Ensure-NpmCacheModule {
+    if (Get-Command Get-NpmCacheStatus -ErrorAction SilentlyContinue) {
+        return $true
+    }
+
+    $modulePath = Join-Path $PSScriptRoot "Setup-NpmCache.psm1"
+    if (-not (Test-Path $modulePath)) {
+        Write-Host "Error: Setup-NpmCache.psm1 not found at: $modulePath" -ForegroundColor Red
+        return $false
+    }
+
+    try {
+        Import-Module $modulePath -Force -ErrorAction Stop
+        return $true
+    } catch {
+        Write-Host "Error importing Setup-NpmCache: $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    }
+}
+
 # ShortName でパッケージ設定を取得する
 function Get-PackageByShortName {
     param(
@@ -201,7 +221,68 @@ function Get-Dependents {
     return $dependents
 }
 
-# 環境変数を設定する (EnvVars/EnvVarIsLiteral に基づく)
+# Edge 実行ファイルを PATH、標準インストール先、App Paths から解決する
+function Resolve-EdgeExecutable {
+    $candidates = @()
+    $command = Get-Command msedge.exe -ErrorAction SilentlyContinue
+    if ($command -and $command.Source) {
+        $candidates += $command.Source
+    }
+
+    $programFiles = [Environment]::GetEnvironmentVariable("ProgramFiles")
+    $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+    $localAppData = [Environment]::GetEnvironmentVariable("LOCALAPPDATA")
+    foreach ($basePath in @($programFiles, $programFilesX86, $localAppData)) {
+        if (-not [string]::IsNullOrWhiteSpace($basePath)) {
+            $candidates += (Join-Path $basePath "Microsoft\Edge\Application\msedge.exe")
+        }
+    }
+
+    # Enterprise/per-user installation may be registered only through App Paths.
+    $registryPaths = @(
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe",
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe"
+    )
+    foreach ($registryPath in $registryPaths) {
+        try {
+            $registryKey = Get-Item -LiteralPath $registryPath -ErrorAction Stop
+            $registeredPath = [string]$registryKey.GetValue("")
+            if (-not [string]::IsNullOrWhiteSpace($registeredPath)) {
+                $candidates += $registeredPath
+            }
+        } catch {
+            # Registry access or key absence is not fatal; continue with other candidates.
+        }
+    }
+
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        if (Test-Path $candidate -PathType Leaf) {
+            return (Resolve-Path $candidate).Path
+        }
+    }
+
+    return $null
+}
+
+# 既存の環境変数から有効な実行ファイルパスを取得する
+function Get-ValidEnvironmentValue {
+    param([string]$Name)
+
+    $userValue = [Environment]::GetEnvironmentVariable($Name, "User")
+    if (-not [string]::IsNullOrWhiteSpace($userValue) -and (Test-Path $userValue -PathType Leaf)) {
+        return $userValue
+    }
+
+    $processValue = [Environment]::GetEnvironmentVariable($Name, "Process")
+    if (-not [string]::IsNullOrWhiteSpace($processValue) -and (Test-Path $processValue -PathType Leaf)) {
+        return $processValue
+    }
+
+    return $null
+}
+
+# 環境変数を EnvVars/EnvVarIsLiteral と Browser 設定に基づいて設定する
 function Set-ComponentEnvVars {
     param(
         [string]$InstallDir,
@@ -209,8 +290,6 @@ function Set-ComponentEnvVars {
     )
 
     $envVars = if ($PackageConfig.ContainsKey("EnvVars")) { $PackageConfig.EnvVars } else { @{} }
-    if (-not $envVars -or $envVars.Count -eq 0) { return @{} }
-
     $literalKeys = if ($PackageConfig.ContainsKey("EnvVarIsLiteral")) { @($PackageConfig.EnvVarIsLiteral) } else { @() }
     $appliedVars = @{}
 
@@ -229,6 +308,25 @@ function Set-ComponentEnvVars {
         $appliedVars[$key] = $value
     }
 
+    if ($PackageConfig.ContainsKey("Browser") -and [string]$PackageConfig.Browser -eq "Edge") {
+        $edgePath = Resolve-EdgeExecutable
+        $browserPath = Get-ValidEnvironmentValue -Name "BROWSER_PATH"
+        $puppeteerPath = Get-ValidEnvironmentValue -Name "PUPPETEER_EXECUTABLE_PATH"
+
+        if (-not $browserPath) { $browserPath = if ($edgePath) { $edgePath } else { $puppeteerPath } }
+        if (-not $puppeteerPath) { $puppeteerPath = if ($edgePath) { $edgePath } else { $browserPath } }
+        if (-not $browserPath -or -not $puppeteerPath) {
+            throw "Microsoft Edge was not found. Install Edge or set a valid BROWSER_PATH/PUPPETEER_EXECUTABLE_PATH before installing $($PackageConfig.ShortName)."
+        }
+
+        [Environment]::SetEnvironmentVariable("BROWSER_PATH", $browserPath, "User")
+        [Environment]::SetEnvironmentVariable("PUPPETEER_EXECUTABLE_PATH", $puppeteerPath, "User")
+        Write-Host "  Set BROWSER_PATH=$browserPath"
+        Write-Host "  Set PUPPETEER_EXECUTABLE_PATH=$puppeteerPath"
+        $appliedVars["BROWSER_PATH"] = $browserPath
+        $appliedVars["PUPPETEER_EXECUTABLE_PATH"] = $puppeteerPath
+    }
+
     return $appliedVars
 }
 
@@ -236,24 +334,39 @@ function Set-ComponentEnvVars {
 function Remove-ComponentEnvVars {
     param(
         [string]$InstallDir,
-        [hashtable]$PackageConfig
+        [hashtable]$PackageConfig,
+        [hashtable]$AppliedEnvVars = @{},
+        [string[]]$SkipKeys = @()
     )
 
     $envVars = if ($PackageConfig.ContainsKey("EnvVars")) { $PackageConfig.EnvVars } else { @{} }
-    if (-not $envVars -or $envVars.Count -eq 0) { return }
-
     $literalKeys = if ($PackageConfig.ContainsKey("EnvVarIsLiteral")) { @($PackageConfig.EnvVarIsLiteral) } else { @() }
 
+    $expectedValues = @{}
     foreach ($key in $envVars.Keys) {
         $rawValue = $envVars[$key]
-        $expectedValue = if ($literalKeys -contains $key) {
+        $expectedValues[$key] = if ($literalKeys -contains $key) {
             $rawValue
         } elseif ($rawValue -eq "") {
             $InstallDir
         } else {
             Join-Path $InstallDir $rawValue
         }
+    }
 
+    if ($PackageConfig.ContainsKey("Browser") -and [string]$PackageConfig.Browser -eq "Edge") {
+        foreach ($key in @("BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH")) {
+            if ($AppliedEnvVars.ContainsKey($key)) {
+                $expectedValues[$key] = [string]$AppliedEnvVars[$key]
+            }
+        }
+    }
+
+    foreach ($key in $expectedValues.Keys) {
+        if ($SkipKeys -contains $key) {
+            continue
+        }
+        $expectedValue = $expectedValues[$key]
         $currentValue = [Environment]::GetEnvironmentVariable($key, "User")
         if ($currentValue -eq $expectedValue) {
             [Environment]::SetEnvironmentVariable($key, $null, "User")
@@ -507,51 +620,17 @@ function Install-Component {
     $archiveFile = $null
 
     if ($pkg.ExtractStrategy -eq "NpmInstall") {
-        $npmPackagesDir = Join-Path $packagesDir "npm-packages"
-        $getNpmMissing = {
-            param([hashtable]$PackageConfig, [string]$NpmPackagesDirPath)
-
-            $missing = @()
-            $archivePattern = if ($PackageConfig.ContainsKey("ArchivePattern")) { [string]$PackageConfig.ArchivePattern } else { "" }
-            if ([string]::IsNullOrWhiteSpace($archivePattern) -or -not (Test-Path $NpmPackagesDirPath) -or -not (Get-ChildItem -Path $NpmPackagesDirPath -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $archivePattern } | Select-Object -First 1)) {
-                $missing += $PackageConfig.ShortName
-            }
-
-            $npmDependencies = if ($PackageConfig.ContainsKey("NpmDependencies")) { @($PackageConfig.NpmDependencies) } else { @() }
-            foreach ($dependencySpec in $npmDependencies) {
-                $dependencyName = [string]$dependencySpec
-                if ($dependencyName.StartsWith("@")) {
-                    $versionSeparatorIndex = $dependencyName.IndexOf("@", 1)
-                    if ($versionSeparatorIndex -gt 0) {
-                        $dependencyName = $dependencyName.Substring(0, $versionSeparatorIndex)
-                    }
-                } else {
-                    $dependencyName = ($dependencyName -split '@')[0]
-                }
-
-                if ([string]::IsNullOrWhiteSpace($dependencyName)) {
-                    continue
-                }
-
-                $dependencyArchivePrefix = ($dependencyName -replace '^@', '') -replace '/', '-'
-                $dependencyArchive = if (Test-Path $NpmPackagesDirPath) {
-                    Get-ChildItem -Path $NpmPackagesDirPath -File -Filter "$dependencyArchivePrefix-*.tgz" -ErrorAction SilentlyContinue | Select-Object -First 1
-                } else {
-                    $null
-                }
-
-                if (-not $dependencyArchive) {
-                    $missing += $dependencySpec
-                }
-            }
-
-            return @($missing)
+        if (-not (Ensure-NpmCacheModule)) {
+            return $false
         }
 
-        $missingNpmArchives = @(& $getNpmMissing $pkg $npmPackagesDir)
-        if ($missingNpmArchives.Count -gt 0) {
+        $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $pkg -PackagesDir $packagesDir
+        if (-not $npmCacheStatus.IsValid) {
             Write-Host "  npm パッケージアーカイブが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
-            Write-Host "  不足: $($missingNpmArchives -join ', ')"
+            Write-Host "  不足: $($npmCacheStatus.Missing -join ', ')"
+            if ($npmCacheStatus.Invalid.Count -gt 0) {
+                Write-Host "  不正: $($npmCacheStatus.Invalid -join ', ')"
+            }
 
             $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
             if (Test-Path $getPackagesScript) {
@@ -559,9 +638,11 @@ function Install-Component {
                 & $getPackagesScript -PackageShortNames @($ShortName)
             }
 
-            $missingNpmArchives = @(& $getNpmMissing $pkg $npmPackagesDir)
-            if ($missingNpmArchives.Count -gt 0) {
-                Write-Host "Error: npm package archives not found for '$ShortName': $($missingNpmArchives -join ', ')" -ForegroundColor Red
+            $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $pkg -PackagesDir $packagesDir
+            if (-not $npmCacheStatus.IsValid) {
+                Write-Host "Error: npm package cache is not valid for '$ShortName'" -ForegroundColor Red
+                Write-Host "  Missing: $($npmCacheStatus.Missing -join ', ')" -ForegroundColor Red
+                Write-Host "  Invalid: $($npmCacheStatus.Invalid -join ', ')" -ForegroundColor Red
                 Write-Host "Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $ShortName" -ForegroundColor Yellow
                 return $false
             }
@@ -665,7 +746,8 @@ function Install-Component {
         -PackageConfig $pkg `
         -ArchiveFile $(if ($archiveFile) { $archiveFile } else { "" }) `
         -BinDir $InstallDir `
-        -ScriptDir $ScriptDir
+        -ScriptDir $ScriptDir `
+        -PackagesDir $packagesDir
 
     if (-not $result) {
         Write-Host "Error: Extraction failed for '$ShortName'" -ForegroundColor Red
@@ -686,10 +768,16 @@ function Install-Component {
     # 環境変数設定
     $envVarsConfig = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
     $appliedEnvVars = @{}
-    if ($envVarsConfig.Count -gt 0) {
+    $hasBrowserConfig = $pkg.ContainsKey("Browser") -and [string]$pkg.Browser -eq "Edge"
+    if ($envVarsConfig.Count -gt 0 -or $hasBrowserConfig) {
         Write-Host ""
         Write-Host "  環境変数を設定中..."
-        $appliedEnvVars = Set-ComponentEnvVars -InstallDir $InstallDir -PackageConfig $pkg
+        try {
+            $appliedEnvVars = Set-ComponentEnvVars -InstallDir $InstallDir -PackageConfig $pkg
+        } catch {
+            Write-Host "Error: Failed to configure runtime environment: $($_.Exception.Message)" -ForegroundColor Red
+            return $false
+        }
     }
 
     # マニフェストに記録
@@ -907,10 +995,28 @@ function Uninstall-Component {
 
     # 環境変数削除
     $envVarsConfig = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
-    if ($envVarsConfig.Count -gt 0) {
+    $hasBrowserConfig = $pkg.ContainsKey("Browser") -and [string]$pkg.Browser -eq "Edge"
+    if ($envVarsConfig.Count -gt 0 -or $hasBrowserConfig) {
         Write-Host ""
         Write-Host "  環境変数を削除中..."
-        Remove-ComponentEnvVars -InstallDir $InstallDir -PackageConfig $pkg
+        $componentEnvVars = @{}
+        if ($componentData -and $componentData.ContainsKey("envVars") -and $componentData.envVars) {
+            $componentEnvVars = $componentData.envVars
+        }
+        $skipEnvironmentKeys = @()
+        if ($hasBrowserConfig) {
+            foreach ($otherShortName in $Manifest.components.Keys) {
+                if ($otherShortName -eq $ShortName) {
+                    continue
+                }
+                $otherPackage = Get-PackageByShortName -ShortName $otherShortName -Packages $Packages
+                if ($otherPackage -and $otherPackage.ContainsKey("Browser") -and [string]$otherPackage.Browser -eq "Edge") {
+                    $skipEnvironmentKeys += @("BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH")
+                    break
+                }
+            }
+        }
+        Remove-ComponentEnvVars -InstallDir $InstallDir -PackageConfig $pkg -AppliedEnvVars $componentEnvVars -SkipKeys $skipEnvironmentKeys
     }
 
     # マニフェストから削除

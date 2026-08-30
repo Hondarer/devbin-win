@@ -27,6 +27,9 @@ Install-Bin.cmd
 node --version
 pnpm --version
 cmd /c ni --version
+marp --version
+mmdc --version
+widdershins --version
 pandoc --version
 doxygen --version
 java -version
@@ -51,6 +54,35 @@ glab --version
 ```
 
 PowerShell では `ni` が標準 alias (`New-Item`) と衝突します。PowerShell で `@antfu/ni` の `ni` コマンドを使う場合は、セッション内で `Remove-Item Alias:ni -Force` を実行してください。`cmd /c ni` や Git Bash ではこの衝突は発生しません。
+
+## オフライン環境での npm インストール
+
+Node.js/npm パッケージは ShortName ごとに依存木を保存します。オンライン環境で Node.js/npm が使用できる状態で、次を実行してください。
+
+```powershell
+.\subscripts\Get-Packages.ps1
+```
+
+生成物は `packages\npm-packages\<ShortName>\` の次の構成です。
+
+```text
+package-lock.json
+npm-cache-manifest.json
+archives\*.tgz
+```
+
+`npm-cache-manifest.json` は全 archive の version・サイズ・SHA-512 を検証するために使用します。`Install-Bin.cmd` またはコンポーネントマネージャーは、cache が不足している場合だけ `Get-Packages.ps1` の自動実行を試みます。この場合はネットワークへ接続するため、完全オフライン導入では事前に cache を揃えてください。取得後も不足する場合は導入を開始せずエラーで停止します。
+
+導入時は registry metadata に依存せず、lockfile の `resolved` と `integrity` を cache 内のローカル `.tgz` に差し替えた一時プロジェクトへ `npm install --offline` します。完了後、一時プロジェクトの `node_modules` と command shim をインストール先へ配置します。
+
+Marp CLI、Mermaid CLI、Puppeteer は Chromium をダウンロードせず、PATH、標準インストール先、Windows の `App Paths` レジストリから既存の Microsoft Edge を自動検出して使用します。Edge が見つからない場合はブラウザを必要とするコンポーネントの導入に失敗します。
+
+### オフライン移行手順
+
+1. オンライン環境で `Get-Packages.ps1` を実行
+2. `packages` フォルダを含むリポジトリ全体をコピー
+3. オフライン環境で `Install-Bin.cmd` を実行
+4. 新しいターミナルで npm コマンドと Marp/Mermaid の出力を確認
 
 #### cloc について
 

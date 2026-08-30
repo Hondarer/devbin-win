@@ -15,6 +15,9 @@ $ScriptDir = if ($PSScriptRoot) {
     Get-Location | Select-Object -ExpandProperty Path
 }
 
+$RepositoryRoot = Split-Path $ScriptDir -Parent
+$PackagesRoot = Join-Path $RepositoryRoot "packages"
+
 # パッケージ設定を読み込む
 $PackagesConfigPath = Join-Path $ScriptDir "config\packages.psd1"
 if (-not (Test-Path $PackagesConfigPath)) {
@@ -24,6 +27,18 @@ if (-not (Test-Path $PackagesConfigPath)) {
 
 $PackagesConfig = Invoke-Expression (Get-Content $PackagesConfigPath -Raw)
 $Packages = $PackagesConfig.Packages
+
+$npmCacheModulePath = Join-Path $ScriptDir "Setup-NpmCache.psm1"
+if (-not (Test-Path $npmCacheModulePath)) {
+    Write-Host "Error: Setup-NpmCache.psm1 not found at: $npmCacheModulePath" -ForegroundColor Red
+    exit 1
+}
+try {
+    Import-Module $npmCacheModulePath -Force -ErrorAction Stop
+} catch {
+    Write-Host "Error importing Setup-NpmCache: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
 
 function Get-TargetPackages {
     param(
@@ -67,9 +82,9 @@ try {
 }
 
 # packages ディレクトリが存在しない場合は作成
-if (-not (Test-Path "packages")) {
+if (-not (Test-Path $PackagesRoot)) {
     Write-Host "Creating packages directory..."
-    New-Item -ItemType Directory -Path "packages" | Out-Null
+    New-Item -ItemType Directory -Path $PackagesRoot | Out-Null
 }
 
 # SourceForge の実際のダウンロード URL を取得
@@ -446,23 +461,6 @@ function Test-PipWheelPackages {
     return $missing
 }
 
-function Get-NpmPackageArchiveFileName {
-    param(
-        [hashtable]$Package
-    )
-
-    $npmPackage = if ($Package.ContainsKey("NpmPackage")) { [string]$Package.NpmPackage } else { "" }
-    $version = if ($Package.ContainsKey("Version")) { [string]$Package.Version } else { "" }
-
-    if ([string]::IsNullOrWhiteSpace($npmPackage) -or [string]::IsNullOrWhiteSpace($version)) {
-        return ""
-    }
-
-    $normalizedName = $npmPackage -replace '^@', ''
-    $normalizedName = $normalizedName -replace '/', '-'
-    return "$normalizedName-$version.tgz"
-}
-
 function Save-NpmPackageArchives {
     param(
         [string]$NpmCommandPath,
@@ -474,50 +472,16 @@ function Save-NpmPackageArchives {
         return 0
     }
 
-    if (!(Test-Path $DestinationDir)) {
-        New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
-    }
-
     $exitCode = 0
-    $packedSpecs = @{}
     foreach ($pkg in $PackagesToPack) {
-        $npmPackage = if ($pkg.ContainsKey("NpmPackage")) { [string]$pkg.NpmPackage } else { "" }
-        $version = if ($pkg.ContainsKey("Version")) { [string]$pkg.Version } else { "" }
-        if ([string]::IsNullOrWhiteSpace($npmPackage)) {
-            continue
-        }
-
-        $packageSpecs = @()
-        $packageSpecs += if (-not [string]::IsNullOrWhiteSpace($version)) { "$npmPackage@$version" } else { $npmPackage }
-        if ($pkg.ContainsKey("NpmDependencies")) {
-            $packageSpecs += @($pkg.NpmDependencies)
-        }
-
-        foreach ($packageSpec in $packageSpecs) {
-            if ($packedSpecs.ContainsKey($packageSpec)) {
-                continue
-            }
-            $packedSpecs[$packageSpec] = $true
-
-            $expectedFileName = if ($packageSpec -eq $packageSpecs[0]) { Get-NpmPackageArchiveFileName -Package $pkg } else { "" }
-            $expectedPath = if ($expectedFileName) { Join-Path $DestinationDir $expectedFileName } else { "" }
-
-            if ($expectedPath -and (Test-Path $expectedPath) -and -not $Force) {
-                Write-Host "  $expectedFileName already exists. Skipping."
-                Remove-OldPackageFiles -Package $pkg -CurrentFileName $expectedFileName
-                continue
-            }
-
-            Write-Host "  Packing npm package: $packageSpec"
-            & $NpmCommandPath pack $packageSpec --pack-destination $DestinationDir --offline=false --ignore-scripts | Out-Host
-            if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
-                $exitCode = $LASTEXITCODE
-                continue
-            }
-
-            if ($expectedFileName) {
-                Remove-OldPackageFiles -Package $pkg -CurrentFileName $expectedFileName
-            }
+        Write-Host "  Preparing npm offline cache: $($pkg.ShortName)"
+        $cacheExitCode = Save-NpmPackageCache `
+            -NpmCommandPath $NpmCommandPath `
+            -PackagesDir (Split-Path $DestinationDir -Parent) `
+            -PackageConfig $pkg `
+            -Force:$Force
+        if ($cacheExitCode -ne 0) {
+            $exitCode = $cacheExitCode
         }
     }
 
@@ -598,16 +562,17 @@ if ($Force) {
 
 $successCount = 0
 $totalCount = $downloads.Count
+$overallExitCode = 0
 
 foreach ($download in $downloads) {
     $url = $download.Url
     $fileName = $download.FileName
-    $outputPath = Join-Path "packages" $fileName
+    $outputPath = Join-Path $PackagesRoot $fileName
     $headers = if ($download.Package.ContainsKey("DownloadHeaders")) { $download.Package.DownloadHeaders } else { @{} }
 
     if (Get-File -Url $url -OutputPath $outputPath -Headers $headers) {
         $successCount++
-        Remove-OldPackageFiles -Package $download.Package -CurrentFileName $fileName
+        Remove-OldPackageFiles -Package $download.Package -CurrentFileName $fileName -PackagesDir $PackagesRoot
     }
 
     Start-Sleep -Milliseconds 500
@@ -622,7 +587,7 @@ if ($successCount -eq $totalCount) {
     # packages フォルダ内のすべてのファイルのブロック解除
     Write-Host "`nUnblocking downloaded files..."
     try {
-        $allFiles = Get-ChildItem -Path "packages" -File -ErrorAction SilentlyContinue
+        $allFiles = Get-ChildItem -Path $PackagesRoot -File -Recurse -ErrorAction SilentlyContinue
         if ($allFiles) {
             $allFiles | Unblock-File -ErrorAction SilentlyContinue
             Write-Host "Unblocked $($allFiles.Count) file(s)."
@@ -632,6 +597,7 @@ if ($successCount -eq $totalCount) {
     }
 } else {
     $failedCount = $totalCount - $successCount
+    $overallExitCode = 1
     Write-Host "`n$failedCount file(s) failed to download." -ForegroundColor Yellow
     Write-Host "Please check your network connection and try again."
     Write-Host "Use the -Force option to forcefully re-download existing files."
@@ -645,21 +611,24 @@ if ($npmInstallPackages.Count -gt 0) {
 
     $npmCmd = Get-Command npm.cmd -ErrorAction SilentlyContinue
     if (-not $npmCmd) {
-        Write-Host "npm not found. Skipping npm cache download."
-        Write-Host "npm packages will be downloaded during Setup-Bin.ps1 execution."
+        $overallExitCode = 1
+        Write-Host "Error: npm not found. npm cache preparation cannot be completed." -ForegroundColor Red
+        Write-Host "Install Node.js/npm in the preparation environment and run Get-Packages.ps1 again."
     } else {
-        $npmPackagesDir = "packages\npm-packages"
+        $npmPackagesDir = Join-Path $PackagesRoot "npm-packages"
         $npmNames = @($npmInstallPackages | ForEach-Object { $_.ShortName })
-        Write-Host "npm found. Downloading npm package archives for: $($npmNames -join ', ')"
+        Write-Host "npm found. Preparing npm offline caches for: $($npmNames -join ', ')"
 
         try {
             $packExitCode = Save-NpmPackageArchives -NpmCommandPath $npmCmd.Source -DestinationDir $npmPackagesDir -PackagesToPack $npmInstallPackages
             if ($packExitCode -eq 0 -or $null -eq $packExitCode) {
-                Write-Host "Successfully prepared npm package archives at $npmPackagesDir"
+                Write-Host "Successfully prepared npm offline caches at $npmPackagesDir"
             } else {
+                $overallExitCode = 1
                 Write-Host "Warning: Failed to prepare some npm package archives (exit code: $packExitCode)" -ForegroundColor Yellow
             }
         } catch {
+            $overallExitCode = 1
             Write-Host "Warning: Failed to prepare npm package archives: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
@@ -673,7 +642,7 @@ if ($PackageShortNames -and $PackageShortNames.Count -gt 0) {
 }
 
 if (-not $shouldDownloadPipWheels) {
-    return
+    exit $overallExitCode
 }
 
 Write-Host ""
@@ -687,7 +656,7 @@ if (-not $pythonExe) {
 } else {
     Write-Host "Python found. Downloading pip wheel files..."
 
-    $pipPackagesDir = "packages\pip-packages"
+    $pipPackagesDir = Join-Path $PackagesRoot "pip-packages"
 
     try {
         # devbin の Python バージョンを packages.psd1 から取得
@@ -708,10 +677,15 @@ if (-not $pythonExe) {
             Write-Host "Successfully downloaded wheel files to $pipPackagesDir"
         } elseif ($downloadExitCode -eq 0) {
             Write-Host "Warning: Wheel cache is missing required files: $($missingWheels -join ', ')" -ForegroundColor Yellow
+            $overallExitCode = 1
         } else {
             Write-Host "Warning: Failed to download some wheel files (exit code: $downloadExitCode)" -ForegroundColor Yellow
+            $overallExitCode = 1
         }
     } catch {
+        $overallExitCode = 1
         Write-Host "Warning: Failed to download wheel files: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
+
+exit $overallExitCode

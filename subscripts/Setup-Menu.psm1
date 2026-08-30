@@ -996,7 +996,7 @@ function Apply-CheckedState {
         }
     }
 
-    Sync-EnvironmentVariables -VariableNames @("PATH") -Silent | Out-Null
+    Sync-EnvironmentVariables -VariableNames @("PATH", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
 
     Write-Host ""
     Write-Host " 完了しました。何かキーを押してメニューに戻ります..."

@@ -27,7 +27,7 @@ subscripts/Setup-Strategies.psm1
 | InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 | PipInstall | python -m pip install でパッケージをインストール | yamllint |
-| NpmInstall | npm install -g で npm パッケージをインストール | pnpm, @antfu/ni |
+| NpmInstall | 検証済み依存木を npm のオフライン一時 prefix へ展開 | pnpm, @antfu/ni |
 
 ## 共通関数
 
@@ -642,7 +642,7 @@ yamllint
 
 ### NpmInstall 戦略
 
-`npm install -g --prefix <InstallDir>` を実行して npm パッケージを devbin-win のインストール先へインストールします。`packages\npm-packages\` 配下の npm パッケージアーカイブ (`*.tgz`) を優先します。
+検証済み依存木を一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim を devbin-win のインストール先へマージします。npm パッケージは ShortName ごとの dependency tree cache から、常にオフラインで導入します。
 
 #### パラメータ
 
@@ -650,19 +650,22 @@ yamllint
 |-----------|------|-----|------|
 | NpmPackage | npm パッケージ名 | string | ✅ |
 | Version | インストールするバージョン (指定時は `@Version` として渡す) | string | ❌ |
-| NpmDependencies | 一緒に取得・インストールする npm 依存パッケージ spec | string[] | ❌ |
+| NpmDependencies | 本体の依存木とは別に一緒に取得・導入する npm package spec | string[] | ❌ |
 | NpmIgnoreScripts | npm lifecycle scripts を無効化するか。未指定時は `$true` | bool | ❌ |
+| Browser | `Edge` の場合、既存 Microsoft Edge を検出してブラウザ関連環境変数を設定 | string | ❌ |
 
 #### 処理フロー
 
 1. `$BinDir\npm.cmd` を特定
-2. `packages\npm-packages\` に対象の `.tgz` があればそれをインストール対象にする
-3. `NpmDependencies` があれば一致する `.tgz` も一緒に npm install に渡す
-4. `.tgz` が不足していれば npm registry へ直接 fallback せずエラー
+2. `packages\npm-packages\<ShortName>` の manifest、lock、全 archive を検証
+3. manifest に記録された全 `.tgz` を一時 npm cache へ登録
+4. lockfile の package archive 参照をローカル tgz に置き換えた一時プロジェクトを作成
+5. 一時プロジェクトへ `npm install --offline` し、導入後に本体の package name/version を検証
+6. 一時プロジェクトの `node_modules` と command shim を `$BinDir` へマージ
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージ本体と `NpmDependencies` は `packages\npm-packages/*.tgz` に保存されます。インストール時に不足があれば `Get-Packages.ps1` で取得を試み、取得後も不足する場合はエラーで停止します。`NpmInstall` は npm registry への直接 fallback は行いません。
+`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージの依存木、`package-lock.json`、`npm-cache-manifest.json` が `packages\npm-packages\<ShortName>\` に保存されます。キャッシュ不足時は `Get-Packages.ps1 -PackageShortNames <ShortName>` の自動実行を試み、取得後も不足する場合はエラーで停止します。`NpmInstall` 自体は npm registry へ直接 fallback しません。
 
 #### 使用例
 
@@ -680,9 +683,11 @@ yamllint
 }
 ```
 
+`Get-Packages.ps1` は一時 prefix へ `npm install --ignore-scripts --package-lock=true` したあと、配下の各 package を `npm pack` します。archive 作成後に manifest を最後に書き込むため、未完成の cache は有効とみなされません。既存 cache は `-Force` 指定時のみ再生成します。
+
 #### 適用パッケージ
 
-pnpm, @antfu/ni
+pnpm, @antfu/ni, Marp CLI, Mermaid CLI, Widdershins, Puppeteer, MiniSearch, @plantuml/core, sharp, minimist
 
 #### 注意事項
 

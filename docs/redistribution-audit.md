@@ -25,12 +25,12 @@
 ### 2.1 対象
 
 - `subscripts/config/packages.psd1` の40パッケージ定義
-- `packages/npm-packages` の8成果物
+- `packages/npm-packages` の10件の `NpmInstall` 定義と、各依存木から生成される archive 群
 - `packages/pip-packages` の9成果物
 - `packages/vsbt` の65ファイル
 - `Make-Dist.ps1` が `packages` とともに配布する devbin-win 固有ファイル
 
-実ファイル数は `packages` 直下40件（第三者成果物36件、devbin-win固有スクリプト4件）、npm 8件、pip 9件、VSBT 65件の合計122件である。devbin-win固有スクリプトと配布スクリプト群はリポジトリのMITライセンス対象であり、現行配布ZIPにはルートの `LICENSE` が収録される。
+実ファイル数は `packages` 直下40件（第三者成果物36件、devbin-win固有スクリプト4件）、npmのトップレベル定義10件（依存 archive 数は各 cache manifest により変動）、pip 9件、VSBT 65件の合計である。devbin-win固有スクリプトと配布スクリプト群はリポジトリのMITライセンス対象であり、現行配布ZIPにはルートの `LICENSE` が収録される。
 
 本調査の判定は、取得済みのベンダーアーカイブを含む ZIP を無償で不特定多数へ公開する場合を対象とする。現行の個人利用・組織内利用に対する適否を一律に判定するものではない。インストール後の展開済み `bin` 一式を別製品として再配布する場合も対象外であり、別途調査が必要である。
 
@@ -94,7 +94,7 @@
 
 ### 4.1 npm
 
-全8件をtgz内部の `package.json` とLICENSEで確認した。いずれも現行tgzを未改変で保持する限り再配布可能である。
+現行の内部用途では、10件の `NpmInstall` 定義ごとに `package-lock.json`、`npm-cache-manifest.json`、依存木全体の archive を生成する。以下の表は本調査時点の旧 flat cache snapshot に対する記録であり、現在の依存 archive 全体の公開可否を保証する inventory ではない。不特定多数への公開配布を行う場合は、各 cache manifest の全 archive を再監査すること。
 
 | ファイル | パッケージ | ライセンス | 公開時の判定 |
 |---|---|---|---|

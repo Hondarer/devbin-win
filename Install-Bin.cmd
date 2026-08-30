@@ -54,6 +54,8 @@ if %PS_EXIT_CODE% equ 0 (
     echo - PATH ^(tools directories added^)
     echo - DOTNET_HOME ^(for .NET SDK^)
     echo - DOTNET_CLI_TELEMETRY_OPTOUT ^(privacy setting^)
+    echo - BROWSER_PATH ^(for Marp/Mermaid/Puppeteer^)
+    echo - PUPPETEER_EXECUTABLE_PATH ^(for Puppeteer-based tools^)
     echo.
     echo Please restart your terminal for environment changes to take effect.
     echo.

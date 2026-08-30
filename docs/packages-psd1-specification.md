@@ -194,7 +194,7 @@ packages フォルダ内でアーカイブファイルを検索する際に使�
 - `InnoSetup` - innoextract で Inno Setup インストーラを解凍
 - `VSBuildTools` - Visual Studio Build Tools のセットアップ
 - `PipInstall` - python -m pip install でパッケージをインストール
-- `NpmInstall` - npm install -g で npm パッケージをインストール
+- `NpmInstall` - 検証済み依存木を npm のオフライン一時 prefix へ展開
 
 #### DownloadUrl
 
@@ -555,7 +555,7 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 
 ### NpmInstall 戦略
 
-`npm install -g --prefix <InstallDir>` を実行して npm パッケージを devbin-win のインストール先へインストールします。アーカイブファイルは不要で、`DownloadUrl` も省略します。
+検証済み依存木を一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim を devbin-win のインストール先へマージします。オンライン環境では `Get-Packages.ps1` が依存木を解決し、導入時は保存済み archive と一時 npm cache だけを使用します。
 
 ```powershell
 @{
@@ -576,10 +576,20 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 **追加パラメータ**:
 - `NpmPackage` (必須): npm パッケージ名
 - `Version` (共通プロパティ): 指定時は `npm install <NpmPackage>@<Version>` として渡す
-- `NpmDependencies` (任意): オフライン用に一緒に取得・インストールする npm 依存パッケージ spec
+- `NpmDependencies` (任意): 本体の依存木とは別に、一緒に取得・導入する npm package spec
 - `NpmIgnoreScripts` (任意): `$false` の場合のみ npm lifecycle scripts を許可する。未指定時は `$true`
+- `Browser` (任意): `Edge` を指定すると、導入時に既存 Microsoft Edge を検出してブラウザ関連環境変数を設定する
 
-`Get-Packages.ps1` は npm パッケージ本体と `NpmDependencies` を `packages/npm-packages/*.tgz` として保存します。インストール時に不足があれば `Get-Packages.ps1` で取得を試み、取得後も不足する場合はエラーで停止します。PowerShell の `ni` は `New-Item` alias と衝突するため、必要な場合はユーザー側で `Remove-Item Alias:ni -Force` を実行してください。
+`Get-Packages.ps1` は各 `NpmInstall` の依存木を次の形式で保存します。
+
+```text
+packages/npm-packages/<ShortName>/
+  package-lock.json
+  npm-cache-manifest.json
+  archives/*.tgz
+```
+
+`npm-cache-manifest.json` には、全 package の version、archive path、サイズ、SHA-512 integrity が記録されます。導入時は manifest、lock、全 archive を検証し、lockfile の `resolved` と `integrity` をローカル archive に差し替えてから、一時プロジェクトへ `npm install --offline` します。不足または改変があれば npm install を開始しません。キャッシュ不足時は `Get-Packages.ps1` の自動実行を試み、取得後も不足する場合はエラーで停止します。PowerShell の `ni` は `New-Item` alias と衝突するため、必要な場合はユーザー側で `Remove-Item Alias:ni -Force` を実行してください。
 
 ## 新規パッケージの追加手順
 

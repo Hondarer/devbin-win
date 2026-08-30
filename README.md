@@ -11,6 +11,47 @@ from [https://nodejs.org/en](https://nodejs.org/en)
 - [https://nodejs.org/en/download/](https://nodejs.org/en/download/)
     - [node-v25.9.0-win-x64.zip](https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip)
 
+### Marp CLI
+
+from [marp-team/marp-cli](https://github.com/marp-team/marp-cli)
+
+- [v4.4.0](https://www.npmjs.com/package/@marp-team/marp-cli/v/4.4.0)
+    - `@marp-team/marp-cli@4.4.0` を検証済み依存木から `npm install --offline` で配置します。依存木は `packages/npm-packages/marp-cli/` に lock/manifest 付きで保存し、既存 Edge を使用します。
+
+### Mermaid CLI
+
+from [mermaid-js/mermaid-cli](https://github.com/mermaid-js/mermaid-cli)
+
+- [v11.15.0](https://www.npmjs.com/package/@mermaid-js/mermaid-cli/v/11.15.0)
+    - `@mermaid-js/mermaid-cli@11.15.0` (`mmdc`)。依存木は `packages/npm-packages/mermaid-cli/` に保存し、既存 Edge を使用します。
+
+### Widdershins
+
+from [Mermade/widdershins](https://github.com/Mermade/widdershins)
+
+- [v4.0.1](https://www.npmjs.com/package/widdershins/v/4.0.1)
+
+### Puppeteer
+
+from [puppeteer/puppeteer](https://github.com/puppeteer/puppeteer)
+
+- [v24.43.1](https://www.npmjs.com/package/puppeteer/v/24.43.1)
+    - Chrome はダウンロードしません。Windows では Edge を使用します。
+
+### MiniSearch / @plantuml/core / sharp / minimist
+
+npm グローバル配置です。版は `subscripts/config/packages.psd1` を参照してください。
+
+## npm パッケージのオフライン準備
+
+オンライン環境で Node.js/npm を使用して、依存木を準備します。
+
+```powershell
+.\subscripts\Get-Packages.ps1
+```
+
+`packages/npm-packages/<ShortName>/` に `package-lock.json`、`npm-cache-manifest.json`、依存 package の `.tgz` が生成されます。生成後は `packages` フォルダを含めてリポジトリ全体をオフライン環境へコピーし、`Install-Bin.cmd` を実行してください。導入時の npm install は検証済みのローカル cache に対して `--offline` で実行されます。
+
 ### pandoc
 
 from [https://github.com/jgm/pandoc](https://github.com/jgm/pandoc)
@@ -70,7 +111,7 @@ from [python.org](https://www.python.org/)
 - [pip 26.1.1](https://pypi.org/project/pip/26.1.1/)
     - [pip-26.1.1.tar.gz](https://files.pythonhosted.org/packages/b6/48/cb9b7a682f6fe01a4221e1728941dd4ac3cd9090a17db3779d6ff490b602/pip-26.1.1.tar.gz)
 
-完全オフライン環境での pip インストールに対応しています。pip source tarball は Get-Packages.ps1 で `packages` に保存され、pip wheel ファイルは `packages/pip-packages` に自動ダウンロードされます。詳細は [offline-pip-design.md](./docs-src/offline-pip-design.md) を参照してください。
+完全オフライン環境での pip インストールに対応しています。pip source tarball は Get-Packages.ps1 で `packages` に保存され、pip wheel ファイルは `packages/pip-packages` に自動ダウンロードされます。詳細は [offline-pip-design.md](./docs/offline-pip-design.md) を参照してください。
 
 ### .NET SDK
 

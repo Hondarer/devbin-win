@@ -814,23 +814,13 @@ function Invoke-PipInstallStrategy {
     }
 }
 
-# NpmInstall 戦略: npm install -g でパッケージを devbin 配下にインストール
+# NpmInstall 戦略: オフライン一時 prefix の node_modules と shim を devbin 配下に配置
 function Invoke-NpmInstallStrategy {
     param(
         [string]$BinDir,
-        [hashtable]$Config
+        [hashtable]$Config,
+        [string]$PackagesDir = ""
     )
-
-    $npmPackage = $Config.NpmPackage
-    if ([string]::IsNullOrWhiteSpace($npmPackage)) {
-        Write-Host "Error: NpmPackage not specified in config" -ForegroundColor Red
-        return $false
-    }
-
-    $version = if ($Config.ContainsKey("Version")) { $Config.Version } else { "" }
-    $packageSpec = if (-not [string]::IsNullOrWhiteSpace($version)) { "$npmPackage@$version" } else { $npmPackage }
-
-    Write-Host "Installing $($Config.Name) via npm ($packageSpec)..."
 
     $npmCmd = Join-Path $BinDir "npm.cmd"
     if (-not (Test-Path $npmCmd)) {
@@ -838,92 +828,29 @@ function Invoke-NpmInstallStrategy {
         return $false
     }
 
-    $ignoreScripts = $true
-    if ($Config.ContainsKey("NpmIgnoreScripts")) {
-        $ignoreScripts = [bool]$Config.NpmIgnoreScripts
-    }
-
-    try {
-        $npmPackagesDir = "packages\npm-packages"
-        $npmTempCacheDir = Join-Path $BinDir ".npm-cache"
-        $args = @("install", "-g", "--prefix", $BinDir)
-
-        if ($ignoreScripts) {
-            $args += "--ignore-scripts"
-        }
-
-        $archiveFile = $null
-        if ($Config.ContainsKey("ArchivePattern") -and (Test-Path $npmPackagesDir)) {
-            $archiveFiles = Get-ChildItem -Path $npmPackagesDir -File -ErrorAction SilentlyContinue |
-                Where-Object { $_.Name -match $Config.ArchivePattern } |
-                Sort-Object Name
-            if ($archiveFiles -and $archiveFiles.Count -gt 0) {
-                $archiveFile = $archiveFiles[0].FullName
-            }
-        }
-
-        if ($archiveFile) {
-            Write-Host "Using local npm package archive: $(Split-Path $archiveFile -Leaf)"
-            New-Item -ItemType Directory -Path $npmTempCacheDir -Force | Out-Null
-            $args += @("--cache", $npmTempCacheDir, "--offline")
-
-            $dependencyArchives = @()
-            $npmDependencies = if ($Config.ContainsKey("NpmDependencies")) { @($Config.NpmDependencies) } else { @() }
-            foreach ($dependencySpec in $npmDependencies) {
-                $dependencyName = [string]$dependencySpec
-                if ($dependencyName.StartsWith("@")) {
-                    $versionSeparatorIndex = $dependencyName.IndexOf("@", 1)
-                    if ($versionSeparatorIndex -gt 0) {
-                        $dependencyName = $dependencyName.Substring(0, $versionSeparatorIndex)
-                    }
-                } else {
-                    $dependencyName = ($dependencyName -split '@')[0]
-                }
-
-                if ([string]::IsNullOrWhiteSpace($dependencyName)) {
-                    continue
-                }
-
-                $dependencyArchivePrefix = ($dependencyName -replace '^@', '') -replace '/', '-'
-                $dependencyArchive = Get-ChildItem -Path $npmPackagesDir -File -Filter "$dependencyArchivePrefix-*.tgz" -ErrorAction SilentlyContinue |
-                    Sort-Object Name |
-                    Select-Object -First 1
-
-                if ($dependencyArchive) {
-                    $dependencyArchives += $dependencyArchive.FullName
-                } else {
-                    Write-Host "Error: npm dependency archive not found: $dependencySpec" -ForegroundColor Red
-                    return $false
-                }
-            }
-
-            if ($dependencyArchives.Count -gt 0) {
-                $args += $dependencyArchives
-            }
-            $args += $archiveFile
-        } else {
-            Write-Host "Error: npm package archive not found for $packageSpec" -ForegroundColor Red
-            Write-Host "Please run Get-Packages.ps1 to prepare packages\npm-packages." -ForegroundColor Yellow
+    if (-not (Get-Command Invoke-NpmInstallFromCache -ErrorAction SilentlyContinue)) {
+        $npmCacheModulePath = Join-Path $PSScriptRoot "Setup-NpmCache.psm1"
+        if (-not (Test-Path $npmCacheModulePath)) {
+            Write-Host "Error: Setup-NpmCache.psm1 not found at: $npmCacheModulePath" -ForegroundColor Red
             return $false
         }
-
-        & $npmCmd @args
-
-        if ($LASTEXITCODE -eq 0 -or $null -eq $LASTEXITCODE) {
-            Write-Host "$($Config.Name) installation completed."
-            return $true
-        } else {
-            Write-Host "Warning: npm install may have issues (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+        try {
+            Import-Module $npmCacheModulePath -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Error importing Setup-NpmCache: $($_.Exception.Message)" -ForegroundColor Red
             return $false
         }
-    } catch {
-        Write-Host "Error: Failed to install $($Config.Name): $($_.Exception.Message)" -ForegroundColor Red
-        return $false
-    } finally {
-        if ($npmTempCacheDir -and (Test-Path $npmTempCacheDir)) {
-            Remove-Item -Path $npmTempCacheDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
     }
+
+    if ([string]::IsNullOrWhiteSpace($PackagesDir)) {
+        $PackagesDir = Join-Path (Split-Path $PSScriptRoot -Parent) "packages"
+    }
+
+    return Invoke-NpmInstallFromCache `
+        -NpmCommandPath $npmCmd `
+        -BinDir $BinDir `
+        -PackagesDir $PackagesDir `
+        -PackageConfig $Config
 }
 
 # メイン関数: 抽出戦略を実行
@@ -941,6 +868,8 @@ function Invoke-ExtractStrategy {
 
         [Parameter(Mandatory)]
         [string]$ScriptDir,
+
+        [string]$PackagesDir = "",
 
         [string]$TempDir = "temp_extract"
     )
@@ -992,7 +921,7 @@ function Invoke-ExtractStrategy {
                 return Invoke-PipInstallStrategy -BinDir $BinDir -Config $PackageConfig
             }
             "NpmInstall" {
-                return Invoke-NpmInstallStrategy -BinDir $BinDir -Config $PackageConfig
+                return Invoke-NpmInstallStrategy -BinDir $BinDir -Config $PackageConfig -PackagesDir $PackagesDir
             }
             default {
                 Write-Host "Unknown strategy: $strategy" -ForegroundColor Red
