@@ -722,6 +722,24 @@ endlocal
             DefaultChecked = $true
         },
 
+        # GitHub Copilot CLI - Subdirectory extraction
+        @{
+            Name = "GitHub Copilot CLI"
+            ShortName = "copilot"
+            Version = "1.0.81"
+            ArchivePattern = "^copilot-win32-x64-.*\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = ""
+            FilePattern = "^copilot\.exe$"
+            DownloadUrl = "https://github.com/github/copilot-cli/releases/download/v1.0.81/copilot-win32-x64.zip"
+            DownloadFileName = "copilot-win32-x64-1.0.81.zip"
+            DependsOn = @("pwsh")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("copilot.exe")
+            DefaultChecked = $false
+        },
+
         # glab - Subdirectory extraction (GitLab CLI)
         @{
             Name = "GitLab CLI"

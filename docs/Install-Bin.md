@@ -46,6 +46,7 @@ flex --version
 bison --version
 editorconfig-checker --version
 gh --version
+copilot --version
 glab --version
 ```
 
@@ -105,6 +106,18 @@ gh は GitHub の Issue・Pull Request・リリース等をコマンドライン
 - **配置ファイル**: `bin\gh.exe`
 - **バージョン**: 2.95.0
 - **プロジェクト**: [cli/cli](https://github.com/cli/cli)
+
+#### Copilot CLI について
+
+GitHub Copilot CLI は、ターミナルから GitHub Copilot を利用するための公式 CLI です。
+
+- **用途**: ターミナル上でのコード調査、編集、デバッグ、GitHub 操作
+- **配置ファイル**: `bin\copilot.exe`
+- **バージョン**: 1.0.81
+- **プロジェクト**: [github/copilot-cli](https://github.com/github/copilot-cli)
+- **前提条件**: PowerShell 6 以上、GitHub Copilot の有効な契約
+
+Copilot CLI は一括インストールでは既定で選択されません。コンポーネントマネージャーで選択して導入し、初回起動時に `copilot login` または CLI 内の `/login` で認証してください。
 
 #### glab について
 

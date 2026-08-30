@@ -207,7 +207,7 @@ tar.xz アーカイブと PostSetupScript を使用した例:
 
 #### 適用パッケージ
 
-nkf, CMake, GNU Make, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, mingw-w64-x86_64-libiconv, mingw-w64-x86_64-gettext-runtime, clang-format
+nkf, CMake, GNU Make, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, mingw-w64-x86_64-libiconv, mingw-w64-x86_64-gettext-runtime, clang-format, GitHub CLI, GitLab CLI, GitHub Copilot CLI
 
 ### SubdirectoryToTarget 戦略
 
