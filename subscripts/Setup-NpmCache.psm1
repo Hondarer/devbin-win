@@ -904,6 +904,12 @@ function Save-NpmPackageCache {
         if (Test-Path $stagingDirectory) {
             Remove-Item -LiteralPath $stagingDirectory -Recurse -Force -ErrorAction SilentlyContinue
         }
+        if (Test-Path $stagingRoot -PathType Container) {
+            $stagingEntries = @(Get-ChildItem -LiteralPath $stagingRoot -Force -ErrorAction SilentlyContinue)
+            if ($stagingEntries.Count -eq 0) {
+                Remove-Item -LiteralPath $stagingRoot -Force -ErrorAction SilentlyContinue
+            }
+        }
     }
 }
 
