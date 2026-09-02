@@ -42,6 +42,13 @@ from [puppeteer/puppeteer](https://github.com/puppeteer/puppeteer)
 
 npm グローバル配置です。版は `subscripts/config/packages.psd1` を参照してください。
 
+### textlint
+
+from [textlint/textlint](https://github.com/textlint/textlint)
+
+- [v15.8.0](https://www.npmjs.com/package/textlint/v/15.8.0)
+    - `textlint-rule-preset-ja-technical-writing`, `textlint-rule-preset-ja-spacing` を依存として同梱します。
+
 ## npm パッケージのオフライン準備
 
 オンライン環境で Node.js/npm を使用して、依存木を準備します。

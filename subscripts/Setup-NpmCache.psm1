@@ -168,7 +168,7 @@ function Get-NpmPackageManifestFiles {
                 $manifestPath = Join-Path $packageDirectory.FullName 'package.json'
                 if (Test-Path $manifestPath -PathType Leaf) {
                     try {
-                        $packageJson = Get-Content $manifestPath -Raw | ConvertFrom-Json
+                        $packageJson = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
                     } catch {
                         throw "Failed to parse installed package manifest '$manifestPath': $($_.Exception.Message)"
                     }
@@ -210,7 +210,7 @@ function Find-NpmPackageManifest {
     return (Get-NpmPackageManifestFiles -NodeModulesDirectory $NodeModulesDirectory |
         Where-Object {
             try {
-                $json = Get-Content $_.FullName -Raw | ConvertFrom-Json
+                $json = Get-Content $_.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
                 $json.name -eq $PackageName
             } catch {
                 $false
@@ -277,7 +277,7 @@ function Get-NpmCacheStatus {
     }
 
     try {
-        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $manifest = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
         $status.Manifest = $manifest
 
         if ($manifest.schemaVersion -ne $script:NpmCacheSchemaVersion) {
@@ -304,7 +304,7 @@ function Get-NpmCacheStatus {
                 # Windows PowerShell 5.1 JSON parser cannot materialize as a property.
                 # Normalize only that known key before parsing; the source lock file is
                 # copied unchanged and remains the authoritative artifact.
-                $lockText = Get-Content $lockPath -Raw
+                $lockText = Get-Content $lockPath -Raw -Encoding UTF8
                 $normalizedLockText = $lockText -replace '("packages"\s*:\s*\{\s*)""(\s*:)', '$1"__devbin_npm_root__"$2'
                 $lock = $normalizedLockText | ConvertFrom-Json
                 $lockProperties = @($lock.PSObject.Properties.Name)
@@ -539,7 +539,7 @@ function New-NpmOfflineInstallProject {
         [string]$ProjectDirectory
     )
 
-    $lockText = Get-Content $CacheStatus.LockPath -Raw
+    $lockText = Get-Content $CacheStatus.LockPath -Raw -Encoding UTF8
     $normalizedLockText = $lockText -replace '("packages"\s*:\s*\{\s*)""(\s*:)', '$1"__devbin_npm_root__"$2'
     $lock = $normalizedLockText | ConvertFrom-Json
     $packageProperties = @($lock.packages.PSObject.Properties)
@@ -739,7 +739,7 @@ function Save-NpmPackageCache {
 
         foreach ($manifestFile in $packageJsonFiles) {
             try {
-                $packageJson = Get-Content $manifestFile.FullName -Raw | ConvertFrom-Json
+                $packageJson = Get-Content $manifestFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
             } catch {
                 Write-Host "  Invalid package.json: $($manifestFile.FullName)" -ForegroundColor Red
                 return 1
@@ -805,7 +805,7 @@ function Save-NpmPackageCache {
             Write-Host "  Root npm package was not found after install: $npmPackage" -ForegroundColor Red
             return 1
         }
-        $rootJson = Get-Content $rootManifestFile.FullName -Raw | ConvertFrom-Json
+        $rootJson = Get-Content $rootManifestFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
         if (-not [string]::IsNullOrWhiteSpace($rootVersion) -and [string]$rootJson.version -ne $rootVersion) {
             Write-Host "  Root npm version mismatch: expected $rootVersion, got $($rootJson.version)" -ForegroundColor Red
             return 1
@@ -829,7 +829,7 @@ function Save-NpmPackageCache {
                 Write-Host "  Explicit npm dependency was not installed: $dependencySpec" -ForegroundColor Red
                 return 1
             }
-            $dependencyJson = Get-Content $dependencyManifest.FullName -Raw | ConvertFrom-Json
+            $dependencyJson = Get-Content $dependencyManifest.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
             $dependencyIdentity = Get-NpmPackageIdentity -Name ([string]$dependencyJson.name) -Version ([string]$dependencyJson.version)
             $dependencyRecord = $archiveRecords | Where-Object { $_.identity -eq $dependencyIdentity } | Select-Object -First 1
             if (-not $dependencyRecord) {
@@ -984,7 +984,7 @@ function Invoke-NpmInstallFromCache {
         }
         if (-not [string]::IsNullOrWhiteSpace($expectedVersion)) {
             try {
-                $installedJson = Get-Content $installedManifest -Raw | ConvertFrom-Json
+                $installedJson = Get-Content $installedManifest -Raw -Encoding UTF8 | ConvertFrom-Json
                 if ([string]$installedJson.version -ne $expectedVersion) {
                     Write-Host "Error: installed npm version mismatch for '$rootPackage': expected $expectedVersion, got $($installedJson.version)" -ForegroundColor Red
                     return $false

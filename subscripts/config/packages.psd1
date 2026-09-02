@@ -897,6 +897,22 @@ endlocal
             EnvVars = @{}
             DetectFiles = @("python-3.13\Scripts\yamllint.exe")
             DefaultChecked = $true
+        },
+
+        # textlint - npm global install
+        @{
+            Name = "textlint"
+            ShortName = "textlint"
+            Version = "15.8.0"
+            ArchivePattern = "^textlint-\d+\.\d+\.\d+\.tgz$"
+            ExtractStrategy = "NpmInstall"
+            NpmPackage = "textlint"
+            NpmDependencies = @("textlint-rule-preset-ja-technical-writing@^12.0.2", "textlint-rule-preset-ja-spacing@^3.0.3")
+            DependsOn = @("nodejs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("textlint.cmd")
+            DefaultChecked = $true
         }
     )
 }
