@@ -518,12 +518,46 @@ function Invoke-SingleExecutableExtract {
     return $true
 }
 
+# PostExtract の追加ファイルを解決する
+function Resolve-PostExtractSourcePath {
+    param(
+        [string]$SourcePath,
+        [string]$ScriptDir = ""
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SourcePath)) {
+        return $SourcePath
+    }
+
+    if ([System.IO.Path]::IsPathRooted($SourcePath)) {
+        return $SourcePath
+    }
+
+    $candidates = @()
+    if (-not [string]::IsNullOrWhiteSpace($ScriptDir)) {
+        $repositoryRoot = Split-Path -Parent $ScriptDir
+        if (-not [string]::IsNullOrWhiteSpace($repositoryRoot)) {
+            $candidates += Join-Path $repositoryRoot $SourcePath
+        }
+    }
+    $candidates += $SourcePath
+
+    foreach ($candidate in @($candidates | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    return $candidates[0]
+}
+
 # SelfExtractingArchive 戦略: 自己解凍アーカイブ
 function Invoke-SelfExtractingArchiveExtract {
     param(
         [string]$ArchiveFile,
         [string]$BinDir,
-        [hashtable]$Config
+        [hashtable]$Config,
+        [string]$ScriptDir = ""
     )
 
     Unblock-ArchiveFile $ArchiveFile
@@ -556,11 +590,13 @@ function Invoke-SelfExtractingArchiveExtract {
         if ($Config.PostExtract -and $Config.PostExtract.CopyFiles) {
             Write-Host "Copying additional files..."
             foreach ($fileEntry in $Config.PostExtract.CopyFiles) {
-                $sourcePath = $fileEntry.Source
+                $sourcePath = Resolve-PostExtractSourcePath `
+                    -SourcePath ([string]$fileEntry.Source) `
+                    -ScriptDir $ScriptDir
                 $destPath = Join-Path $BinDir $fileEntry.Destination
 
-                if (Test-Path $sourcePath) {
-                    Copy-Item -Path $sourcePath -Destination $destPath -Force
+                if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
+                    Copy-Item -LiteralPath $sourcePath -Destination $destPath -Force
                     Write-Host "  Copied: $($fileEntry.Destination)"
                 } else {
                     Write-Host "  Warning: File not found: $sourcePath" -ForegroundColor Yellow
@@ -909,7 +945,11 @@ function Invoke-ExtractStrategy {
                 Invoke-SingleExecutableExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -Config $PackageConfig
             }
             "SelfExtractingArchive" {
-                $targetPath = Invoke-SelfExtractingArchiveExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -Config $PackageConfig
+                $targetPath = Invoke-SelfExtractingArchiveExtract `
+                    -ArchiveFile $ArchiveFile `
+                    -BinDir $BinDir `
+                    -Config $PackageConfig `
+                    -ScriptDir $ScriptDir
             }
             "InnoSetup" {
                 $targetPath = Invoke-InnoSetupExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -TempDir $TempDir -Config $PackageConfig
