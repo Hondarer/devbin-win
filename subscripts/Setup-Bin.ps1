@@ -6,7 +6,8 @@ param(
     [switch]$Extract,
     [switch]$Install,
     [switch]$Uninstall,
-    [switch]$Manage
+    [switch]$Manage,
+    [switch]$Force
 )
 
 # スクリプトのディレクトリを取得
@@ -79,10 +80,13 @@ if (Test-Path $componentsModulePath) {
     }
 }
 
-# パッケージ設定を読み込む
+# パッケージ設定を読み込む (完全アンインストールは定義に依存しない)
 $PackagesConfigPath = Join-Path $ScriptDir "config\packages.psd1"
-$PackagesConfig = Invoke-Expression (Get-Content $PackagesConfigPath -Raw)
-$Packages = $PackagesConfig.Packages
+$Packages = @()
+if (-not $Uninstall) {
+    $PackagesConfig = Invoke-Expression (Get-Content $PackagesConfigPath -Raw)
+    $Packages = $PackagesConfig.Packages
+}
 
 # オプションが指定されていない場合は使用方法を表示
 if (-not ($Extract -or $Install -or $Uninstall -or $Manage)) {
@@ -92,16 +96,22 @@ if (-not ($Extract -or $Install -or $Uninstall -or $Manage)) {
     Write-Host "Usage:"
     Write-Host "  .\Setup-Bin.ps1 -Extract [-InstallDir <path>]    # Extract tools only"
     Write-Host "  .\Setup-Bin.ps1 -Install [-InstallDir <path>]    # Extract tools and add to PATH"
-    Write-Host "  .\Setup-Bin.ps1 -Uninstall [-InstallDir <path>]  # Remove tools and clean PATH"
+    Write-Host "  .\Setup-Bin.ps1 -Uninstall [-InstallDir <path>] [-Force]"
+    Write-Host "      # Remove the product folder and references that point at it"
     Write-Host "  .\Setup-Bin.ps1 -Manage [-InstallDir <path>]     # Interactive component manager"
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -InstallDir <path>  Installation directory (default: .\bin)"
+    Write-Host "  -Force              Skip the complete-uninstall confirmation prompt"
+    Write-Host ""
+    Write-Host "Note: -Uninstall only targets %ProgramData%\%USERNAME%\devbin-win."
+    Write-Host "      Other locations are refused without removing anything."
     Write-Host ""
     Write-Host "Examples:"
     Write-Host "  .\Setup-Bin.ps1 -Extract                         # Extract to .\bin"
     Write-Host "  .\Setup-Bin.ps1 -Install -InstallDir C:\Tools    # Install to C:\Tools"
-    Write-Host "  .\Setup-Bin.ps1 -Uninstall                       # Uninstall from .\bin"
+    Write-Host "  .\Setup-Bin.ps1 -Uninstall -InstallDir `"`$env:ProgramData\`$env:USERNAME\devbin-win\bin`""
+    Write-Host "      # Complete uninstall of the standard location (-Force skips the prompt)"
     Write-Host "  .\Setup-Bin.ps1 -Manage                          # Open component manager"
     exit 0
 }
@@ -179,68 +189,26 @@ if ($Manage) {
     exit 0
 }
 
-# アンインストール処理
+# アンインストール処理 (状態に依存しない機械的な完全削除)
 if ($Uninstall) {
-    Write-Host "=== Development Tools Uninstallation ==="
-    Write-Host ""
-
-    # 絶対パスに変換
-    $absoluteInstallDir = (Resolve-Path $InstallDir -ErrorAction SilentlyContinue)
-    if ($absoluteInstallDir) {
-        $InstallDir = $absoluteInstallDir.Path
-    }
-
-    Write-Host "Installation directory: $InstallDir"
-    Write-Host ""
-
-    # VS Code data フォルダのバックアップ
-    $vscodePath = Join-Path $InstallDir "vscode"
-    if (Test-Path $vscodePath) {
-        Backup-VSCodeData -InstallDirectory $InstallDir | Out-Null
-    }
-
-    # ユーザー PATH から開発ツールのディレクトリを削除
-    $pathDirs = Get-PathDirectories -BaseDir $InstallDir -PackageList $Packages
-    Remove-FromUserPath -Directories $pathDirs
-
-    # パッケージ定義と manifest に基づいて環境変数を削除
-    $uninstallEnvironmentNames = @("PATH")
-    $uninstallManifest = if (Get-Command Read-Manifest -ErrorAction SilentlyContinue) {
-        Read-Manifest -InstallDir $InstallDir
-    } else {
-        $null
-    }
-    foreach ($packageConfig in $Packages) {
-        $hasEnvConfig = $packageConfig.ContainsKey("EnvVars") -and $packageConfig.EnvVars.Count -gt 0
-        $hasBrowserConfig = $packageConfig.ContainsKey("Browser") -and [string]$packageConfig.Browser -eq "Edge"
-        if (-not ($hasEnvConfig -or $hasBrowserConfig)) {
-            continue
+    $absoluteInstallDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($InstallDir)
+    $result = Invoke-ProductUninstall -InstallDir $absoluteInstallDir -Force:$Force
+    switch ($result.Status) {
+        "Success" {
+            exit 0
         }
-
-        $appliedEnvVars = @{}
-        if ($uninstallManifest -and $uninstallManifest.components.ContainsKey($packageConfig.ShortName)) {
-            $componentData = $uninstallManifest.components[$packageConfig.ShortName]
-            if ($componentData.ContainsKey("envVars") -and $componentData.envVars) {
-                $appliedEnvVars = $componentData.envVars
-            }
+        "Cancelled" {
+            # キャンセルは失敗と区別する (呼び出し元が完了メッセージを出さないようにする)
+            exit 2
         }
-        Remove-ComponentEnvVars -InstallDir $InstallDir -PackageConfig $packageConfig -AppliedEnvVars $appliedEnvVars
-        $uninstallEnvironmentNames += @($appliedEnvVars.Keys)
-    }
-    Sync-EnvironmentVariables -VariableNames ($uninstallEnvironmentNames | Select-Object -Unique) | Out-Null
-
-    # 完全アンインストールの確認
-    try {
-        Invoke-CompleteUninstall -InstallDirectory $InstallDir -PackagesConfigPath $PackagesConfigPath | Out-Null
-        Write-Host ""
-        Write-Host "Uninstallation completed." -ForegroundColor Green
-        Write-Host "Note: To apply PATH changes, restart your terminal."
-        exit 0
-    } catch {
-        Write-Host ""
-        Write-Host "Error: Uninstallation failed." -ForegroundColor Red
-        Write-Host "$($_.Exception.Message)" -ForegroundColor Yellow
-        exit 1
+        "Refused" {
+            exit 1
+        }
+        default {
+            Write-Host ""
+            Write-Host "Error: Complete uninstallation failed." -ForegroundColor Red
+            exit 1
+        }
     }
 }
 

@@ -849,14 +849,14 @@ function Invoke-CompleteUninstall {
                 Write-Host "Removing installation directory: $InstallDirectory"
             }
 
-            try {
-                Remove-Item -Path $InstallDirectory -Recurse -Force -ErrorAction Stop
+            $removeResult = Remove-DirectoryTree -Path $InstallDirectory
+            if ($removeResult.Success) {
                 if (-not $Silent) {
                     Write-Host "Installation directory removed."
                 }
-            } catch {
+            } else {
                 # ファイルが使用中 (busy) かどうかをチェック
-                $isBusy = $_.Exception.Message -match "(使用中|being used|in use|access.*denied|cannot access|プロセスで使用|別のプロセス)"
+                $isBusy = [string]$removeResult.ErrorMessage -match "(使用中|being used|in use|access.*denied|cannot access|プロセスで使用|別のプロセス)"
 
                 if ($isBusy) {
                     Write-Host ""
@@ -866,7 +866,7 @@ function Invoke-CompleteUninstall {
                     throw "Installation directory cleanup failed: Files are in use"
                 } else {
                     if (-not $Silent) {
-                        Write-Host "Warning: Failed to remove installation directory: $($_.Exception.Message)" -ForegroundColor Yellow
+                        Write-Host "Warning: Failed to remove installation directory: $($removeResult.ErrorMessage)" -ForegroundColor Yellow
                     }
                 }
             }
@@ -1031,6 +1031,624 @@ function Unregister-VswhereInstance {
 
         Write-Host "Continuing anyway..." -ForegroundColor Yellow
     }
+}
+
+function Get-DevbinProductRoot {
+    param(
+        [string]$InstallDir
+    )
+
+    if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+        throw "InstallDir is required"
+    }
+
+    $fullPath = $null
+    try {
+        $fullPath = [System.IO.Path]::GetFullPath($InstallDir)
+    } catch {
+        $fullPath = $InstallDir.Trim()
+    }
+
+    $leaf = Split-Path -Path $fullPath -Leaf
+    $parent = Split-Path -Path $fullPath -Parent
+    if ($parent -and $leaf -eq "bin") {
+        $parentLeaf = Split-Path -Path $parent -Leaf
+        if ($parentLeaf -eq "devbin-win") {
+            $normalizedParent = Get-NormalizedPathString -PathValue $parent
+            if ($normalizedParent) {
+                return $normalizedParent
+            }
+            return $parent.TrimEnd('\')
+        }
+    }
+
+    $normalized = Get-NormalizedPathString -PathValue $fullPath
+    if ($normalized) {
+        return $normalized
+    }
+    return $fullPath.TrimEnd('\')
+}
+
+# 完全アンインストールが許可される唯一の対象ルートを返す
+function Get-DevbinExpectedProductRoot {
+    $expected = Join-Path $env:ProgramData "$env:USERNAME\devbin-win"
+    $normalized = Get-NormalizedPathString -PathValue $expected
+    if ($normalized) {
+        return $normalized
+    }
+    return $expected.TrimEnd('\')
+}
+
+# 対象ルートが完全アンインストールの許可範囲かどうかを判定する
+function Test-DevbinProductRootAllowed {
+    param(
+        [string]$ProductRoot
+    )
+
+    $normalized = Get-NormalizedPathString -PathValue $ProductRoot
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        return $false
+    }
+
+    return [string]::Equals($normalized, (Get-DevbinExpectedProductRoot), [StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-PathUnderRoot {
+    param(
+        [string]$PathValue,
+        [string]$Root
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PathValue) -or [string]::IsNullOrWhiteSpace($Root)) {
+        return $false
+    }
+
+    $normalizedRoot = Get-NormalizedPathString -PathValue $Root
+    if ([string]::IsNullOrWhiteSpace($normalizedRoot)) {
+        $normalizedRoot = $Root.Trim().TrimEnd('\')
+    }
+
+    $candidates = New-Object System.Collections.Generic.List[string]
+    $raw = $PathValue.Trim()
+    if ($raw.StartsWith('"') -and $raw.EndsWith('"') -and $raw.Length -ge 2) {
+        $raw = $raw.Substring(1, $raw.Length - 2)
+    }
+    $candidates.Add($raw) | Out-Null
+    try {
+        $expanded = [Environment]::ExpandEnvironmentVariables($raw)
+        if (-not [string]::IsNullOrWhiteSpace($expanded)) {
+            $candidates.Add($expanded) | Out-Null
+        }
+    } catch {
+    }
+
+    if ($PathValue -match '^\s*"([^"]+)"') {
+        $candidates.Add($Matches[1]) | Out-Null
+    } elseif ($raw -match '^([^\s]+)') {
+        $candidates.Add($Matches[1]) | Out-Null
+    }
+
+    foreach ($candidate in @($candidates | Select-Object -Unique)) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) {
+            continue
+        }
+
+        $normalized = Get-NormalizedPathString -PathValue $candidate
+        if ([string]::IsNullOrWhiteSpace($normalized)) {
+            continue
+        }
+
+        if ([string]::Equals($normalized, $normalizedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+
+        $rootPrefix = $normalizedRoot.TrimEnd('\') + '\'
+        if ($normalized.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+
+    $searchText = $PathValue
+    try {
+        $searchText = [Environment]::ExpandEnvironmentVariables($PathValue)
+    } catch {
+        $searchText = $PathValue
+    }
+
+    $rootToken = $normalizedRoot.TrimEnd('\')
+    $index = $searchText.IndexOf($rootToken, [StringComparison]::OrdinalIgnoreCase)
+    if ($index -lt 0) {
+        return $false
+    }
+
+    $after = $index + $rootToken.Length
+    if ($after -ge $searchText.Length) {
+        return $true
+    }
+
+    $nextChar = $searchText[$after]
+    return ($nextChar -eq '\' -or $nextChar -eq '/' -or $nextChar -eq '"' -or $nextChar -eq "'" -or [char]::IsWhiteSpace($nextChar))
+}
+
+# ";" 区切りの値を、対象ルート配下のエントリとそれ以外に分ける
+function Split-RootEntriesFromValue {
+    param(
+        [string]$Value,
+        [string]$Root
+    )
+
+    $kept = @()
+    $removed = @()
+
+    if (-not [string]::IsNullOrWhiteSpace($Value)) {
+        foreach ($entry in ($Value -split ';')) {
+            if ([string]::IsNullOrWhiteSpace($entry)) {
+                continue
+            }
+
+            $trimmed = $entry.Trim()
+            if (Test-PathUnderRoot -PathValue $trimmed -Root $Root) {
+                $removed += $trimmed
+            } else {
+                $kept += $trimmed
+            }
+        }
+    }
+
+    return [PSCustomObject]@{
+        Kept    = @($kept)
+        Removed = @($removed)
+    }
+}
+
+function Remove-UserEnvVarsPointingToRoot {
+    param(
+        [string]$Root
+    )
+
+    $changed = @()
+    try {
+        $userVars = [Environment]::GetEnvironmentVariables("User")
+        foreach ($key in @($userVars.Keys)) {
+            if ([string]::Equals([string]$key, "PATH", [StringComparison]::OrdinalIgnoreCase)) {
+                continue
+            }
+
+            $value = [string]$userVars[$key]
+            $split = Split-RootEntriesFromValue -Value $value -Root $Root
+            if ($split.Removed.Count -eq 0) {
+                continue
+            }
+
+            # 対象ルート配下のエントリだけを取り除き、他のエントリが残る場合は変数自体は残す
+            if ($split.Kept.Count -eq 0) {
+                [Environment]::SetEnvironmentVariable([string]$key, $null, "User")
+                Write-Host "  Removed environment variable: $key"
+            } else {
+                [Environment]::SetEnvironmentVariable([string]$key, ($split.Kept -join ';'), "User")
+                Write-Host "  Updated environment variable: $key"
+                foreach ($removedEntry in $split.Removed) {
+                    Write-Host "    Removed entry: $removedEntry"
+                }
+            }
+
+            $changed += [string]$key
+        }
+    } catch {
+        Write-Host "Warning: Failed to scan user environment variables: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+
+    return @($changed)
+}
+
+function Remove-UserPathEntriesPointingToRoot {
+    param(
+        [string]$Root
+    )
+
+    try {
+        $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+        if ([string]::IsNullOrWhiteSpace($currentPath)) {
+            return
+        }
+
+        $split = Split-RootEntriesFromValue -Value $currentPath -Root $Root
+        if ($split.Removed.Count -eq 0) {
+            return
+        }
+
+        [Environment]::SetEnvironmentVariable("PATH", ($split.Kept -join ';'), "User")
+        foreach ($removedEntry in $split.Removed) {
+            Write-Host "  Removed PATH entry: $removedEntry"
+        }
+    } catch {
+        Write-Host "Warning: Failed to clean user PATH: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
+function Remove-FontRegistrationsPointingToRoot {
+    param(
+        [string]$Root
+    )
+
+    $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+    if (-not (Test-Path $regPath)) {
+        return
+    }
+
+    try {
+        $fontProps = Get-ItemProperty -Path $regPath -ErrorAction Stop
+        $skipNames = @("PSPath", "PSParentPath", "PSChildName", "PSDrive", "PSProvider")
+        foreach ($prop in $fontProps.PSObject.Properties) {
+            if ($skipNames -contains $prop.Name) {
+                continue
+            }
+
+            $value = [string]$prop.Value
+            if (Test-PathUnderRoot -PathValue $value -Root $Root) {
+                Remove-ItemProperty -Path $regPath -Name $prop.Name -ErrorAction SilentlyContinue
+                Write-Host "  Removed font registration: $($prop.Name)"
+            }
+        }
+    } catch {
+        Write-Host "Warning: Failed to scan font registrations: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
+# コメント (// と /* */) を含む JSON を読み込む
+function ConvertFrom-JsonWithComments {
+    param(
+        [string]$JsonText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($JsonText)) {
+        return $null
+    }
+
+    # Windows Terminal の settings.json は既定でコメント付きのため、事前に取り除く
+    $builder = New-Object System.Text.StringBuilder
+    $inString = $false
+    $escaped = $false
+    $index = 0
+    $length = $JsonText.Length
+
+    while ($index -lt $length) {
+        $ch = $JsonText[$index]
+
+        if ($inString) {
+            [void]$builder.Append($ch)
+            if ($escaped) {
+                $escaped = $false
+            } elseif ($ch -eq [char]92) {
+                $escaped = $true
+            } elseif ($ch -eq '"') {
+                $inString = $false
+            }
+            $index++
+            continue
+        }
+
+        if ($ch -eq '"') {
+            $inString = $true
+            [void]$builder.Append($ch)
+            $index++
+            continue
+        }
+
+        if ($ch -eq '/' -and ($index + 1) -lt $length) {
+            $next = $JsonText[$index + 1]
+            if ($next -eq '/') {
+                while ($index -lt $length -and $JsonText[$index] -ne "`n") {
+                    $index++
+                }
+                continue
+            }
+            if ($next -eq '*') {
+                $index += 2
+                while (($index + 1) -lt $length -and -not ($JsonText[$index] -eq '*' -and $JsonText[$index + 1] -eq '/')) {
+                    $index++
+                }
+                $index += 2
+                continue
+            }
+        }
+
+        [void]$builder.Append($ch)
+        $index++
+    }
+
+    return ($builder.ToString() | ConvertFrom-Json)
+}
+
+function Get-WindowsTerminalSettingsPaths {
+    return @(
+        (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
+        (Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json"),
+        (Join-Path $env:APPDATA "Microsoft\Windows Terminal\settings.json")
+    )
+}
+
+function Test-DevbinWindowsTerminalProfileGuid {
+    param([string]$GuidValue)
+
+    if ([string]::IsNullOrWhiteSpace($GuidValue)) {
+        return $false
+    }
+
+    $normalized = $GuidValue.Trim().Trim("{}")
+    $known = @(
+        "b2e42366-5d93-4fb7-be22-177d0a5850d1",
+        "d48c104b-44a7-4180-be8d-b542db93a384"
+    )
+    foreach ($guid in $known) {
+        if ([string]::Equals($normalized, $guid, [StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Remove-WindowsTerminalProfilesForRoot {
+    param(
+        [string]$Root
+    )
+
+    $settingsPaths = @(Get-WindowsTerminalSettingsPaths | Where-Object { $_ -and (Test-Path $_) })
+    if ($settingsPaths.Count -eq 0) {
+        Write-Host "  Windows Terminal settings.json not found, skipping profile cleanup"
+        return
+    }
+
+    foreach ($settingsPath in $settingsPaths) {
+        $backupPath = $null
+        try {
+            $jsonContent = Get-Content -Path $settingsPath -Raw -Encoding UTF8
+            $settings = ConvertFrom-JsonWithComments -JsonText $jsonContent
+            if (-not $settings -or -not $settings.profiles -or -not $settings.profiles.list) {
+                continue
+            }
+
+            $originalProfiles = @($settings.profiles.list)
+            $removedNames = @()
+            $removedGuids = @()
+            $kept = @()
+            # $profile は PowerShell の自動変数のため、ループ変数には使わない
+            foreach ($wtProfile in $originalProfiles) {
+                $guid = if ($wtProfile.PSObject.Properties.Match("guid").Count -gt 0) { [string]$wtProfile.guid } else { "" }
+                $commandline = if ($wtProfile.PSObject.Properties.Match("commandline").Count -gt 0) { [string]$wtProfile.commandline } else { "" }
+                $icon = if ($wtProfile.PSObject.Properties.Match("icon").Count -gt 0) { [string]$wtProfile.icon } else { "" }
+                $startingDirectory = if ($wtProfile.PSObject.Properties.Match("startingDirectory").Count -gt 0) { [string]$wtProfile.startingDirectory } else { "" }
+
+                $matchesRoot = (Test-PathUnderRoot -PathValue $commandline -Root $Root) -or
+                    (Test-PathUnderRoot -PathValue $icon -Root $Root) -or
+                    (Test-PathUnderRoot -PathValue $startingDirectory -Root $Root)
+                $matchesKnownGuid = Test-DevbinWindowsTerminalProfileGuid -GuidValue $guid
+
+                if ($matchesRoot -or $matchesKnownGuid) {
+                    $profileName = if ($wtProfile.PSObject.Properties.Match("name").Count -gt 0) { [string]$wtProfile.name } else { $guid }
+                    $removedNames += $profileName
+                    if ($guid) {
+                        $removedGuids += $guid
+                    }
+                } else {
+                    $kept += $wtProfile
+                }
+            }
+
+            if ($removedNames.Count -eq 0) {
+                continue
+            }
+
+            $settings.profiles.list = [object[]]$kept
+            if ($settings.PSObject.Properties.Match("defaultProfile").Count -gt 0) {
+                $defaultProfile = [string]$settings.defaultProfile
+                $defaultRemoved = $false
+                foreach ($removedGuid in $removedGuids) {
+                    if ([string]::Equals($defaultProfile, $removedGuid, [StringComparison]::OrdinalIgnoreCase)) {
+                        $defaultRemoved = $true
+                        break
+                    }
+                }
+                if ($defaultRemoved) {
+                    if ($kept.Count -gt 0 -and $kept[0].PSObject.Properties.Match("guid").Count -gt 0) {
+                        $settings.defaultProfile = [string]$kept[0].guid
+                    }
+                }
+            }
+
+            # 書き込み直前にバックアップを作成する (無変更時や解析失敗時に残さない)
+            $backupPath = $settingsPath + "." + (Get-Date -Format "yyMMddHHmmss")
+            Copy-Item -Path $settingsPath -Destination $backupPath -Force
+
+            $jsonOutput = $settings | ConvertTo-Json -Depth 20
+            $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+            [System.IO.File]::WriteAllText($settingsPath, $jsonOutput, $utf8NoBom)
+            foreach ($name in $removedNames) {
+                Write-Host "  Removed Windows Terminal profile: $name"
+            }
+            Write-Host "  Backup: $backupPath"
+        } catch {
+            Write-Host "Warning: Failed to clean Windows Terminal profiles ($settingsPath): $($_.Exception.Message)" -ForegroundColor Yellow
+            if ($backupPath -and (Test-Path $backupPath)) {
+                Write-Host "  To restore: Copy-Item -Path '$backupPath' -Destination '$settingsPath' -Force" -ForegroundColor Yellow
+            }
+        }
+    }
+}
+
+function Unregister-VswhereInstanceIfPointingToRoot {
+    param(
+        [string]$Root
+    )
+
+    try {
+        $instancesPath = Join-Path $env:ProgramData "Microsoft\VisualStudio\Packages\_Instances"
+        $instancePath = Join-Path $instancesPath $script:VSBT_INSTANCE_ID
+        if (-not (Test-Path $instancePath)) {
+            Write-Host "  vswhere instance not found (already unregistered or never registered)"
+            return
+        }
+
+        $stateJsonPath = Join-Path $instancePath "state.json"
+        $shouldRemove = $false
+        if (-not (Test-Path $stateJsonPath)) {
+            $shouldRemove = $true
+        } else {
+            try {
+                $state = Get-Content -Path $stateJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                $installationPath = if ($state.PSObject.Properties.Match("installationPath").Count -gt 0) {
+                    [string]$state.installationPath
+                } else {
+                    ""
+                }
+                if ([string]::IsNullOrWhiteSpace($installationPath) -or (Test-PathUnderRoot -PathValue $installationPath -Root $Root)) {
+                    $shouldRemove = $true
+                } else {
+                    Write-Host "  vswhere instance installationPath is outside product root, leaving it: $installationPath"
+                }
+            } catch {
+                $shouldRemove = $true
+            }
+        }
+
+        if ($shouldRemove) {
+            Remove-Item -Path $instancePath -Recurse -Force -ErrorAction Stop
+            Write-Host "  Unregistered vswhere instance: $instancePath"
+        }
+    } catch {
+        $isAccessDenied = $_.Exception.Message -match "(アクセスが拒否|Access.*denied|UnauthorizedAccess)"
+        if ($isAccessDenied) {
+            Write-Host "Warning: Failed to unregister vswhere instance: Access denied" -ForegroundColor Yellow
+        } else {
+            Write-Host "Warning: Failed to unregister vswhere instance: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+}
+
+# ディレクトリツリーを削除する (260 文字を超えるパス向けに robocopy へフォールバック)
+function Remove-DirectoryTree {
+    param(
+        [string]$Path
+    )
+
+    $lastError = $null
+
+    try {
+        Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+        return [PSCustomObject]@{ Success = $true; ErrorMessage = $null }
+    } catch {
+        $lastError = $_.Exception.Message
+    }
+
+    if (-not (Get-Command robocopy.exe -ErrorAction SilentlyContinue)) {
+        return [PSCustomObject]@{ Success = $false; ErrorMessage = $lastError }
+    }
+
+    # robocopy はロングパスを扱えるため、空ディレクトリとの /MIR で中身を空にしてから削除する
+    $emptyDir = Join-Path ([System.IO.Path]::GetTempPath()) ("devbin-empty-" + [System.Guid]::NewGuid().ToString("N"))
+    try {
+        New-Item -ItemType Directory -Path $emptyDir -Force | Out-Null
+        & robocopy.exe $emptyDir $Path /MIR /NFL /NDL /NJH /NJS /NP /R:0 /W:0 | Out-Null
+        if ($LASTEXITCODE -ge 8) {
+            return [PSCustomObject]@{ Success = $false; ErrorMessage = $lastError }
+        }
+
+        Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+        return [PSCustomObject]@{ Success = $true; ErrorMessage = $null }
+    } catch {
+        return [PSCustomObject]@{ Success = $false; ErrorMessage = $_.Exception.Message }
+    } finally {
+        if (Test-Path -LiteralPath $emptyDir) {
+            Remove-Item -LiteralPath $emptyDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Invoke-ProductUninstall {
+    param(
+        [string]$InstallDir,
+        [switch]$Force
+    )
+
+    $productRoot = Get-DevbinProductRoot -InstallDir $InstallDir
+
+    Write-Host "=== Development Tools Complete Uninstallation ==="
+    Write-Host ""
+    Write-Host "Product root: $productRoot"
+    Write-Host ""
+
+    # 標準のインストール先以外を対象にした削除は行わない (リポジトリや配布フォルダの誤削除を防ぐ)
+    if (-not (Test-DevbinProductRootAllowed -ProductRoot $productRoot)) {
+        Write-Host "Error: Complete uninstallation is limited to the standard install location." -ForegroundColor Red
+        Write-Host "  Expected: $(Get-DevbinExpectedProductRoot)"
+        Write-Host "  Actual:   $productRoot"
+        Write-Host "Nothing was removed. Remove other locations manually." -ForegroundColor Yellow
+        return [PSCustomObject]@{ Status = "Refused" }
+    }
+
+    Write-Host "This removes traces of this folder regardless of install state:"
+    Write-Host "  - The product folder and all contents, including VS Code data"
+    Write-Host "  - User PATH entries pointing at this folder"
+    Write-Host "  - User environment variables pointing at this folder"
+    Write-Host "  - Font registrations pointing at this folder"
+    Write-Host "  - Windows Terminal profiles pointing at this folder"
+    Write-Host "  - vswhere registration if it points at this folder"
+    Write-Host ""
+    Write-Host "HOME / XDG are not removed."
+    Write-Host ""
+
+    if (-not $Force) {
+        $confirmation = Read-Host "Continue? [y/N]"
+        if ($confirmation -notmatch '^[yY]$') {
+            Write-Host "Cancelled."
+            return [PSCustomObject]@{ Status = "Cancelled" }
+        }
+        Write-Host ""
+    }
+
+    $removedEnvNames = @("PATH")
+    Write-Host "Removing references that point at the product folder..."
+    $envRemoved = @(Remove-UserEnvVarsPointingToRoot -Root $productRoot)
+    if ($envRemoved.Count -gt 0) {
+        $removedEnvNames += $envRemoved
+    }
+    Remove-UserPathEntriesPointingToRoot -Root $productRoot
+    Remove-FontRegistrationsPointingToRoot -Root $productRoot
+    Remove-WindowsTerminalProfilesForRoot -Root $productRoot
+    Unregister-VswhereInstanceIfPointingToRoot -Root $productRoot
+
+    $dirFailed = $false
+    if (Test-Path -LiteralPath $productRoot) {
+        Write-Host "Removing product folder: $productRoot"
+        $removeResult = Remove-DirectoryTree -Path $productRoot
+        if ($removeResult.Success) {
+            Write-Host "Product folder removed."
+        } else {
+            $dirFailed = $true
+            $isBusy = [string]$removeResult.ErrorMessage -match "(使用中|being used|in use|access.*denied|cannot access|プロセスで使用|別のプロセス)"
+            if ($isBusy) {
+                Write-Host ""
+                Write-Host "Error: Some files are currently in use and cannot be removed." -ForegroundColor Red
+                Write-Host "Environment references were cleaned. Restart the PC and run this again to delete the folder." -ForegroundColor Yellow
+                Write-Host ""
+            } else {
+                Write-Host "Warning: Failed to remove product folder: $($removeResult.ErrorMessage)" -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Host "Product folder not found: $productRoot"
+    }
+
+    Sync-EnvironmentVariables -VariableNames ($removedEnvNames | Select-Object -Unique) | Out-Null
+
+    if ($dirFailed) {
+        return [PSCustomObject]@{ Status = "Failed" }
+    }
+
+    Write-Host ""
+    Write-Host "Complete uninstallation finished." -ForegroundColor Green
+    Write-Host "Note: To apply environment changes, restart your terminal."
+    return [PSCustomObject]@{ Status = "Success" }
 }
 
 # 単一ディレクトリをユーザー PATH に追加するヘルパー
@@ -1326,6 +1944,14 @@ Export-ModuleMember -Function @(
     'Backup-VSCodeData',
     'Restore-VSCodeData',
     'Invoke-CompleteUninstall',
+    'Get-DevbinProductRoot',
+    'Get-DevbinExpectedProductRoot',
+    'Test-DevbinProductRootAllowed',
+    'Test-PathUnderRoot',
+    'Split-RootEntriesFromValue',
+    'Remove-DirectoryTree',
+    'ConvertFrom-JsonWithComments',
+    'Invoke-ProductUninstall',
     'Register-VswhereInstance',
     'Unregister-VswhereInstance',
     'Start-BusySignal',

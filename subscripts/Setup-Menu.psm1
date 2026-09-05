@@ -615,7 +615,7 @@ function Render-Footer {
     # キーバインド + 選択数
     [Console]::SetCursorPosition(0, $footerStart + 2)
     $checkedCount = ($State.Checked.Values | Where-Object { $_ }).Count
-    [Console]::Write((" ↑↓/Wheel 移動 | Space 選択切替 | A 全選択 | N 全解除 | Enter 適用 | Q 終了 | 選択: $checkedCount / $($State.Items.Count)").PadRight($width))
+    [Console]::Write((" ↑↓/Wheel 移動 | Space 選択切替 | A 全選択 | N 全解除 | Enter 適用 | U 完全アンインストール | Q 終了 | 選択: $checkedCount / $($State.Items.Count)").PadRight($width))
 
     [Console]::ResetColor()
 }
@@ -1041,6 +1041,50 @@ function Apply-CheckedState {
     $State.NeedRedraw = $true
 }
 
+function Invoke-MenuProductUninstall {
+    param(
+        [hashtable]$State,
+        [hashtable]$InputModeState
+    )
+
+    [Console]::Clear()
+    [Console]::CursorVisible = $true
+    Restore-ConsoleInputMode -InputModeState $InputModeState
+
+    $result = Invoke-ProductUninstall -InstallDir $State.InstallDir
+    if ($result.Status -eq "Success") {
+        Write-Host ""
+        Write-Host " 何かキーを押して終了します..."
+        [Console]::ReadKey($true) | Out-Null
+        return "quit"
+    }
+
+    Write-Host ""
+    switch ($result.Status) {
+        "Failed" {
+            Write-Host " 完全アンインストールに失敗しました。何かキーを押してメニューに戻ります..." -ForegroundColor Yellow
+        }
+        "Refused" {
+            Write-Host " 標準のインストール先ではないため実行しませんでした。何かキーを押してメニューに戻ります..." -ForegroundColor Yellow
+        }
+        default {
+            Write-Host " キャンセルしました。何かキーを押してメニューに戻ります..."
+        }
+    }
+    [Console]::ReadKey($true) | Out-Null
+
+    $newInputModeState = Enable-ConsoleMouseInput
+    if ($newInputModeState.Enabled) {
+        $InputModeState.Handle = $newInputModeState.Handle
+        $InputModeState.OriginalMode = $newInputModeState.OriginalMode
+        $InputModeState.Enabled = $true
+    }
+
+    [Console]::CursorVisible = $false
+    $State.NeedRedraw = $true
+    return "continue"
+}
+
 # キー入力を処理する (戻り値: "continue" or "quit")
 function Handle-KeyInput {
     param(
@@ -1089,6 +1133,10 @@ function Handle-KeyInput {
             Clear-AllMenuItemsChecked -State $State
         }
 
+        "U" {
+            return Invoke-MenuProductUninstall -State $State -InputModeState $InputModeState
+        }
+
         "Q" {
             return "quit"
         }
@@ -1100,6 +1148,9 @@ function Handle-KeyInput {
                 }
                 { $_ -eq 'n' -or $_ -eq 'N' } {
                     Clear-AllMenuItemsChecked -State $State
+                }
+                { $_ -eq 'u' -or $_ -eq 'U' } {
+                    return Invoke-MenuProductUninstall -State $State -InputModeState $InputModeState
                 }
                 { $_ -eq 'q' -or $_ -eq 'Q' } {
                     return "quit"
