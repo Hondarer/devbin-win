@@ -156,7 +156,7 @@ Setup-VSBT.ps1 は、インストール完了時に自動的に vswhere に登�
 - **製品情報**: `Microsoft.VisualStudio.Product.BuildTools`
 - **コンポーネント**: `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` など
 
-vswhere インスタンスの登録と削除は、Setup-Common.psm1 の `Register-VswhereInstance` および `Unregister-VswhereInstance` 関数で管理されます。Setup-Bin.ps1 の `-Uninstall` オプション実行時、または `Invoke-CompleteUninstall` 関数呼び出し時に自動的に削除されます。
+vswhere インスタンスの登録と削除は、Setup-Common.psm1 の `Register-VswhereInstance` および `Unregister-VswhereInstance` 関数で管理されます。`Setup-Bin.ps1 -Uninstall` (完全アンインストール) では、`installationPath` が対象ルート配下である場合に削除します。再インストール用の事前掃除では `Invoke-CompleteUninstall` が固定 ID を削除します。
 
 #### 管理者権限の要件
 

@@ -162,20 +162,33 @@ glab は GitLab の Issue・Merge Request・CI/CD パイプライン等をコマ
 
 ## アンインストール
 
-### かんたんアンインストール
+### かんたんアンインストール (完全削除)
 
-1. 最初にインストール時に使用したフォルダから実行
-2. `uninstall.cmd` をダブルクリックして実行
+インストールの途中失敗や版更新の移行不良から復帰するための完全削除です。マニフェストやパッケージ定義は見ず、対象フォルダとそこを指す参照を機械的に消します。`bin` フォルダが既に無くても実行できます。
 
-```cmd
-Uninstall-Bin.cmd
+1. `Manage-Bin.cmd` をダブルクリックして実行
+2. コンポーネントマネージャーで `U` を押す
+3. 確認プロンプトで `y` を入力
+
+PowerShell から直接実行する場合は、対象を明示します。
+
+```powershell
+.\subscripts\Setup-Bin.ps1 -Uninstall -InstallDir "$env:ProgramData\$env:USERNAME\devbin-win\bin"
 ```
+
+`-Force` を付けると確認プロンプトを省略します。
 
 ### アンインストール内容
 
-- インストールディレクトリ `C:\ProgramData\<ユーザー名>\devbin-win\bin` を完全削除
-- ユーザー PATH 環境変数から該当エントリを削除
-- 親ディレクトリ `C:\ProgramData\<ユーザー名>\devbin-win` も削除 (空の場合)
+対象ルート `C:\ProgramData\<ユーザー名>\devbin-win` をフォルダごと削除します。`bin` と VS Code の `data` も含みます。続けて、値がこのフォルダ配下を指しているユーザー PATH、ユーザー環境変数、HKCU フォント登録、Windows Terminal プロファイル、vswhere の `installationPath` を機械的に削除します。MinGW 用 Windows Terminal プロファイルはパスを含まないため、固定 GUID でも削除します。
+
+環境変数は `;` 区切りのエントリ単位で除去します。対象ルート配下を指すエントリだけを取り除き、他のエントリが残る変数はその値を残します。すべてのエントリが対象だった変数は変数ごと削除します。
+
+削除できるのは `C:\ProgramData\<ユーザー名>\devbin-win` だけです。`-InstallDir` に他の場所を指定した場合は、何も削除せずに拒否します。リポジトリや展開した配布フォルダを誤って消さないための制限です。
+
+HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ルート外のため削除しません。値がパスでない環境変数 (`DOTNET_CLI_TELEMETRY_OPTOUT` など) や、Edge を指す `BROWSER_PATH` も削除しません。
+
+個別コンポーネントの削除は同じ `Manage-Bin.cmd` で行います。こちらは VS Code の `data` を残す通常操作です。
 
 ## 既存ツールとの共存
 
@@ -296,6 +309,7 @@ Space キーで選択状態を切り替えます。未インストール項目�
 | `ia` | すべてのコンポーネントをインストール | `ia` |
 | `ua` | すべてのコンポーネントをアンインストール | `ua` |
 | `q` | 終了 | `q` |
+| `U` | 完全アンインストール (対象フォルダとそこを指す参照を削除して終了) | `U` |
 
 ### 依存関係の自動処理
 
@@ -320,8 +334,8 @@ Space キーで選択状態を切り替えます。未インストール項目�
 # インストール (抽出 + PATH 追加)
 .\subscripts\Setup-Bin.ps1 -Install
 
-# アンインストール (削除 + PATH 削除)
-.\subscripts\Setup-Bin.ps1 -Uninstall
+# 完全アンインストール (フォルダとそこを指す参照を削除)
+.\subscripts\Setup-Bin.ps1 -Uninstall -InstallDir "$env:ProgramData\$env:USERNAME\devbin-win\bin"
 
 # 対話型コンポーネントマネージャー
 .\subscripts\Setup-Bin.ps1 -Manage
@@ -341,7 +355,7 @@ Space キーで選択状態を切り替えます。未インストール項目�
 
 ### PowerShell 実行ポリシーエラー
 
-install.cmd と uninstall.cmd は `-ExecutionPolicy Bypass` を使用するため、通常は問題ありません。
+Install-Bin.cmd と Manage-Bin.cmd は `-ExecutionPolicy Bypass` を使用するため、通常は問題ありません。
 
 ### 管理者権限エラー
 

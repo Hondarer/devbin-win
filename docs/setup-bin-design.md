@@ -124,7 +124,14 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 
 #### アンインストール
 
-- `Invoke-CompleteUninstall`: 完全アンインストール処理 (一括)
+- `Invoke-CompleteUninstall`: 再インストール用の事前掃除 (bin ディレクトリ削除。VS Code data を残す指定可)
+- `Get-DevbinProductRoot`: InstallDir から対象ルート (`...\devbin-win`) を決める
+- `Test-DevbinProductRootAllowed`: 対象ルートが `%ProgramData%\%USERNAME%\devbin-win` かどうかを判定する。一致しない場合は削除を行わない
+- `Test-PathUnderRoot`: 値が対象ルート配下のパスかを判定する
+- `Split-RootEntriesFromValue`: `;` 区切りの値を対象ルート配下のエントリとそれ以外に分ける
+- `Remove-DirectoryTree`: ディレクトリツリーを削除する。260 文字を超えるパスで失敗した場合は robocopy の `/MIR` で中身を空にしてから削除する
+- `ConvertFrom-JsonWithComments`: コメント付き JSON (Windows Terminal の settings.json) を読み込む
+- `Invoke-ProductUninstall`: 状態に依存しない完全アンインストール。対象ルートと、そこを指す PATH / 環境変数 / フォント登録 / Windows Terminal プロファイル / vswhere を機械的に削除する
 
 ## マニフェスト管理モジュール (Setup-Manifest.psm1)
 
@@ -187,8 +194,8 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 ### 主要関数
 
 - `Show-Menu`: コンポーネント一覧と状態を表示
-- `Invoke-MenuLoop`: 入力ループ (q で終了)
-- `Invoke-MenuCommand`: コマンド (`i`, `u`, `r`, `a`, `q`) を解析して実行
+- `Invoke-MenuLoop`: 入力ループ (`Q` で終了)
+- `Invoke-MenuProductUninstall`: `U` で `Invoke-ProductUninstall` を実行する完全アンインストール
 
 ## メインスクリプト (Setup-Bin.ps1)
 
@@ -205,7 +212,7 @@ start
 :引数を解析;
 
 if (Uninstall?) then (yes)
-  :Invoke-CompleteUninstall を実行;
+  :Invoke-ProductUninstall を実行;
   stop
 else (no)
 endif
