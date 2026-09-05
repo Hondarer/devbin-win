@@ -397,10 +397,10 @@ endlocal
             DownloadUrl = "https://sourceforge.net/projects/git-for-windows.mirror/files/v2.55.0.windows.2/PortableGit-2.55.0.2-64-bit.7z.exe/download"
             PostExtract = @{
                 CopyFiles = @(
-                    @{ Source = "packages\Add-MinGW-Path.cmd"; Destination = "Add-MinGW-Path.cmd" },
-                    @{ Source = "packages\Add-MinGW-Path.ps1"; Destination = "Add-MinGW-Path.ps1" },
-                    @{ Source = "packages\Remove-MinGW-Path.cmd"; Destination = "Remove-MinGW-Path.cmd" },
-                    @{ Source = "packages\Remove-MinGW-Path.ps1"; Destination = "Remove-MinGW-Path.ps1" }
+                    @{ Source = "subscripts\Add-MinGW-Path.cmd"; Destination = "Add-MinGW-Path.cmd" },
+                    @{ Source = "subscripts\Add-MinGW-Path.ps1"; Destination = "Add-MinGW-Path.ps1" },
+                    @{ Source = "subscripts\Remove-MinGW-Path.cmd"; Destination = "Remove-MinGW-Path.cmd" },
+                    @{ Source = "subscripts\Remove-MinGW-Path.ps1"; Destination = "Remove-MinGW-Path.ps1" }
                 )
             }
             DependsOn = @()
