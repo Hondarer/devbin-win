@@ -716,93 +716,17 @@ function Invoke-VSBuildToolsExtract {
     }
 }
 
-# PipInstall 戦略: python -m pip install でパッケージをインストール
-function Get-NormalizedPipPackageName {
-    param([string]$Name)
-
-    return (([string]$Name).Trim().ToLowerInvariant() -replace '[-_.]+', '-')
-}
-
-function Get-PipWheelPackageNames {
-    param([hashtable]$PackageConfig)
-
-    $packageNames = @()
-    if ($PackageConfig.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$PackageConfig.PipPackage)) {
-        $pipPackage = [string]$PackageConfig.PipPackage
-        $version = if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
-        if (-not [string]::IsNullOrWhiteSpace($version)) {
-            $packageNames += "$pipPackage==$version"
-        } else {
-            $packageNames += $pipPackage
-        }
-    }
-
-    if ($PackageConfig.ContainsKey("PipDependencies")) {
-        $packageNames += @($PackageConfig.PipDependencies)
-    }
-
-    $seen = @{}
-    $result = @()
-    foreach ($packageName in $packageNames) {
-        $packageNameOnly = ([string]$packageName -split '==', 2)[0]
-        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
-        if ([string]::IsNullOrWhiteSpace($normalizedName) -or $seen.ContainsKey($normalizedName)) {
-            continue
-        }
-
-        $seen[$normalizedName] = $true
-        $result += [string]$packageName
-    }
-
-    return @($result)
-}
-
-function Test-PipWheelPackages {
-    param(
-        [string]$DirectoryPath,
-        [string[]]$PackageNames
-    )
-
-    $missing = @()
-    $wheelFiles = if (Test-Path $DirectoryPath) {
-        @(Get-ChildItem -Path $DirectoryPath -Filter "*.whl" -File -ErrorAction SilentlyContinue)
-    } else {
-        @()
-    }
-
-    foreach ($packageName in $PackageNames) {
-        if ([string]::IsNullOrWhiteSpace($packageName)) {
-            continue
-        }
-
-        $packageSpecParts = ([string]$packageName -split '==', 2)
-        $packageNameOnly = $packageSpecParts[0]
-        $requiredVersion = if ($packageSpecParts.Count -gt 1) { $packageSpecParts[1] } else { "" }
-        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
-        $found = $false
-        foreach ($wheelFile in $wheelFiles) {
-            $wheelNameParts = $wheelFile.Name -split '-', 3
-            $distributionName = $wheelNameParts[0]
-            $wheelVersion = if ($wheelNameParts.Count -gt 1) { $wheelNameParts[1] } else { "" }
-            if ((Get-NormalizedPipPackageName -Name $distributionName) -eq $normalizedName -and ([string]::IsNullOrWhiteSpace($requiredVersion) -or $wheelVersion -eq $requiredVersion)) {
-                $found = $true
-                break
-            }
-        }
-
-        if (-not $found) {
-            $missing += if ([string]::IsNullOrWhiteSpace($requiredVersion)) { "$packageNameOnly-*.whl" } else { "$packageNameOnly==$requiredVersion" }
-        }
-    }
-
-    return @($missing)
-}
-
 function Invoke-PipInstallStrategy {
     param(
         [string]$BinDir,
-        [hashtable]$Config
+        [hashtable]$Config,
+        [string]$PackagesDir = "",
+        [array]$Packages = @()
     )
+
+    if ([string]::IsNullOrWhiteSpace($PackagesDir)) {
+        $PackagesDir = Join-Path (Split-Path $PSScriptRoot -Parent) "packages"
+    }
 
     $pipPackage = $Config.PipPackage
     if ([string]::IsNullOrWhiteSpace($pipPackage)) {
@@ -815,15 +739,20 @@ function Invoke-PipInstallStrategy {
 
     Write-Host "Installing $($Config.Name) via pip ($packageSpec)..."
 
-    $pythonExe = Join-Path $BinDir "python-3.13\python.exe"
+    # Python の配置先はパッケージ定義の TargetDirectory から引く
+    $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $BinDir
+    if ([string]::IsNullOrWhiteSpace($pythonDir)) {
+        $pythonDir = Join-Path $BinDir "python"
+    }
+    $pythonExe = Join-Path $pythonDir "python.exe"
     if (-not (Test-Path $pythonExe)) {
         Write-Host "Error: Python not found at: $pythonExe" -ForegroundColor Red
         return $false
     }
 
     try {
-        $pipPackagesDir = "packages\pip-packages"
-        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfig $Config
+        $pipPackagesDir = Join-Path $PackagesDir "pip-packages"
+        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfigs @($Config)
         $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels
 
         if ($missingWheels.Count -gt 0) {
@@ -833,7 +762,7 @@ function Invoke-PipInstallStrategy {
         }
 
         Write-Host "Using offline installation with local wheel files..."
-        $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
+        $pipPackagesAbsPath = $pipPackagesDir
         & $pythonExe -m pip install --no-warn-script-location `
             --no-index --find-links=$pipPackagesAbsPath $packageSpec
 
@@ -907,6 +836,8 @@ function Invoke-ExtractStrategy {
 
         [string]$PackagesDir = "",
 
+        [array]$Packages = @(),
+
         [string]$TempDir = "temp_extract"
     )
 
@@ -958,7 +889,7 @@ function Invoke-ExtractStrategy {
                 return Invoke-VSBuildToolsExtract -BinDir $BinDir -ScriptDir $ScriptDir -Config $PackageConfig
             }
             "PipInstall" {
-                return Invoke-PipInstallStrategy -BinDir $BinDir -Config $PackageConfig
+                return Invoke-PipInstallStrategy -BinDir $BinDir -Config $PackageConfig -PackagesDir $PackagesDir -Packages $Packages
             }
             "NpmInstall" {
                 return Invoke-NpmInstallStrategy -BinDir $BinDir -Config $PackageConfig -PackagesDir $PackagesDir

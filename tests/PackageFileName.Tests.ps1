@@ -1,6 +1,5 @@
 ﻿# PackageFileName.Tests.ps1
 # 保存ファイル名の決定と版表記判定の回帰テスト
-# 取得側 (Get-Packages.ps1) と導入側 (Setup-Components.psm1) の一致も確認する
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
@@ -35,23 +34,28 @@ Describe "Get-PackageBaseFileName" {
     }
 }
 
-Describe "取得側と導入側の保存ファイル名の一致" {
+Describe "Test-FileNameContainsVersion" {
 
-    # 取得側の内部関数を、テストから呼べるようにスクリプト本体から取り出す
-    $getPackagesPath = Join-Path (Get-DevbinSubscriptsDir) "Get-Packages.ps1"
-    $ast = [System.Management.Automation.Language.Parser]::ParseFile($getPackagesPath, [ref]$null, [ref]$null)
-    $functionAsts = $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)
-    foreach ($functionAst in $functionAsts) {
-        if ($functionAst.Name -in @("Get-PackageDownloadFileName", "Get-PackageBaseFileName")) {
-            . ([scriptblock]::Create($functionAst.Extent.Text))
-        }
+    It "区切り文字と大文字小文字の違いを吸収する" {
+        Test-FileNameContainsVersion -FileName "tool-1_2_3.zip" -Version "1.2.3" | Should Be $true
+        Test-FileNameContainsVersion -FileName "Tool-1.2.3.zip" -Version "1.2.3" | Should Be $true
+        Test-FileNameContainsVersion -FileName "tool.zip" -Version "1.2.3" | Should Be $false
     }
+
+    It "どちらかが空なら false を返す" {
+        Test-FileNameContainsVersion -FileName "" -Version "1.2.3" | Should Be $false
+        Test-FileNameContainsVersion -FileName "tool.zip" -Version "" | Should Be $false
+    }
+}
+
+Describe "Get-PackageDownloadFileName" {
 
     $cases = @(
         @{ FileName = "tool-1.2.3.zip";  Version = "1.2.3"; Expected = "tool-1.2.3.zip" },
         @{ FileName = "tool-1_2_3.zip";  Version = "1.2.3"; Expected = "tool-1_2_3.zip" },
         @{ FileName = "tool.zip";        Version = "1.2.3"; Expected = "tool-1.2.3.zip" },
         @{ FileName = "tool.tar.gz";     Version = "1.2.3"; Expected = "tool-1.2.3.tar.gz" },
+        @{ FileName = "tool";            Version = "1.2.3"; Expected = "tool-1.2.3" },
         @{ FileName = "Tool-1.2.3.zip";  Version = "1.2.3"; Expected = "Tool-1.2.3.zip" }
     )
 
@@ -65,7 +69,43 @@ Describe "取得側と導入側の保存ファイル名の一致" {
                 DownloadUrl = "https://example.com/$fileName"
                 Version = $version
             }
-            Get-PackageDownloadFileName -Package $package -Version $version | Should Be $expected
+            Get-PackageDownloadFileName -Package $package | Should Be $expected
         }
+    }
+
+    It "版が空なら素のファイル名をそのまま返す" {
+        $package = @{ DownloadUrl = "https://example.com/tool.zip" }
+        Get-PackageDownloadFileName -Package $package | Should Be "tool.zip"
+    }
+}
+
+Describe "保存ファイル名の実装の一本化" {
+
+    # 取得側・導入側それぞれに残っていた重複定義が無いことを確認する
+    $subscriptsDir = Get-DevbinSubscriptsDir
+    $targets = @("Get-Packages.ps1", "Setup-Common.psm1")
+    $fileNameFunctions = @("Get-PackageBaseFileName", "Get-PackageDownloadFileName", "Test-FileNameContainsVersion")
+
+    foreach ($fileName in $targets) {
+        $filePath = Join-Path $subscriptsDir $fileName
+
+        It "$fileName に保存ファイル名の重複定義が残っていない" {
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile($filePath, [ref]$null, [ref]$null)
+            $defined = @()
+            foreach ($functionAst in $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
+                if ($fileNameFunctions -contains $functionAst.Name) {
+                    $defined += $functionAst.Name
+                }
+            }
+            ($defined -join ", ") | Should Be ""
+        }
+    }
+
+    It "導入側が取得側と同じ保存ファイル名を期待する" {
+        # 区切り文字の違いを吸収しない実装が残っていると、ここで食い違う
+        $componentsPath = Join-Path $subscriptsDir "Setup-Components.psm1"
+        $source = Get-Content $componentsPath -Raw
+        ($source -match '\$baseFileName -notlike') | Should Be $false
+        ($source -match 'Get-PackageDownloadFileName') | Should Be $true
     }
 }

@@ -21,6 +21,14 @@ $ScriptDir = if ($PSScriptRoot) {
 }
 
 # モジュールをインポート
+$devbinModulePath = "$ScriptDir\Devbin"
+try {
+    Import-Module $devbinModulePath -Force -ErrorAction Stop
+} catch {
+    Write-Host "Error importing Devbin: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
 $commonModulePath = "$ScriptDir\Setup-Common.psm1"
 $strategiesModulePath = "$ScriptDir\Setup-Strategies.psm1"
 
@@ -61,16 +69,7 @@ if (Test-Path $npmCacheModulePath) {
     exit 1
 }
 
-$manifestModulePath = "$ScriptDir\Setup-Manifest.psm1"
 $componentsModulePath = "$ScriptDir\Setup-Components.psm1"
-
-if (Test-Path $manifestModulePath) {
-    try {
-        Import-Module $manifestModulePath -Force -ErrorAction Stop
-    } catch {
-        Write-Host "Warning: Failed to import Setup-Manifest: $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-}
 
 if (Test-Path $componentsModulePath) {
     try {
@@ -81,11 +80,18 @@ if (Test-Path $componentsModulePath) {
 }
 
 # パッケージ設定を読み込む (完全アンインストールは定義に依存しない)
-$PackagesConfigPath = Join-Path $ScriptDir "config\packages.psd1"
+$DevbinContext = New-DevbinContext -InstallDir $InstallDir -SubscriptsDir $ScriptDir
 $Packages = @()
 if (-not $Uninstall) {
-    $PackagesConfig = Invoke-Expression (Get-Content $PackagesConfigPath -Raw)
-    $Packages = $PackagesConfig.Packages
+    $catalog = Import-PackageCatalog -Path $DevbinContext.ConfigPath
+    if (-not $catalog.Success) {
+        Write-Host "Error: パッケージ定義に問題があります" -ForegroundColor Red
+        foreach ($message in $catalog.Errors) {
+            Write-Host "  $message" -ForegroundColor Red
+        }
+        exit 1
+    }
+    $Packages = $catalog.Packages
 }
 
 # オプションが指定されていない場合は使用方法を表示
@@ -148,21 +154,9 @@ function Get-PathDirectories {
         return $pathDirs | Select-Object -Unique
     }
 
-    # フォールバック: ハードコードリスト (PackageList が空の場合)
-    return @(
-        $BaseDir,
-        "$BaseDir\jdk-25\bin",
-        "$BaseDir\graphviz",
-        "$BaseDir\python-3.13",
-        "$BaseDir\python-3.13\Scripts",
-        "$BaseDir\dotnet10sdk",
-        "$BaseDir\git",
-        "$BaseDir\git\bin",
-        "$BaseDir\git\cmd",
-        "$BaseDir\vscode\bin",
-        "$BaseDir\OpenCppCoverage",
-        "$BaseDir\ReportGenerator"
-    )
+    # PackageList が空の場合はベースディレクトリのみ
+    # (以前のハードコードリストは packages.psd1 と乖離するため廃止した)
+    return @($BaseDir)
 }
 
 # Manage モード: 対話型コンポーネントマネージャー
@@ -233,87 +227,6 @@ $InstallDir = $absoluteInstallDir
 Write-Host "Installation directory: $InstallDir"
 Write-Host ""
 
-function Get-NormalizedPipPackageName {
-    param([string]$Name)
-
-    return (([string]$Name).Trim().ToLowerInvariant() -replace '[-_.]+', '-')
-}
-
-function Get-PipWheelPackageNames {
-    param([hashtable]$PackageConfig)
-
-    $packageNames = @()
-    if ($PackageConfig.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$PackageConfig.PipPackage)) {
-        $pipPackage = [string]$PackageConfig.PipPackage
-        $version = if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
-        if (-not [string]::IsNullOrWhiteSpace($version)) {
-            $packageNames += "$pipPackage==$version"
-        } else {
-            $packageNames += $pipPackage
-        }
-    }
-
-    if ($PackageConfig.ContainsKey("PipDependencies")) {
-        $packageNames += @($PackageConfig.PipDependencies)
-    }
-
-    $seen = @{}
-    $result = @()
-    foreach ($packageName in $packageNames) {
-        $packageNameOnly = ([string]$packageName -split '==', 2)[0]
-        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
-        if ([string]::IsNullOrWhiteSpace($normalizedName) -or $seen.ContainsKey($normalizedName)) {
-            continue
-        }
-
-        $seen[$normalizedName] = $true
-        $result += [string]$packageName
-    }
-
-    return @($result)
-}
-
-function Test-PipWheelPackages {
-    param(
-        [string]$DirectoryPath,
-        [string[]]$PackageNames
-    )
-
-    $missing = @()
-    $wheelFiles = if (Test-Path $DirectoryPath) {
-        @(Get-ChildItem -Path $DirectoryPath -Filter "*.whl" -File -ErrorAction SilentlyContinue)
-    } else {
-        @()
-    }
-
-    foreach ($packageName in $PackageNames) {
-        if ([string]::IsNullOrWhiteSpace($packageName)) {
-            continue
-        }
-
-        $packageSpecParts = ([string]$packageName -split '==', 2)
-        $packageNameOnly = $packageSpecParts[0]
-        $requiredVersion = if ($packageSpecParts.Count -gt 1) { $packageSpecParts[1] } else { "" }
-        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
-        $found = $false
-        foreach ($wheelFile in $wheelFiles) {
-            $wheelNameParts = $wheelFile.Name -split '-', 3
-            $distributionName = $wheelNameParts[0]
-            $wheelVersion = if ($wheelNameParts.Count -gt 1) { $wheelNameParts[1] } else { "" }
-            if ((Get-NormalizedPipPackageName -Name $distributionName) -eq $normalizedName -and ([string]::IsNullOrWhiteSpace($requiredVersion) -or $wheelVersion -eq $requiredVersion)) {
-                $found = $true
-                break
-            }
-        }
-
-        if (-not $found) {
-            $missing += if ([string]::IsNullOrWhiteSpace($requiredVersion)) { "$packageNameOnly-*.whl" } else { "$packageNameOnly==$requiredVersion" }
-        }
-    }
-
-    return @($missing)
-}
-
 function Invoke-GetPackagesForPipInstall {
     param(
         [string]$ShortName,
@@ -328,11 +241,12 @@ function Invoke-GetPackagesForPipInstall {
     }
 
     $originalPath = $env:PATH
-    $pythonDir = Join-Path $InstallDir "python-3.13"
-    $pythonScriptsDir = Join-Path $pythonDir "Scripts"
+    # Python の配置先はパッケージ定義の TargetDirectory から引く
+    $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $InstallDir
+    $pythonScriptsDir = if ([string]::IsNullOrWhiteSpace($pythonDir)) { "" } else { Join-Path $pythonDir "Scripts" }
 
     try {
-        if (Test-Path (Join-Path $pythonDir "python.exe")) {
+        if (-not [string]::IsNullOrWhiteSpace($pythonDir) -and (Test-Path (Join-Path $pythonDir "python.exe"))) {
             $pathEntries = @($pythonDir, $pythonScriptsDir) | Where-Object { Test-Path $_ }
             if ($pathEntries.Count -gt 0) {
                 $env:PATH = ($pathEntries -join ';') + ";" + $env:PATH
@@ -363,7 +277,7 @@ foreach ($packageConfig in $Packages) {
 
     if ($packageConfig.ExtractStrategy -eq "PipInstall") {
         $pipPackagesDir = Join-Path $packagesDir "pip-packages"
-        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfig $packageConfig
+        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfigs @($packageConfig)
         $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
         if ($missingPipWheels.Count -gt 0) {
             $missingPackages += $packageConfig
@@ -411,7 +325,7 @@ if ($missingPackages.Count -gt 0) {
                     $stillMissing += "$($packageConfig.ShortName): $($cacheStatus.Invalid + $cacheStatus.Missing -join ', ')"
                 }
             } elseif ($packageConfig.ExtractStrategy -eq "PipInstall") {
-                $requiredPipWheels = Get-PipWheelPackageNames -PackageConfig $packageConfig
+                $requiredPipWheels = Get-PipWheelPackageNames -PackageConfigs @($packageConfig)
                 $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath (Join-Path $packagesDir "pip-packages") -PackageNames $requiredPipWheels)
                 if ($missingPipWheels.Count -gt 0) {
                     $stillMissing += "$($packageConfig.ShortName): $($missingPipWheels -join ', ')"
@@ -490,7 +404,8 @@ foreach ($packageConfig in $Packages) {
             -ArchiveFile "" `
             -BinDir $InstallDir `
             -ScriptDir $ScriptDir `
-            -PackagesDir $packagesDir
+            -PackagesDir $packagesDir `
+            -Packages $Packages
 
         if ($result) {
             $successCount++
@@ -507,7 +422,7 @@ foreach ($packageConfig in $Packages) {
 
         if ($strategy -eq "PipInstall") {
             $pipPackagesDir = Join-Path $packagesDir "pip-packages"
-            $requiredPipWheels = Get-PipWheelPackageNames -PackageConfig $packageConfig
+            $requiredPipWheels = Get-PipWheelPackageNames -PackageConfigs @($packageConfig)
             $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
 
             if ($missingPipWheels.Count -gt 0) {
@@ -531,7 +446,8 @@ foreach ($packageConfig in $Packages) {
             -ArchiveFile "" `
             -BinDir $InstallDir `
             -ScriptDir $ScriptDir `
-            -PackagesDir $packagesDir
+            -PackagesDir $packagesDir `
+            -Packages $Packages
 
         if ($result) {
             $successCount++
@@ -568,7 +484,8 @@ foreach ($packageConfig in $Packages) {
         -ArchiveFile $archiveFile `
         -BinDir $InstallDir `
         -ScriptDir $ScriptDir `
-        -PackagesDir $packagesDir
+        -PackagesDir $packagesDir `
+        -Packages $Packages
 
     if ($result) {
         $successCount++
@@ -617,7 +534,7 @@ if ($Install) {
     Write-Host ""
 
     # Python が正しくインストールされているかチェック
-    $pythonExe = "$InstallDir\python-3.13\python.exe"
+    $pythonExe = Join-Path (Get-PythonDirectory -Packages $Packages -InstallDir $InstallDir) "python.exe"
     if (Test-CommandExists "python") {
         Write-Host "Python is already available in PATH."
     } elseif (Test-Path $pythonExe) {

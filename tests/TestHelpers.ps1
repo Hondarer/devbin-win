@@ -8,7 +8,8 @@ $script:SubscriptsDir = Join-Path $script:RepoRoot "subscripts"
 $env:DEVBIN_TESTS_DIR = $PSScriptRoot
 
 function Import-DevbinModules {
-    foreach ($name in @("Setup-Common", "Setup-Manifest", "Setup-Components", "Setup-NpmCache")) {
+    Import-Module (Join-Path $script:SubscriptsDir "Devbin") -Force -ErrorAction Stop
+    foreach ($name in @("Setup-Common", "Setup-Components", "Setup-NpmCache")) {
         Import-Module (Join-Path $script:SubscriptsDir "$name.psm1") -Force -ErrorAction Stop
     }
 }
@@ -103,24 +104,4 @@ function New-TestManifestEntry {
         envVars = @{}
         installedAt = "2026-01-01T00:00:00Z"
     }
-}
-
-# .psd1 を読み込む
-# Import-PowerShellDataFile は Windows PowerShell 5.1 に存在しないため、
-# 同等の仕組みである AST の SafeGetValue() を使う (コードは実行されない)
-function Import-DevbinPackageData {
-    param([string]$Path)
-
-    $errors = $null
-    $ast = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$null, [ref]$errors)
-    if ($errors -and $errors.Count -gt 0) {
-        throw "Failed to parse data file: $Path"
-    }
-
-    $hashtableAst = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.HashtableAst] }, $false)
-    if (-not $hashtableAst) {
-        throw "No hashtable found in data file: $Path"
-    }
-
-    return $hashtableAst.SafeGetValue()
 }

@@ -7,11 +7,13 @@ Import-DevbinModules
 Describe "packages.psd1" {
 
     $configPath = Join-Path (Get-DevbinSubscriptsDir) "config\packages.psd1"
-    $data = Import-DevbinPackageData -Path $configPath
-    $packages = @($data.Packages)
+    $catalog = Import-PackageCatalog -Path $configPath
+    $packages = @($catalog.Packages)
     $shortNames = @($packages | ForEach-Object { $_.ShortName })
 
-    It "データファイルとして読み込める" {
+    It "整合性検査を通って読み込める" {
+        $catalog.Success | Should Be $true
+        ($catalog.Errors -join ", ") | Should Be ""
         $packages.Count | Should BeGreaterThan 0
     }
 

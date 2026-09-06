@@ -21,107 +21,12 @@ function Ensure-NpmCacheModule {
     }
 }
 
-# ShortName でパッケージ設定を取得する
-function Get-PackageByShortName {
-    param(
-        [string]$ShortName,
-        [array]$Packages
-    )
-
-    foreach ($pkg in $Packages) {
-        if ($pkg.ShortName -eq $ShortName) {
-            return $pkg
-        }
-    }
-    return $null
-}
-
-function Get-NormalizedPipPackageName {
-    param([string]$Name)
-
-    return (([string]$Name).Trim().ToLowerInvariant() -replace '[-_.]+', '-')
-}
-
-function Get-PipWheelPackageNames {
-    param([hashtable]$PackageConfig)
-
-    $packageNames = @()
-    if ($PackageConfig.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$PackageConfig.PipPackage)) {
-        $pipPackage = [string]$PackageConfig.PipPackage
-        $version = if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
-        if (-not [string]::IsNullOrWhiteSpace($version)) {
-            $packageNames += "$pipPackage==$version"
-        } else {
-            $packageNames += $pipPackage
-        }
-    }
-
-    if ($PackageConfig.ContainsKey("PipDependencies")) {
-        $packageNames += @($PackageConfig.PipDependencies)
-    }
-
-    $seen = @{}
-    $result = @()
-    foreach ($packageName in $packageNames) {
-        $packageNameOnly = ([string]$packageName -split '==', 2)[0]
-        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
-        if ([string]::IsNullOrWhiteSpace($normalizedName) -or $seen.ContainsKey($normalizedName)) {
-            continue
-        }
-
-        $seen[$normalizedName] = $true
-        $result += [string]$packageName
-    }
-
-    return @($result)
-}
-
-function Test-PipWheelPackages {
-    param(
-        [string]$DirectoryPath,
-        [string[]]$PackageNames
-    )
-
-    $missing = @()
-    $wheelFiles = if (Test-Path $DirectoryPath) {
-        @(Get-ChildItem -Path $DirectoryPath -Filter "*.whl" -File -ErrorAction SilentlyContinue)
-    } else {
-        @()
-    }
-
-    foreach ($packageName in $PackageNames) {
-        if ([string]::IsNullOrWhiteSpace($packageName)) {
-            continue
-        }
-
-        $packageSpecParts = ([string]$packageName -split '==', 2)
-        $packageNameOnly = $packageSpecParts[0]
-        $requiredVersion = if ($packageSpecParts.Count -gt 1) { $packageSpecParts[1] } else { "" }
-        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
-        $found = $false
-        foreach ($wheelFile in $wheelFiles) {
-            $wheelNameParts = $wheelFile.Name -split '-', 3
-            $distributionName = $wheelNameParts[0]
-            $wheelVersion = if ($wheelNameParts.Count -gt 1) { $wheelNameParts[1] } else { "" }
-            if ((Get-NormalizedPipPackageName -Name $distributionName) -eq $normalizedName -and ([string]::IsNullOrWhiteSpace($requiredVersion) -or $wheelVersion -eq $requiredVersion)) {
-                $found = $true
-                break
-            }
-        }
-
-        if (-not $found) {
-            $missing += if ([string]::IsNullOrWhiteSpace($requiredVersion)) { "$packageNameOnly-*.whl" } else { "$packageNameOnly==$requiredVersion" }
-        }
-    }
-
-    return @($missing)
-}
-
 function Invoke-GetPackagesForPipInstall {
     param(
         [string]$ShortName,
         [string]$InstallDir,
-        [string]$ScriptDir
+        [string]$ScriptDir,
+        [array]$Packages = @()
     )
 
     $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
@@ -131,11 +36,12 @@ function Invoke-GetPackagesForPipInstall {
     }
 
     $originalPath = $env:PATH
-    $pythonDir = Join-Path $InstallDir "python-3.13"
-    $pythonScriptsDir = Join-Path $pythonDir "Scripts"
+    # Python の配置先はパッケージ定義の TargetDirectory から引く
+    $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $InstallDir
+    $pythonScriptsDir = if ([string]::IsNullOrWhiteSpace($pythonDir)) { "" } else { Join-Path $pythonDir "Scripts" }
 
     try {
-        if (Test-Path (Join-Path $pythonDir "python.exe")) {
+        if (-not [string]::IsNullOrWhiteSpace($pythonDir) -and (Test-Path (Join-Path $pythonDir "python.exe"))) {
             $pathEntries = @($pythonDir, $pythonScriptsDir) | Where-Object { Test-Path $_ }
             if ($pathEntries.Count -gt 0) {
                 $env:PATH = ($pathEntries -join ';') + ";" + $env:PATH
@@ -147,153 +53,6 @@ function Invoke-GetPackagesForPipInstall {
     } finally {
         $env:PATH = $originalPath
     }
-}
-
-# 依存を再帰的に解決し、トポロジカルソート順で返す
-# 戻り値: ShortName の配列 (依存→依存先の順)
-# 循環依存と未定義の依存先は $Problems (Cycles / Missing) に記録する
-function Resolve-Dependencies {
-    param(
-        [string]$ShortName,
-        [array]$Packages,
-        [hashtable]$Visited = @{},
-        [hashtable]$InStack = @{},
-        [hashtable]$Problems = $null
-    )
-
-    if ($InStack.ContainsKey($ShortName)) {
-        if ($Problems) { $Problems.Cycles += $ShortName }
-        return @()
-    }
-
-    if ($Visited.ContainsKey($ShortName)) {
-        return @()
-    }
-
-    $InStack[$ShortName] = $true
-
-    $pkg = Get-PackageByShortName -ShortName $ShortName -Packages $Packages
-    if (-not $pkg) {
-        if ($Problems) { $Problems.Missing += $ShortName }
-        $InStack.Remove($ShortName)
-        return @()
-    }
-
-    $result = @()
-    $deps = if ($pkg.ContainsKey("DependsOn")) { @($pkg.DependsOn) } else { @() }
-
-    foreach ($dep in $deps) {
-        $subDeps = Resolve-Dependencies -ShortName $dep -Packages $Packages -Visited $Visited -InStack $InStack -Problems $Problems
-        $result += $subDeps
-    }
-
-    $result += $ShortName
-    $Visited[$ShortName] = $true
-    $InStack.Remove($ShortName)
-
-    return $result
-}
-
-# 複数の ShortName について導入順を解決し、成否と併せて返す
-# 戻り値: Success / Order / Errors を持つオブジェクト
-# 循環依存または未定義の依存先がある場合は Success = $false となり、Order は使用しない
-function Resolve-DependencyOrder {
-    param(
-        [string[]]$ShortNames,
-        [array]$Packages
-    )
-
-    $problems = @{ Cycles = @(); Missing = @() }
-    $visited = @{}
-    $order = @()
-
-    foreach ($name in @($ShortNames)) {
-        $order += @(Resolve-Dependencies -ShortName $name -Packages $Packages -Visited $visited -InStack @{} -Problems $problems)
-    }
-
-    $errors = @()
-    foreach ($cycle in @($problems.Cycles | Select-Object -Unique)) {
-        $errors += "循環依存を検出しました: $cycle"
-    }
-    foreach ($missing in @($problems.Missing | Select-Object -Unique)) {
-        $errors += "依存先のパッケージ定義が見つかりません: $missing"
-    }
-
-    return [PSCustomObject]@{
-        Success = ($errors.Count -eq 0)
-        Order   = @($order)
-        Errors  = @($errors)
-    }
-}
-
-# 指定コンポーネントに依存しているインストール済みコンポーネントの一覧を返す
-function Get-Dependents {
-    param(
-        [string]$ShortName,
-        [array]$Packages,
-        [hashtable]$Manifest
-    )
-
-    $dependents = @()
-
-    foreach ($pkg in $Packages) {
-        # 自分自身はスキップ
-        if ($pkg.ShortName -eq $ShortName) {
-            continue
-        }
-        # インストール済みのみ対象
-        if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $pkg.ShortName)) {
-            continue
-        }
-
-        $deps = if ($pkg.ContainsKey("DependsOn")) { @($pkg.DependsOn) } else { @() }
-        if ($deps -contains $ShortName) {
-            $dependents += $pkg.ShortName
-        }
-    }
-
-    return $dependents
-}
-
-# 削除対象を依存元から依存先の順に並べ替える
-# 残る対象が依存しているものは後回しにし、解決できない残りは末尾に置く
-function Get-UninstallOrder {
-    [CmdletBinding()]
-    param(
-        [string[]]$ShortNames,
-        [array]$Packages,
-        [hashtable]$Manifest
-    )
-
-    $remaining = [System.Collections.Generic.List[string]]::new()
-    foreach ($name in @($ShortNames)) {
-        if (-not [string]::IsNullOrWhiteSpace($name)) {
-            $remaining.Add([string]$name)
-        }
-    }
-
-    $ordered = @()
-    $maxPasses = $remaining.Count + 1
-    $pass = 0
-
-    while ($remaining.Count -gt 0 -and $pass -lt $maxPasses) {
-        $pass++
-        $progress = $false
-        for ($idx = $remaining.Count - 1; $idx -ge 0; $idx--) {
-            $name = $remaining[$idx]
-            $dependents = @(Get-Dependents -ShortName $name -Packages $Packages -Manifest $Manifest)
-            $blockedBy = @($dependents | Where-Object { $remaining -contains $_ })
-            if ($blockedBy.Count -eq 0) {
-                $ordered += $name
-                $remaining.RemoveAt($idx)
-                $progress = $true
-            }
-        }
-        if (-not $progress) { break }
-    }
-
-    $ordered += @($remaining)
-    return @($ordered)
 }
 
 # Edge 実行ファイルを PATH、標準インストール先、App Paths から解決する
@@ -734,14 +493,14 @@ function Install-Component {
     }
     elseif ($pkg.ExtractStrategy -eq "PipInstall") {
         $pipPackagesDir = Join-Path $packagesDir "pip-packages"
-        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfig $pkg
+        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfigs @($pkg)
         $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
 
         if ($missingPipWheels.Count -gt 0) {
             Write-Host "  pip wheel ファイルが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
             Write-Host "  不足: $($missingPipWheels -join ', ')"
 
-            Invoke-GetPackagesForPipInstall -ShortName $ShortName -InstallDir $InstallDir -ScriptDir $ScriptDir
+            Invoke-GetPackagesForPipInstall -ShortName $ShortName -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages
 
             $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
             if ($missingPipWheels.Count -gt 0) {
@@ -752,30 +511,11 @@ function Install-Component {
         }
     }
     elseif ($pkg.ExtractStrategy -ne "VSBuildTools" -and $pkg.ExtractStrategy -ne "PipInstall") {
+        # 保存ファイル名の判定は取得側 (Get-Packages) と同じ実装を使う
         $baseFileName = Get-PackageBaseFileName -Package $pkg
         $downloadFileName = ""
         if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {
-            $downloadFileName = $baseFileName
-            $version = if ($pkg.ContainsKey("Version")) { [string]$pkg.Version } else { "" }
-            if (-not [string]::IsNullOrWhiteSpace($version) -and $baseFileName -notlike "*$version*") {
-                $compoundExtensions = @(".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".7z.exe")
-                $matchedCompoundExtension = $compoundExtensions | Where-Object {
-                    $baseFileName.EndsWith($_, [StringComparison]::OrdinalIgnoreCase)
-                } | Select-Object -First 1
-
-                if ($matchedCompoundExtension) {
-                    $nameWithoutExtension = $baseFileName.Substring(0, $baseFileName.Length - $matchedCompoundExtension.Length)
-                    $downloadFileName = "$nameWithoutExtension-$version$matchedCompoundExtension"
-                } else {
-                    $extension = [System.IO.Path]::GetExtension($baseFileName)
-                    if ([string]::IsNullOrEmpty($extension)) {
-                        $downloadFileName = "$baseFileName-$version"
-                    } else {
-                        $nameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($baseFileName)
-                        $downloadFileName = "$nameWithoutExtension-$version$extension"
-                    }
-                }
-            }
+            $downloadFileName = Get-PackageDownloadFileName -Package $pkg
         }
 
         $archiveFiles = Get-ChildItem -Path $packagesDir -File -ErrorAction SilentlyContinue |
@@ -838,7 +578,8 @@ function Install-Component {
         -ArchiveFile $(if ($archiveFile) { $archiveFile } else { "" }) `
         -BinDir $InstallDir `
         -ScriptDir $ScriptDir `
-        -PackagesDir $packagesDir
+        -PackagesDir $packagesDir `
+        -Packages $Packages
 
     if (-not $result) {
         Write-Host "Error: Extraction failed for '$ShortName'" -ForegroundColor Red
@@ -1267,11 +1008,6 @@ function Add-MultiplePathDirs {
 }
 
 Export-ModuleMember -Function @(
-    'Get-PackageByShortName',
-    'Resolve-Dependencies',
-    'Resolve-DependencyOrder',
-    'Get-Dependents',
-    'Get-UninstallOrder',
     'Remove-OrphanDependencies',
     'Install-Component',
     'Uninstall-Component',

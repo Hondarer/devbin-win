@@ -18,15 +18,26 @@ $ScriptDir = if ($PSScriptRoot) {
 $RepositoryRoot = Split-Path $ScriptDir -Parent
 $PackagesRoot = Join-Path $RepositoryRoot "packages"
 
-# パッケージ設定を読み込む
-$PackagesConfigPath = Join-Path $ScriptDir "config\packages.psd1"
-if (-not (Test-Path $PackagesConfigPath)) {
-    Write-Host "Error: Package configuration not found: $PackagesConfigPath" -ForegroundColor Red
+# Devbin モジュールを読み込む
+$devbinModulePath = Join-Path $ScriptDir "Devbin"
+try {
+    Import-Module $devbinModulePath -Force -ErrorAction Stop
+} catch {
+    Write-Host "Error importing Devbin: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 
-$PackagesConfig = Invoke-Expression (Get-Content $PackagesConfigPath -Raw)
-$Packages = $PackagesConfig.Packages
+# パッケージ設定を読み込む
+$DevbinContext = New-DevbinContext -SubscriptsDir $ScriptDir
+$catalog = Import-PackageCatalog -Path $DevbinContext.ConfigPath
+if (-not $catalog.Success) {
+    Write-Host "Error: パッケージ定義に問題があります" -ForegroundColor Red
+    foreach ($message in $catalog.Errors) {
+        Write-Host "  $message" -ForegroundColor Red
+    }
+    exit 1
+}
+$Packages = $catalog.Packages
 
 $npmCacheModulePath = Join-Path $ScriptDir "Setup-NpmCache.psm1"
 if (-not (Test-Path $npmCacheModulePath)) {
@@ -187,85 +198,6 @@ function Get-File {
     }
 }
 
-function Get-PackageBaseFileName {
-    param(
-        [hashtable]$Package
-    )
-
-    $url = if ($Package.ContainsKey("DownloadUrl")) { [string]$Package.DownloadUrl } else { "" }
-    if ([string]::IsNullOrWhiteSpace($url)) {
-        return ""
-    }
-
-    $uri = [Uri]$url
-    $fileName = if ($Package.ContainsKey("DownloadFileName")) { [string]$Package.DownloadFileName } else { "" }
-
-    if ([string]::IsNullOrWhiteSpace($fileName)) {
-        $fileName = [System.IO.Path]::GetFileName($uri.AbsolutePath)
-    }
-
-    # SourceForge の /download で終わる URL の場合、その前のセグメントを使用
-    if ($fileName -eq "download" -and $uri.Host -like "*sourceforge.net*") {
-        $pathSegments = $uri.AbsolutePath.Split('/', [StringSplitOptions]::RemoveEmptyEntries)
-        $fileName = $pathSegments[-2]  # /download の前のセグメント
-    }
-    # GitHub の /archive/refs/tags/ URL の場合、リポジトリ名を含むファイル名を生成
-    elseif ($uri.Host -eq "github.com" -and $uri.AbsolutePath -match '/([^/]+)/([^/]+)/archive/refs/tags/(.+)$') {
-        $repoName = $matches[2]
-        $tagName = [System.IO.Path]::GetFileNameWithoutExtension($matches[3])
-        $extension = [System.IO.Path]::GetExtension($matches[3])
-        # タグ名の先頭が "v" で始まる場合は除去
-        $tagName = $tagName -replace '^v', ''
-        $fileName = "$repoName-$tagName$extension"
-    }
-
-    return $fileName
-}
-
-function Get-PackageDownloadFileName {
-    param(
-        [hashtable]$Package
-    )
-
-    function Test-FileNameContainsVersion {
-        param(
-            [string]$FileName,
-            [string]$Version
-        )
-
-        if ([string]::IsNullOrWhiteSpace($FileName) -or [string]::IsNullOrWhiteSpace($Version)) {
-            return $false
-        }
-
-        $normalizedFileName = $FileName.ToLowerInvariant() -replace '[_-]', '.'
-        $normalizedVersion = $Version.ToLowerInvariant() -replace '[_-]', '.'
-        return $normalizedFileName.Contains($normalizedVersion)
-    }
-
-    $fileName = Get-PackageBaseFileName -Package $Package
-    $version = if ($Package.ContainsKey("Version")) { [string]$Package.Version } else { "" }
-
-    if (-not [string]::IsNullOrWhiteSpace($version) -and -not (Test-FileNameContainsVersion -FileName $fileName -Version $version)) {
-        $compoundExtensions = @(".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".7z.exe")
-        $matchedCompoundExtension = $compoundExtensions | Where-Object { $fileName.EndsWith($_, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
-
-        if ($matchedCompoundExtension) {
-            $baseName = $fileName.Substring(0, $fileName.Length - $matchedCompoundExtension.Length)
-            $fileName = "$baseName-$version$matchedCompoundExtension"
-        } else {
-            $extension = [System.IO.Path]::GetExtension($fileName)
-            if ([string]::IsNullOrEmpty($extension)) {
-                $fileName = "$fileName-$version"
-            } else {
-                $baseName = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
-                $fileName = "$baseName-$version$extension"
-            }
-        }
-    }
-
-    return $fileName
-}
-
 function Remove-OldPackageFiles {
     param(
         [hashtable]$Package,
@@ -339,126 +271,6 @@ function Save-PipWheelPackages {
 
     & $PythonCommandPath @args | Out-Host
     return $LASTEXITCODE
-}
-
-function Get-NormalizedPipPackageName {
-    param([string]$Name)
-
-    return (([string]$Name).Trim().ToLowerInvariant() -replace '[-_.]+', '-')
-}
-
-function Get-PipWheelPackageNames {
-    param(
-        [array]$PipInstallPackages,
-        [switch]$IncludeCorePackages
-    )
-
-    $packageNames = @()
-    if ($IncludeCorePackages) {
-        $packageNames += @("pip", "setuptools", "wheel", "packaging")
-    }
-
-    foreach ($package in $PipInstallPackages) {
-        if ($package.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$package.PipPackage)) {
-            $pipPackage = [string]$package.PipPackage
-            $version = if ($package.ContainsKey("Version")) { [string]$package.Version } else { "" }
-            if (-not [string]::IsNullOrWhiteSpace($version)) {
-                $packageNames += "$pipPackage==$version"
-            } else {
-                $packageNames += $pipPackage
-            }
-        }
-
-        if ($package.ContainsKey("PipDependencies")) {
-            $packageNames += @($package.PipDependencies)
-        }
-    }
-
-    $seen = @{}
-    $result = @()
-    foreach ($packageName in $packageNames) {
-        $packageNameOnly = ([string]$packageName -split '==', 2)[0]
-        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
-        if ([string]::IsNullOrWhiteSpace($normalizedName) -or $seen.ContainsKey($normalizedName)) {
-            continue
-        }
-
-        $seen[$normalizedName] = $true
-        $result += [string]$packageName
-    }
-
-    return @($result)
-}
-
-function Get-PipWheelDownloadSpecs {
-    param(
-        [array]$PipInstallPackages,
-        [switch]$IncludeCorePackages
-    )
-
-    $downloadSpecs = @()
-    if ($IncludeCorePackages) {
-        $downloadSpecs += @("pip", "setuptools", "wheel", "packaging")
-    }
-
-    foreach ($package in $PipInstallPackages) {
-        if ($package.ContainsKey("PipPackage") -and -not [string]::IsNullOrWhiteSpace([string]$package.PipPackage)) {
-            $pipPackage = [string]$package.PipPackage
-            $version = if ($package.ContainsKey("Version")) { [string]$package.Version } else { "" }
-            if (-not [string]::IsNullOrWhiteSpace($version)) {
-                $downloadSpecs += "$pipPackage==$version"
-            } else {
-                $downloadSpecs += $pipPackage
-            }
-        }
-
-        if ($package.ContainsKey("PipDependencies")) {
-            $downloadSpecs += @($package.PipDependencies)
-        }
-    }
-
-    return @($downloadSpecs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
-}
-
-function Test-PipWheelPackages {
-    param(
-        [string]$DirectoryPath,
-        [string[]]$PackageNames = @("pip", "setuptools", "wheel", "packaging")
-    )
-
-    $missing = @()
-    $wheelFiles = if (Test-Path $DirectoryPath) {
-        @(Get-ChildItem -Path $DirectoryPath -Filter "*.whl" -File -ErrorAction SilentlyContinue)
-    } else {
-        @()
-    }
-
-    foreach ($packageName in $PackageNames) {
-        if ([string]::IsNullOrWhiteSpace($packageName)) {
-            continue
-        }
-
-        $packageSpecParts = ([string]$packageName -split '==', 2)
-        $packageNameOnly = $packageSpecParts[0]
-        $requiredVersion = if ($packageSpecParts.Count -gt 1) { $packageSpecParts[1] } else { "" }
-        $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
-        $found = $false
-        foreach ($wheelFile in $wheelFiles) {
-            $wheelNameParts = $wheelFile.Name -split '-', 3
-            $distributionName = $wheelNameParts[0]
-            $wheelVersion = if ($wheelNameParts.Count -gt 1) { $wheelNameParts[1] } else { "" }
-            if ((Get-NormalizedPipPackageName -Name $distributionName) -eq $normalizedName -and ([string]::IsNullOrWhiteSpace($requiredVersion) -or $wheelVersion -eq $requiredVersion)) {
-                $found = $true
-                break
-            }
-        }
-
-        if (-not $found) {
-            $missing += if ([string]::IsNullOrWhiteSpace($requiredVersion)) { "$packageNameOnly-*.whl" } else { "$packageNameOnly==$requiredVersion" }
-        }
-    }
-
-    return $missing
 }
 
 function Save-NpmPackageArchives {
@@ -668,8 +480,8 @@ if (-not $pythonExe) {
         }
 
         # pip download で依存を含む wheel ファイルを取得
-        $pipWheelPackageNames = Get-PipWheelPackageNames -PipInstallPackages $pipInstallPackages -IncludeCorePackages
-        $pipWheelDownloadSpecs = Get-PipWheelDownloadSpecs -PipInstallPackages $pipInstallPackages -IncludeCorePackages
+        $pipWheelPackageNames = Get-PipWheelPackageNames -PackageConfigs $pipInstallPackages -IncludeCorePackages
+        $pipWheelDownloadSpecs = Get-PipWheelDownloadSpecs -PackageConfigs $pipInstallPackages -IncludeCorePackages
         $downloadExitCode = Save-PipWheelPackages -PythonCommandPath $pythonExe.Source -DestinationDir $pipPackagesDir -TargetPythonVersion $targetPythonVersion -PackageNames $pipWheelDownloadSpecs
         $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $pipWheelPackageNames
 

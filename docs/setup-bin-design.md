@@ -12,16 +12,21 @@
 
 ```text
 subscripts/
-├─ Setup-Bin.ps1          (メインスクリプト)
-├─ Setup-Common.psm1      (共通関数モジュール)
-├─ Setup-Strategies.psm1  (抽出戦略の実装)
-├─ Setup-Manifest.psm1    (インストール状態管理)
-├─ Setup-Components.psm1  (コンポーネント操作)
-├─ Setup-Menu.psm1        (CLI 対話型メニュー)
-└─ config/
-   ├─ packages.psd1       (パッケージ定義)
-   └─ templates/
-      └─ python-setup.ps1 (Python 用セットアップスクリプト)
++- Setup-Bin.ps1          (メインスクリプト)
++- Get-Packages.ps1       (パッケージ取得)
++- Setup-Common.psm1      (OS 操作の共通関数)
++- Setup-Strategies.psm1  (抽出戦略の実装)
++- Setup-Components.psm1  (コンポーネント操作)
++- Setup-Menu.psm1        (CLI 対話型メニュー)
++- Devbin/                (内部モジュール)
+|  +- Devbin.psm1         (読み込み窓口と公開関数の宣言)
+|  +- Context/            (実行コンテキスト: 絶対パスの集約)
+|  +- Catalog/            (設定読み込み、パッケージ検索、版・保存名、依存関係)
+|  +- State/              (マニフェスト入出力、状態判定、ファイル一覧)
++- config/
+   +- packages.psd1       (パッケージ定義)
+   +- templates/
+      +- python-setup.ps1 (Python 用セットアップスクリプト)
 ```
 
 ### 定義駆動アーキテクチャ
@@ -37,7 +42,8 @@ package "処理層" {
   [Setup-Bin.ps1] as main
   [Setup-Strategies.psm1] as strategies
   [Setup-Common.psm1] as common
-  [Setup-Manifest.psm1] as manifest
+  [Devbin/Catalog] as catalog
+  [Devbin/State] as state
   [Setup-Components.psm1] as components
   [Setup-Menu.psm1] as menu
 }
@@ -47,15 +53,17 @@ package "実行結果" {
   [.devbin-manifest.json] as mfile
 }
 
-config --> main : 読み込み
+config --> catalog : 読み込みと整合性検査
+catalog --> main : パッケージ定義
 main --> strategies : 戦略実行 (一括)
 main --> menu : 対話型メニュー起動
 menu --> components : コンポーネント操作
+components --> catalog : 依存解決・保存名の判定
 components --> strategies : 戦略実行 (個別)
-components --> manifest : 状態管理
+components --> state : 状態管理
 strategies --> common : 共通関数呼び出し
 strategies --> bin : ファイル展開
-manifest --> mfile : 読み書き
+state --> mfile : 読み書き
 @enduml
 ```
 
@@ -89,6 +97,27 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
 | InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
+
+## パッケージ定義の読み込み (Devbin/Catalog)
+
+### 概要
+
+`packages.psd1` の読み込み、パッケージの検索、版と保存アーカイブ名の判定、依存関係の解決をまとめています。
+
+### 主要関数
+
+- `Import-DevbinDataFile`: `.psd1` をハッシュテーブルとして読み込む。`Import-PowerShellDataFile` は Windows PowerShell 5.1 に存在しないため、同等の仕組みである AST の `SafeGetValue()` を使う。ファイル内のコードは実行されない
+- `Import-PackageCatalog`: 定義を読み込み、整合性検査の結果 (`Success` / `Packages` / `Errors`) とあわせて返す
+- `Test-PackageCatalog`: 必須プロパティ、`ShortName` の重複、未定義の依存先、循環依存を変更開始前に検出する
+- `Resolve-DependencyOrder`: 導入順を解決する。循環依存と未定義の依存先は順序ではなく失敗として返す
+- `Get-UninstallOrder`: 削除順 (依存元から依存先) を求める
+- `Get-PackageDownloadFileName`: 保存アーカイブ名を決める。版表記の判定は区切り文字と大文字小文字の違いを吸収するため、取得側と導入側で同じ名前になる
+- `Get-PipWheelPackageNames` / `Test-PipWheelPackages`: pip パッケージ名の正規化 (PEP 503) と wheel の検証。Python 初期設定用のコアパッケージは `-IncludeCorePackages` で表す
+- `Get-PythonDirectory`: Python の配置先をパッケージ定義の `TargetDirectory` から引く
+
+## 実行コンテキスト (Devbin/Context)
+
+`New-DevbinContext` がリポジトリ、設定、packages、導入先、一時領域の絶対パスをまとめて返します。各処理はこのコンテキストを受け取るため、カレントディレクトリに依存しません。
 
 ## 共通関数モジュール (Setup-Common.psm1)
 
@@ -133,11 +162,13 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 - `ConvertFrom-JsonWithComments`: コメント付き JSON (Windows Terminal の settings.json) を読み込む
 - `Invoke-ProductUninstall`: 状態に依存しない完全アンインストール。対象ルートと、そこを指す PATH / 環境変数 / フォント登録 / Windows Terminal プロファイル / vswhere を機械的に削除する
 
-## マニフェスト管理モジュール (Setup-Manifest.psm1)
+## 状態管理 (Devbin/State)
 
 ### 概要
 
 コンポーネント単位のインストール状態を `$InstallDir\.devbin-manifest.json` に記録します。コンポーネントマネージャーが個別管理を行うための基盤となります。
+
+`Manifest.ps1` がマニフェストの入出力とファイル一覧を、`ComponentStatus.ps1` が版の比較と状態判定を担当します。
 
 ### マニフェストの構造
 

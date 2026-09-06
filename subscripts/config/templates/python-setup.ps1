@@ -9,6 +9,11 @@ param(
 
 Write-Host "Running Python post-setup..."
 
+# 共通処理は Devbin モジュールに置く。パスはカレントディレクトリに依存させない
+$devbinModulePath = Join-Path $PSScriptRoot "..\..\Devbin"
+Import-Module $devbinModulePath -Force -ErrorAction Stop
+$devbinContext = New-DevbinContext -SubscriptsDir (Join-Path $PSScriptRoot "..\..")
+
 function Set-PthFileContent {
     param(
         [string]$Path,
@@ -66,28 +71,6 @@ function Get-NormalizedPthContent {
     return $newContent
 }
 
-function Test-PipWheelPackages {
-    param(
-        [string]$DirectoryPath
-    )
-
-    $requiredPatterns = @(
-        "pip-*.whl",
-        "setuptools-*.whl",
-        "wheel-*.whl",
-        "packaging-*.whl"
-    )
-
-    $missing = @()
-    foreach ($pattern in $requiredPatterns) {
-        if (-not (Get-ChildItem -Path $DirectoryPath -Filter $pattern -File -ErrorAction SilentlyContinue | Select-Object -First 1)) {
-            $missing += $pattern
-        }
-    }
-
-    return $missing
-}
-
 # python3.exe のコピーを作成
 $pythonExe = Join-Path $TargetPath "python.exe"
 $python3Exe = Join-Path $TargetPath "python3.exe"
@@ -128,7 +111,7 @@ foreach ($pthFile in $pthFiles) {
     Set-PthFileContent -Path $pthFile.FullName -Lines $newContent
 }
 
-$pipArchiveFile = Get-ChildItem "packages\pip-*.tar.gz" | Select-Object -First 1
+$pipArchiveFile = Get-ChildItem (Join-Path $devbinContext.PackagesDir "pip-*.tar.gz") | Select-Object -First 1
 $pipArchivePath = if ($pipArchiveFile) { $pipArchiveFile.FullName } else { "" }
 if (-not $pipArchivePath -or -not (Test-Path $pipArchivePath)) {
     Write-Host "Warning: pip source tarball not found at $pipArchivePath, skipping pip installation"
@@ -187,12 +170,12 @@ with tarfile.open(archive_path, 'r:gz') as archive:
         Write-Host "Temporarily added pip source path to embedded Python search paths"
 
         # pip-packages フォルダが存在する場合はオフラインインストール
-        $pipPackagesDir = "packages\pip-packages"
+        $pipPackagesDir = $devbinContext.PipPackagesDir
         $offlineMode = Test-Path $pipPackagesDir
         $missingWheels = @()
 
         if ($offlineMode) {
-            $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir
+            $missingWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames (Get-PipWheelPackageNames -IncludeCorePackages))
             if ($missingWheels.Count -gt 0) {
                 Write-Host "Warning: Offline wheel cache is incomplete: $($missingWheels -join ', ')"
                 Write-Host "Falling back to online installation."
@@ -202,7 +185,7 @@ with tarfile.open(archive_path, 'r:gz') as archive:
 
         if ($offlineMode) {
             Write-Host "Using offline installation with local wheel files..."
-            $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
+            $pipPackagesAbsPath = $pipPackagesDir
             & $pythonExe -m pip install --no-warn-script-location `
                 --no-index --find-links=$pipPackagesAbsPath pip setuptools wheel
         } else {
