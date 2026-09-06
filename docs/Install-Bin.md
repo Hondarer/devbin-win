@@ -7,11 +7,14 @@
 ### かんたんインストール (推奨)
 
 1. このフォルダをダウンロードフォルダやデスクトップなどに配置
-2. `Install-Bin.cmd` をダブルクリックして実行
+2. `Manage-Bin.cmd` をダブルクリックして実行
+3. 初回は既定のコンポーネントが選択済みなので、Enter で適用内容を確認し、Y で実行する
 
 ```cmd
-Install-Bin.cmd
+Manage-Bin.cmd
 ```
+
+git、VS Code、GitHub Copilot CLI は既定では選択されません。必要な場合は Space で選択してから Enter を押してください。すべて入れる場合は A で全選択します。
 
 ### インストール内容
 
@@ -71,7 +74,7 @@ npm-cache-manifest.json
 archives\*.tgz
 ```
 
-`npm-cache-manifest.json` は全 archive の version・サイズ・SHA-512 を検証するために使用します。`Install-Bin.cmd` またはコンポーネントマネージャーは、cache が不足している場合だけ `Get-Packages.ps1` の自動実行を試みます。この場合はネットワークへ接続するため、完全オフライン導入では事前に cache を揃えてください。取得後も不足する場合は導入を開始せずエラーで停止します。
+`npm-cache-manifest.json` は全 archive の version・サイズ・SHA-512 を検証するために使用します。`Manage-Bin.cmd` は、cache が不足している場合だけ `Get-Packages.ps1` の自動実行を試みます。この場合はネットワークへ接続するため、完全オフライン導入では事前に cache を揃えてください。取得後も不足する場合は導入を開始せずエラーで停止します。
 
 導入時は registry metadata に依存せず、lockfile の `resolved` と `integrity` を cache 内のローカル `.tgz` に差し替えた一時プロジェクトへ `npm install --offline` します。完了後、一時プロジェクトの `node_modules` と command shim をインストール先へ配置します。
 
@@ -81,7 +84,7 @@ Marp CLI、Mermaid CLI、Puppeteer は Chromium をダウンロードせず、PA
 
 1. オンライン環境で `Get-Packages.ps1` を実行
 2. `packages` フォルダを含むリポジトリ全体をコピー
-3. オフライン環境で `Install-Bin.cmd` を実行
+3. オフライン環境で `Manage-Bin.cmd` を実行
 4. 新しいターミナルで npm コマンドと Marp/Mermaid の出力を確認
 
 #### cloc について
@@ -253,12 +256,12 @@ HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ル
 #### Python がインストール済みの環境
 
 1. `Get-Packages.ps1` を実行すると、pip、setuptools、wheel の wheel ファイルが `packages\pip-packages` に自動ダウンロードされます
-2. その後、オフライン環境に移行しても `Install-Bin.cmd` で pip が正常にインストールされます
+2. その後、オフライン環境に移行しても `Manage-Bin.cmd` で pip が正常にインストールされます
 
 #### Python が未インストールの環境
 
 1. `Get-Packages.ps1` 実行時は wheel ファイルのダウンロードをスキップします (Python がないため)
-2. `Install-Bin.cmd` で Python をインストールします
+2. `Manage-Bin.cmd` で Python をインストールします
 3. 初回インストール時にオンライン接続があれば、wheel ファイルを自動的に `packages\pip-packages` に保存します
 4. 次回以降はオフラインでも pip インストールが可能になります
 
@@ -268,7 +271,7 @@ HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ル
 
 1. `Get-Packages.ps1` を実行して、全パッケージと wheel ファイルをダウンロード
 2. リポジトリ全体 (特に `packages` フォルダ) をオフライン環境にコピー
-3. オフライン環境で `Install-Bin.cmd` を実行
+3. オフライン環境で `Manage-Bin.cmd` を実行
 
 これにより、完全オフライン環境でも pip を含む全ツールがインストールされます。
 
@@ -299,17 +302,17 @@ Space キーで選択状態を切り替えます。未インストール項目�
  13  [X] GNU Make           Installed     (auto: gcc-libs, libiconv, gettext)
 ```
 
-コマンド:
+キー操作:
 
-| コマンド | 動作 | 例 |
-|---|---|---|
-| `i <番号>` | インストール | `i 8` |
-| `u <番号>` | アンインストール | `u 6` |
-| `r <番号>` | 再インストール/更新 | `r 1 6` |
-| `ia` | すべてのコンポーネントをインストール | `ia` |
-| `ua` | すべてのコンポーネントをアンインストール | `ua` |
-| `q` | 終了 | `q` |
-| `U` | 完全アンインストール (対象フォルダとそこを指す参照を削除して終了) | `U` |
+| キー | 動作 |
+|---|---|
+| ↑↓ / Wheel | 項目の移動 |
+| Space | 選択状態の切り替え |
+| A | 全選択 |
+| N | 全解除 |
+| Enter | 差分を確認して適用 |
+| U | 完全アンインストール (対象フォルダとそこを指す参照を削除して終了) |
+| Q / Esc | 終了 |
 
 ### 依存関係の自動処理
 
@@ -319,7 +322,7 @@ Space キーで選択状態を切り替えます。未インストール項目�
 
 ### 既存インストールからの移行
 
-`Install-Bin.cmd` で一括インストールした後に `Manage-Bin.cmd` を起動すると、既存のインストール状態を自動検出してマニフェストを生成します。以降は個別管理が可能になります。
+マニフェストが無い既存インストールがある状態で `Manage-Bin.cmd` を起動すると、インストール状態を自動検出してマニフェストを生成します。以降は個別管理が可能になります。
 
 ## 高度な使用方法
 
@@ -355,7 +358,7 @@ Space キーで選択状態を切り替えます。未インストール項目�
 
 ### PowerShell 実行ポリシーエラー
 
-Install-Bin.cmd と Manage-Bin.cmd は `-ExecutionPolicy Bypass` を使用するため、通常は問題ありません。
+`Manage-Bin.cmd` は `-ExecutionPolicy Bypass` を使用するため、通常は問題ありません。
 
 ### 管理者権限エラー
 

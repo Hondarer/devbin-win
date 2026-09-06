@@ -45,12 +45,7 @@ $itemsToInclude = @(
     "LICENSE",
     "docs",
     "subscripts",
-    "Manage-Bin.cmd" #,
-#    "Setup-Home.cmd",
-#   "Install-GitBash-Profile.cmd",
-#   "Uninstall-GitBash-Profile.cmd",
-#   "Install-MinGW-Profile.cmd",
-#   "Uninstall-MinGW-Profile.cmd"
+    "Manage-Bin.cmd"
 )
 
 # 除外対象のファイル一覧

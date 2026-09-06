@@ -53,7 +53,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 
 ## コンポーネント管理プロパティ
 
-コンポーネントマネージャー (`Manage-Bin.cmd`) が主に使用するプロパティです。`PathDirs` / `PathPosition` / `SkipIfCommand` など PATH 制御に関わる項目は、一括インストール (`Install-Bin.cmd`) でも使用されます。
+コンポーネントマネージャー (`Manage-Bin.cmd`) が主に使用するプロパティです。`PathDirs` / `PathPosition` / `SkipIfCommand` など PATH 制御に関わる項目は、一括インストール (`Setup-Bin.ps1 -Install`) でも使用されます。
 
 | プロパティ | 説明 | 型 | 省略時の動作 |
 |-----------|------|-----|------------|
@@ -64,7 +64,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | EnvVarIsLiteral | リテラル値として扱う環境変数名の配列 | string[] | `@()` (全てパスとして結合) |
 | DetectFiles | インストール状態を検出するファイル ($InstallDir からの相対パス) | string[] | `@()` (ファイル検出なし) |
 | PostInstallScripts | インストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
-| RunPostInstallInBatch | 一括インストール (`Install-Bin.cmd`) でも `PostInstallScripts` を実行するかどうか | bool | `$false` |
+| RunPostInstallInBatch | 一括インストール (`Setup-Bin.ps1 -Install`) でも `PostInstallScripts` を実行するかどうか | bool | `$false` |
 | PostUninstallScripts | アンインストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
 | SkipIfCommand | このコマンドが PATH にある場合は PathDirs の追加をスキップ | string | なし (常に追加) |
 | DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |

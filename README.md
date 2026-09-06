@@ -57,7 +57,7 @@ from [textlint/textlint](https://github.com/textlint/textlint)
 .\subscripts\Get-Packages.ps1
 ```
 
-`packages/npm-packages/<ShortName>/` に `package-lock.json`、`npm-cache-manifest.json`、依存 package の `.tgz` が生成されます。生成後は `packages` フォルダを含めてリポジトリ全体をオフライン環境へコピーし、`Install-Bin.cmd` を実行してください。導入時の npm install は検証済みのローカル cache に対して `--offline` で実行されます。
+`packages/npm-packages/<ShortName>/` に `package-lock.json`、`npm-cache-manifest.json`、依存 package の `.tgz` が生成されます。生成後は `packages` フォルダを含めてリポジトリ全体をオフライン環境へコピーし、`Manage-Bin.cmd` を実行してください。導入時の npm install は検証済みのローカル cache に対して `--offline` で実行されます。
 
 ### pandoc
 

@@ -173,7 +173,7 @@ PySetup -> PySetup: wheel を packages/pip-packages/ に保存
 
 1. インターネット接続のある環境で `Get-Packages.ps1` を実行
 2. `packages` フォルダごとオフライン環境へコピー
-3. オフライン環境で `Install-Bin.cmd` を実行
+3. オフライン環境で `Manage-Bin.cmd` を実行
 
 Python が利用可能な環境では、`Get-Packages.ps1` 実行時点で wheel まで揃うため、そのまま完全オフライン導入に使えます。
 

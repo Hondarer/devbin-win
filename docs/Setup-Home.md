@@ -22,12 +22,10 @@ HOME 環境変数とホームディレクトリのセットアップを行う Po
 
 ## 実行方法
 
-```cmd
-.\Setup-Home.cmd
-```
+リポジトリのルートから次を実行します。
 
 ```powershell
-.\Setup-Home.ps1
+powershell.exe -ExecutionPolicy Bypass -File .\subscripts\Setup-Home.ps1
 ```
 
 ## 処理フロー
@@ -74,7 +72,7 @@ C:\ProgramData\home\
 - 複数回実行しても安全で、既存の設定を破壊しません (冪等性を保証)。
 - 環境変数の変更を反映するには新しいターミナルセッションを開始する必要があります。
 - XDG Base Directory Specification は、設定・キャッシュ・データファイルの適切な配置を支援する仕様です。
-- `Uninstall-Bin.cmd` の完全アンインストールは `C:\ProgramData\{ユーザー名}\devbin-win` を対象にするため、HOME (`C:\ProgramData\home\{ユーザー名}`) と XDG 系環境変数は削除しません。
+- `Manage-Bin.cmd` の `U` (または `Setup-Bin.ps1 -Uninstall`) による完全アンインストールは `C:\ProgramData\{ユーザー名}\devbin-win` を対象にするため、HOME (`C:\ProgramData\home\{ユーザー名}`) と XDG 系環境変数は削除しません。
 
 ## XDG Base Directory Specification について
 
