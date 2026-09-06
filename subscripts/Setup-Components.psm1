@@ -151,16 +151,18 @@ function Invoke-GetPackagesForPipInstall {
 
 # 依存を再帰的に解決し、トポロジカルソート順で返す
 # 戻り値: ShortName の配列 (依存→依存先の順)
+# 循環依存と未定義の依存先は $Problems (Cycles / Missing) に記録する
 function Resolve-Dependencies {
     param(
         [string]$ShortName,
         [array]$Packages,
         [hashtable]$Visited = @{},
-        [hashtable]$InStack = @{}
+        [hashtable]$InStack = @{},
+        [hashtable]$Problems = $null
     )
 
     if ($InStack.ContainsKey($ShortName)) {
-        Write-Host "Warning: Circular dependency detected for '$ShortName'" -ForegroundColor Yellow
+        if ($Problems) { $Problems.Cycles += $ShortName }
         return @()
     }
 
@@ -172,7 +174,7 @@ function Resolve-Dependencies {
 
     $pkg = Get-PackageByShortName -ShortName $ShortName -Packages $Packages
     if (-not $pkg) {
-        Write-Host "Warning: Package '$ShortName' not found" -ForegroundColor Yellow
+        if ($Problems) { $Problems.Missing += $ShortName }
         $InStack.Remove($ShortName)
         return @()
     }
@@ -181,7 +183,7 @@ function Resolve-Dependencies {
     $deps = if ($pkg.ContainsKey("DependsOn")) { @($pkg.DependsOn) } else { @() }
 
     foreach ($dep in $deps) {
-        $subDeps = Resolve-Dependencies -ShortName $dep -Packages $Packages -Visited $Visited -InStack $InStack
+        $subDeps = Resolve-Dependencies -ShortName $dep -Packages $Packages -Visited $Visited -InStack $InStack -Problems $Problems
         $result += $subDeps
     }
 
@@ -190,6 +192,38 @@ function Resolve-Dependencies {
     $InStack.Remove($ShortName)
 
     return $result
+}
+
+# 複数の ShortName について導入順を解決し、成否と併せて返す
+# 戻り値: Success / Order / Errors を持つオブジェクト
+# 循環依存または未定義の依存先がある場合は Success = $false となり、Order は使用しない
+function Resolve-DependencyOrder {
+    param(
+        [string[]]$ShortNames,
+        [array]$Packages
+    )
+
+    $problems = @{ Cycles = @(); Missing = @() }
+    $visited = @{}
+    $order = @()
+
+    foreach ($name in @($ShortNames)) {
+        $order += @(Resolve-Dependencies -ShortName $name -Packages $Packages -Visited $visited -InStack @{} -Problems $problems)
+    }
+
+    $errors = @()
+    foreach ($cycle in @($problems.Cycles | Select-Object -Unique)) {
+        $errors += "循環依存を検出しました: $cycle"
+    }
+    foreach ($missing in @($problems.Missing | Select-Object -Unique)) {
+        $errors += "依存先のパッケージ定義が見つかりません: $missing"
+    }
+
+    return [PSCustomObject]@{
+        Success = ($errors.Count -eq 0)
+        Order   = @($order)
+        Errors  = @($errors)
+    }
 }
 
 # 指定コンポーネントに依存しているインストール済みコンポーネントの一覧を返す
@@ -219,6 +253,47 @@ function Get-Dependents {
     }
 
     return $dependents
+}
+
+# 削除対象を依存元から依存先の順に並べ替える
+# 残る対象が依存しているものは後回しにし、解決できない残りは末尾に置く
+function Get-UninstallOrder {
+    [CmdletBinding()]
+    param(
+        [string[]]$ShortNames,
+        [array]$Packages,
+        [hashtable]$Manifest
+    )
+
+    $remaining = [System.Collections.Generic.List[string]]::new()
+    foreach ($name in @($ShortNames)) {
+        if (-not [string]::IsNullOrWhiteSpace($name)) {
+            $remaining.Add([string]$name)
+        }
+    }
+
+    $ordered = @()
+    $maxPasses = $remaining.Count + 1
+    $pass = 0
+
+    while ($remaining.Count -gt 0 -and $pass -lt $maxPasses) {
+        $pass++
+        $progress = $false
+        for ($idx = $remaining.Count - 1; $idx -ge 0; $idx--) {
+            $name = $remaining[$idx]
+            $dependents = @(Get-Dependents -ShortName $name -Packages $Packages -Manifest $Manifest)
+            $blockedBy = @($dependents | Where-Object { $remaining -contains $_ })
+            if ($blockedBy.Count -eq 0) {
+                $ordered += $name
+                $remaining.RemoveAt($idx)
+                $progress = $true
+            }
+        }
+        if (-not $progress) { break }
+    }
+
+    $ordered += @($remaining)
+    return @($ordered)
 }
 
 # Edge 実行ファイルを PATH、標準インストール先、App Paths から解決する
@@ -552,7 +627,8 @@ function Install-Component {
         [string]$InstallDir,
         [string]$ScriptDir,
         [hashtable]$Manifest,
-        [switch]$SkipDeps
+        [switch]$SkipDeps,
+        [hashtable]$InProgress = @{}
     )
 
     $pkg = Get-PackageByShortName -ShortName $ShortName -Packages $Packages
@@ -570,7 +646,13 @@ function Install-Component {
     # 依存を先にインストール
     if (-not $SkipDeps) {
         $deps = if ($pkg.ContainsKey("DependsOn")) { @($pkg.DependsOn) } else { @() }
+        # 自分自身を解決中として記録し、循環依存で再帰が止まらなくなるのを防ぐ
+        $InProgress[$ShortName] = $true
         foreach ($dep in $deps) {
+            if ($InProgress.ContainsKey($dep)) {
+                Write-Host "Error: 循環依存を検出しました: $ShortName -> $dep" -ForegroundColor Red
+                return $false
+            }
             if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $dep)) {
                 Write-Host ""
                 Write-Host "  依存コンポーネントをインストール: $dep" -ForegroundColor Cyan
@@ -579,13 +661,15 @@ function Install-Component {
                     -Packages $Packages `
                     -InstallDir $InstallDir `
                     -ScriptDir $ScriptDir `
-                    -Manifest $Manifest
+                    -Manifest $Manifest `
+                    -InProgress $InProgress
                 if (-not $depResult) {
                     Write-Host "Error: Failed to install dependency '$dep'" -ForegroundColor Red
                     return $false
                 }
             }
         }
+        $InProgress.Remove($ShortName)
     }
 
     Write-Host ""
@@ -716,7 +800,14 @@ function Install-Component {
                 Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
                 $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
                 if (Test-Path $getPackagesScript) {
-                    $downloadTargets = @(Resolve-Dependencies -ShortName $ShortName -Packages $Packages | Select-Object -Unique)
+                    $resolution = Resolve-DependencyOrder -ShortNames @($ShortName) -Packages $Packages
+                    if (-not $resolution.Success) {
+                        foreach ($message in $resolution.Errors) {
+                            Write-Host "Error: $message" -ForegroundColor Red
+                        }
+                        return $false
+                    }
+                    $downloadTargets = @($resolution.Order | Select-Object -Unique)
                     if (-not $downloadTargets -or $downloadTargets.Count -eq 0) {
                         $downloadTargets = @($ShortName)
                     }
@@ -1023,7 +1114,7 @@ function Uninstall-Component {
     Remove-ComponentFromManifest -Manifest $Manifest -ShortName $ShortName
 
     # 孤立した隠し依存パッケージを自動アンインストール
-    Remove-OrphanDependencies -ShortName $ShortName -Packages $Packages -InstallDir $InstallDir -Manifest $Manifest
+    Remove-OrphanDependencies -UninstalledShortName $ShortName -Packages $Packages -InstallDir $InstallDir -Manifest $Manifest
 
     Write-Host ""
     Write-Host "  PATH を更新中..."
@@ -1044,7 +1135,9 @@ function Uninstall-Component {
 }
 
 # 孤立した隠し依存パッケージを削除する
+# [CmdletBinding()] により、引数名の取り違えは実行時エラーになる
 function Remove-OrphanDependencies {
+    [CmdletBinding()]
     param(
         [string]$UninstalledShortName,
         [array]$Packages,
@@ -1176,7 +1269,10 @@ function Add-MultiplePathDirs {
 Export-ModuleMember -Function @(
     'Get-PackageByShortName',
     'Resolve-Dependencies',
+    'Resolve-DependencyOrder',
     'Get-Dependents',
+    'Get-UninstallOrder',
+    'Remove-OrphanDependencies',
     'Install-Component',
     'Uninstall-Component',
     'Update-Component',

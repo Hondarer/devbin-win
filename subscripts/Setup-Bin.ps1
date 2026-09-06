@@ -690,7 +690,9 @@ if ($Install) {
                         -EnvVars $envVarsForPkg
                 }
             }
-            Write-Manifest -InstallDir $InstallDir -Manifest $manifest
+            if (-not (Write-Manifest -InstallDir $InstallDir -Manifest $manifest)) {
+                throw "マニフェストの保存に失敗しました"
+            }
             Write-Host "Component manifest saved."
         } catch {
             Write-Host "Warning: Failed to generate manifest: $($_.Exception.Message)" -ForegroundColor Yellow

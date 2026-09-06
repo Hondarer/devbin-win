@@ -847,18 +847,30 @@ function Apply-CheckedState {
     # インストール: 依存も展開して表示
     $resolvedInstall = [System.Collections.Generic.List[object]]::new()
     if ($toInstall.Count -gt 0) {
+        $installShortNames = @($toInstall | ForEach-Object { $_.ShortName })
+        $resolution = Resolve-DependencyOrder -ShortNames $installShortNames -Packages $State.Packages
+        if (-not $resolution.Success) {
+            Write-Host " 依存関係を解決できません:" -ForegroundColor Red
+            foreach ($message in $resolution.Errors) {
+                Write-Host "   $message" -ForegroundColor Red
+            }
+            Write-Host ""
+            Write-Host " 何かキーを押してメニューに戻ります..."
+            [Console]::ReadKey($true) | Out-Null
+            [Console]::CursorVisible = $false
+            $State.NeedRedraw = $true
+            return
+        }
+
         $seen = @{}
-        foreach ($item in $toInstall) {
-            $allDeps = Resolve-Dependencies -ShortName $item.ShortName -Packages $State.Packages
-            foreach ($dep in $allDeps) {
-                if ($seen[$dep]) { continue }
-                $seen[$dep] = $true
-                $depPkg = Get-PackageByShortName -ShortName $dep -Packages $State.Packages
-                if ($depPkg) {
-                    $depStatus = Get-ComponentStatus -Manifest $State.Manifest -InstallDir $State.InstallDir -PackageConfig $depPkg -PackagesDir $State.PackagesDir
-                    if ($depStatus -ne "Installed" -and $depStatus -ne "Updateable") {
-                        $resolvedInstall.Add($depPkg)
-                    }
+        foreach ($dep in $resolution.Order) {
+            if ($seen[$dep]) { continue }
+            $seen[$dep] = $true
+            $depPkg = Get-PackageByShortName -ShortName $dep -Packages $State.Packages
+            if ($depPkg) {
+                $depStatus = Get-ComponentStatus -Manifest $State.Manifest -InstallDir $State.InstallDir -PackageConfig $depPkg -PackagesDir $State.PackagesDir
+                if ($depStatus -ne "Installed" -and $depStatus -ne "Updateable") {
+                    $resolvedInstall.Add($depPkg)
                 }
             }
         }
@@ -911,8 +923,19 @@ function Apply-CheckedState {
     Write-Host ""
 
     # インストール実行 (-SkipDeps: 依存は上で展開済み)
+    # 依存先が失敗した場合、それを必要とするコンポーネントは実行せずスキップする
+    $failedShortNames = @{}
     if ($resolvedInstall.Count -gt 0) {
         foreach ($item in $resolvedInstall) {
+            $deps = if ($item.ContainsKey("DependsOn")) { @($item.DependsOn) } else { @() }
+            $blockedBy = @($deps | Where-Object { $failedShortNames.ContainsKey($_) })
+            if ($blockedBy.Count -gt 0) {
+                $failedShortNames[$item.ShortName] = $true
+                Write-Host ""
+                Write-Host "  スキップ: $($item.Name) (依存先の失敗: $($blockedBy -join ', '))" -ForegroundColor Yellow
+                continue
+            }
+
             $r = Install-Component `
                 -ShortName $item.ShortName `
                 -Packages $State.Packages `
@@ -921,12 +944,18 @@ function Apply-CheckedState {
                 -Manifest $State.Manifest `
                 -SkipDeps
             if ($r) {
-                Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest
+                if (-not (Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest)) {
+                    Write-Host " マニフェストを保存できないため、適用を中止します" -ForegroundColor Red
+                    break
+                }
+            } else {
+                $failedShortNames[$item.ShortName] = $true
             }
         }
     }
 
     # 再インストール実行
+    # Update-Component は失敗時もマニフェストから対象を外すため、成否によらず保存する
     foreach ($item in $toReinstall) {
         $r = Update-Component `
             -ShortName $item.ShortName `
@@ -934,8 +963,12 @@ function Apply-CheckedState {
             -InstallDir $State.InstallDir `
             -ScriptDir $State.ScriptDir `
             -Manifest $State.Manifest
-        if ($r) {
-            Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest
+        if (-not $r) {
+            $failedShortNames[$item.ShortName] = $true
+        }
+        if (-not (Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest)) {
+            Write-Host " マニフェストを保存できないため、適用を中止します" -ForegroundColor Red
+            break
         }
     }
 
@@ -959,28 +992,12 @@ function Apply-CheckedState {
 
     # アンインストール実行 (依存逆順)
     if ($toUninstall.Count -gt 0) {
+        $uninstallShortNames = @($toUninstall | ForEach-Object { $_.ShortName })
+        $orderedShortNames = @(Get-UninstallOrder -ShortNames $uninstallShortNames -Packages $State.Packages -Manifest $State.Manifest)
         $ordered = @()
-        $remaining = [System.Collections.Generic.List[object]]($toUninstall)
-        $maxPasses = $remaining.Count + 1
-        $pass = 0
-        while ($remaining.Count -gt 0 -and $pass -lt $maxPasses) {
-            $pass++
-            $progress = $false
-            for ($idx = $remaining.Count - 1; $idx -ge 0; $idx--) {
-                $pkg = $remaining[$idx]
-                $dependents = Get-Dependents -ShortName $pkg.ShortName -Packages $State.Packages -Manifest $State.Manifest
-                $blockedBy = $dependents | Where-Object {
-                    $remaining | Where-Object { $_.ShortName -eq $_ }
-                }
-                if ($blockedBy.Count -eq 0) {
-                    $ordered += $pkg
-                    $remaining.RemoveAt($idx)
-                    $progress = $true
-                }
-            }
-            if (-not $progress) { break }
+        foreach ($shortName in $orderedShortNames) {
+            $ordered += @($toUninstall | Where-Object { $_.ShortName -eq $shortName })
         }
-        $ordered += $remaining
 
         foreach ($pkg in $ordered) {
             $r = Uninstall-Component `
@@ -991,7 +1008,10 @@ function Apply-CheckedState {
                 -Manifest $State.Manifest `
                 -Force
             if ($r) {
-                Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest
+                if (-not (Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest)) {
+                    Write-Host " マニフェストを保存できないため、適用を中止します" -ForegroundColor Red
+                    break
+                }
             }
         }
     }
@@ -1184,8 +1204,11 @@ function Invoke-MenuLoop {
             Write-Host ""
             Write-Host "既存のインストールを検出しました (マニフェストなし)" -ForegroundColor Cyan
             $manifest = Initialize-LegacyManifest -InstallDir $InstallDir -Packages $Packages
-            Write-Manifest -InstallDir $InstallDir -Manifest $manifest
-            Write-Host "マニフェストを生成しました" -ForegroundColor Green
+            if (Write-Manifest -InstallDir $InstallDir -Manifest $manifest) {
+                Write-Host "マニフェストを生成しました" -ForegroundColor Green
+            } else {
+                Write-Host "マニフェストの保存に失敗しました" -ForegroundColor Red
+            }
             Start-Sleep -Seconds 1
         }
     }

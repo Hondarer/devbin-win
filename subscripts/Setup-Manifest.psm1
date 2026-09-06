@@ -61,6 +61,7 @@ function Read-Manifest {
 }
 
 # マニフェストを保存する (擬似アトミック: .tmp に書いてからリネーム)
+# 戻り値: 保存に成功したかどうか
 function Write-Manifest {
     param(
         [string]$InstallDir,
@@ -78,11 +79,13 @@ function Write-Manifest {
             Remove-Item $manifestPath -Force
         }
         Move-Item $tmpPath $manifestPath -Force
+        return $true
     } catch {
-        Write-Host "Warning: Failed to write manifest: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "Error: Failed to write manifest: $($_.Exception.Message)" -ForegroundColor Red
         if (Test-Path $tmpPath) {
             Remove-Item $tmpPath -Force -ErrorAction SilentlyContinue
         }
+        return $false
     }
 }
 

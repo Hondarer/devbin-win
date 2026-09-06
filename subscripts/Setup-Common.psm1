@@ -1716,19 +1716,17 @@ function Get-PackagePathPosition {
     return "Prepend"
 }
 
-# devbin-win 管理下の PATH を宣言順で再構成する
-function Sync-ManagedUserPath {
+# devbin-win 管理下の PATH を宣言順で再構成した文字列を返す (環境変数は変更しない)
+function Get-ManagedUserPathValue {
     param(
+        [string]$CurrentPath = "",
         [string]$InstallDir,
         [array]$Packages,
         [string[]]$InstalledShortNames = @(),
         [switch]$IncludeBaseDir
     )
 
-    $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
-    if (-not $currentPath) {
-        $currentPath = ""
-    }
+    $currentPath = if ($null -eq $CurrentPath) { "" } else { $CurrentPath }
 
     $managedEntries = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $normalizedBaseDir = Get-NormalizedPathString -PathValue $InstallDir
@@ -1861,7 +1859,30 @@ function Sync-ManagedUserPath {
         }
     }
 
-    $newPath = $finalEntries -join ';'
+    return ($finalEntries -join ';')
+}
+
+# devbin-win 管理下の PATH を宣言順で再構成し、ユーザー環境変数へ反映する
+function Sync-ManagedUserPath {
+    param(
+        [string]$InstallDir,
+        [array]$Packages,
+        [string[]]$InstalledShortNames = @(),
+        [switch]$IncludeBaseDir
+    )
+
+    $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+    if (-not $currentPath) {
+        $currentPath = ""
+    }
+
+    $newPath = Get-ManagedUserPathValue `
+        -CurrentPath $currentPath `
+        -InstallDir $InstallDir `
+        -Packages $Packages `
+        -InstalledShortNames $InstalledShortNames `
+        -IncludeBaseDir:$IncludeBaseDir
+
     if ($newPath -ne $currentPath) {
         [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
         Write-Host "User PATH updated successfully."
@@ -1930,6 +1951,7 @@ function Stop-BusySignal {
 Export-ModuleMember -Function @(
     'Test-CommandExists',
     'Sync-ManagedUserPath',
+    'Get-ManagedUserPathValue',
     'Get-PackageBaseFileName',
     'Resolve-PackageVersion',
     'Add-ToUserPath',
