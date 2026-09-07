@@ -621,7 +621,7 @@ packages.psd1 の `Packages` 配列に新しいパッケージ定義を追加す
 
 ### ケース2: 新しい戦略が必要な場合
 
-1. Setup-Strategies.psm1 に新しい戦略関数を追加
+1. Devbin/Extract に新しい戦略関数を追加
 2. Invoke-ExtractStrategy の switch 文に case を追加
 3. packages.psd1 に定義を追加
 

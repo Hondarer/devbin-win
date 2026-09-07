@@ -208,4 +208,4 @@ pip 経由でインストールする新しいツールを追加する際は、`
 
 ## まとめ
 
-本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して `python -m pip` を実行します。pip パッケージ型のツール (yamllint 等) は `Setup-Strategies.psm1` の `PipInstall` 戦略が `packages/pip-packages` の wheel からインストールします。これにより、完全オフライン pip 導入を実現します。
+本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して `python -m pip` を実行します。pip パッケージ型のツール (yamllint 等) は `Devbin/Extract` の `PipInstall` 戦略が `packages/pip-packages` の wheel からインストールします。これにより、完全オフライン pip 導入を実現します。

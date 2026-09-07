@@ -45,6 +45,14 @@ $script:DevbinSourceFiles = @(
     "Packages\NpmCacheDownload.ps1"
     "Packages\VsBuildToolsDownload.ps1"
     "Packages\PackageAcquisition.ps1"
+    "Extract\ArchiveExtraction.ps1"
+    "Extract\StandardStrategy.ps1"
+    "Extract\SubdirectoryStrategy.ps1"
+    "Extract\TargetDirectoryStrategy.ps1"
+    "Extract\ExecutableStrategy.ps1"
+    "Extract\InstallerStrategy.ps1"
+    "Extract\PackageManagerStrategy.ps1"
+    "Extract\ExtractStrategy.ps1"
     "Install\ComponentEnvironment.ps1"
     "Install\ComponentPath.ps1"
     "Install\LifecycleScript.ps1"
@@ -156,6 +164,14 @@ Export-ModuleMember -Function @(
     'Get-NpmCacheStatus',
     'Save-NpmPackageCache',
     'Invoke-NpmInstallFromCache',
+    # Extract
+    'Unblock-ArchiveFile',
+    'Expand-ArchiveToTemp',
+    'Get-ExtractedSourcePath',
+    'Resolve-PostExtractSourcePath',
+    'Invoke-ExtractStrategy',
+    'Invoke-PipInstallStrategy',
+    'Invoke-NpmInstallStrategy',
     # Install
     'Get-ComponentEnvVarValues',
     'Test-ComponentUsesEdge',

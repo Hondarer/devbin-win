@@ -14,12 +14,12 @@
 subscripts/
 +- Setup-Bin.ps1          (メインスクリプト)
 +- Get-Packages.ps1       (パッケージ取得)
-+- Setup-Strategies.psm1  (抽出戦略の実装)
 +- Setup-Menu.psm1        (CLI 対話型メニュー)
 +- Devbin/                (内部モジュール)
 |  +- Devbin.psm1         (読み込み窓口と公開関数の宣言)
 |  +- Context/            (実行コンテキスト: 絶対パスの集約)
 |  +- Platform/           (OS 操作: PATH、環境変数、一時領域、アンインストール)
+|  +- Extract/            (抽出戦略の実装と呼び分け)
 |  +- Catalog/            (設定読み込み、パッケージ検索、版・保存名、依存関係)
 |  +- State/              (マニフェスト入出力、状態判定、ファイル一覧)
 |  +- Packages/           (ダウンロードと取得処理)
@@ -41,7 +41,7 @@ package "定義層" {
 
 package "処理層" {
   [Setup-Bin.ps1] as main
-  [Setup-Strategies.psm1] as strategies
+  [Devbin/Extract] as strategies
   [Devbin/Platform] as platform
   [Devbin/Catalog] as catalog
   [Devbin/State] as state
@@ -81,7 +81,7 @@ state --> mfile : 読み書き
 
 ### 概要
 
-Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は特定の展開方法を表します。
+Devbin/Extract に実装された抽出パターンです。呼び分けは `Invoke-ExtractStrategy` が行います。各戦略は特定の展開方法を表します。
 
 ### 戦略一覧
 
@@ -360,7 +360,7 @@ packages.psd1 に定義を追加するだけで完了します。コードの変
 
 ### ケース2: 新しい戦略が必要な場合
 
-1. Setup-Strategies.psm1 に新しい戦略関数を追加
+1. Devbin/Extract に新しい戦略関数を追加
 2. Invoke-ExtractStrategy の switch 文に case を追加
 3. packages.psd1 に定義を追加
 
@@ -394,7 +394,7 @@ packages.psd1 に定義を追加するだけで完了します。コードの変
 定義駆動アーキテクチャにより、以下を実現しています。
 
 - パッケージ情報の一元管理 (packages.psd1)
-- 処理の標準化と再利用 (Setup-Strategies.psm1)
+- 処理の標準化と再利用 (Devbin/Extract)
 - 新規パッケージの追加が容易 (定義ファイルへの追加のみ)
 - ダウンロードとセットアップの連携 (DownloadUrl の統合)
 - コードの保守性と拡張性の向上

@@ -27,20 +27,6 @@ try {
     exit 1
 }
 
-$strategiesModulePath = "$ScriptDir\Setup-Strategies.psm1"
-
-if (-not (Test-Path $strategiesModulePath)) {
-    Write-Host "Error: Setup-Strategies.psm1 not found at: $strategiesModulePath" -ForegroundColor Red
-    exit 1
-}
-
-try {
-    Import-Module $strategiesModulePath -Force -ErrorAction Stop
-} catch {
-    Write-Host "Error importing Setup-Strategies: $($_.Exception.Message)" -ForegroundColor Red
-    exit 1
-}
-
 # パッケージ設定を読み込む (完全アンインストールは定義に依存しない)
 $DevbinContext = New-DevbinContext -InstallDir $InstallDir -SubscriptsDir $ScriptDir
 $Packages = @()

@@ -2,14 +2,22 @@
 
 ## 概要
 
-Extract Strategies (抽出戦略) は、パッケージのアーカイブファイルを展開し、bin ディレクトリに配置する際の処理パターンを定義したものです。各戦略は Setup-Strategies.psm1 に実装されており、packages.psd1 の `ExtractStrategy` プロパティで指定されます。
+Extract Strategies (抽出戦略) は、パッケージのアーカイブファイルを展開し、bin ディレクトリに配置する際の処理パターンを定義したものです。各戦略は `subscripts/Devbin/Extract` に実装されており、packages.psd1 の `ExtractStrategy` プロパティで指定されます。
 
 定義駆動アーキテクチャの中核を担い、新しい戦略を追加することで、複数のパッケージに適用可能な処理パターンを標準化できます。
 
 ## 実装の場所
 
 ```text
-subscripts/Setup-Strategies.psm1
+subscripts/Devbin/Extract/
++- ArchiveExtraction.ps1        (共通の展開処理)
++- StandardStrategy.ps1         (Standard)
++- SubdirectoryStrategy.ps1     (Subdirectory, SubdirectoryToTarget)
++- TargetDirectoryStrategy.ps1  (VersionNormalized, TargetDirectory)
++- ExecutableStrategy.ps1       (JarWithWrapper, SingleExecutable)
++- InstallerStrategy.ps1        (SelfExtractingArchive, InnoSetup, VSBuildTools)
++- PackageManagerStrategy.ps1   (PipInstall, NpmInstall)
++- ExtractStrategy.ps1          (戦略の呼び分け)
 ```
 
 ## 戦略一覧
@@ -31,7 +39,7 @@ subscripts/Setup-Strategies.psm1
 
 ## 共通関数
 
-Setup-Strategies.psm1 では、複数の戦略で共有される共通関数を提供しています。
+ArchiveExtraction.ps1 では、複数の戦略で共有される共通関数を提供しています。
 
 ### Unblock-ArchiveFile
 
@@ -699,7 +707,7 @@ PowerShell の `ni` は `New-Item` alias と衝突します。devbin-win は pro
 
 新しい抽出パターンが必要な場合、以下の手順で新しい戦略を追加できます。
 
-### 1. Setup-Strategies.psm1 に戦略関数を追加
+### 1. Devbin/Extract に戦略関数を追加
 
 ```powershell
 # NewStrategy 戦略: 新しい抽出パターン
