@@ -243,3 +243,36 @@ function Initialize-LegacyManifest {
     return $manifest
 }
 
+# 導入先とマニフェストを使える状態にする
+# マニフェストが無く既存ファイルがある場合は Legacy として生成し、保存まで行う
+# 戻り値: Manifest / LegacyDetected / Saved
+function Initialize-ComponentManifest {
+    param(
+        [string]$InstallDir,
+        [array]$Packages
+    )
+
+    if (-not (Test-Path $InstallDir)) {
+        New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+    }
+
+    $manifest = Read-Manifest -InstallDir $InstallDir
+    $manifestPath = Get-ManifestPath -InstallDir $InstallDir
+    $legacyDetected = $false
+    $saved = $true
+
+    if (-not (Test-Path $manifestPath)) {
+        $existingFiles = Get-ChildItem -Path $InstallDir -File -ErrorAction SilentlyContinue
+        if ($existingFiles -and $existingFiles.Count -gt 0) {
+            $legacyDetected = $true
+            $manifest = Initialize-LegacyManifest -InstallDir $InstallDir -Packages $Packages
+            $saved = Write-Manifest -InstallDir $InstallDir -Manifest $manifest
+        }
+    }
+
+    return [PSCustomObject]@{
+        Manifest       = $manifest
+        LegacyDetected = $legacyDetected
+        Saved          = $saved
+    }
+}

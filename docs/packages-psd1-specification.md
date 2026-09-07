@@ -53,7 +53,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 
 ## コンポーネント管理プロパティ
 
-コンポーネントマネージャー (`Manage-Bin.cmd`) が主に使用するプロパティです。`PathDirs` / `PathPosition` / `SkipIfCommand` など PATH 制御に関わる項目は、一括インストール (`Setup-Bin.ps1 -Install`) でも使用されます。
+コンポーネントマネージャー (`Manage-Bin.cmd`) が使用するプロパティです。`PathDirs` / `PathPosition` / `SkipIfCommand` は PATH の再構成に使用されます。
 
 | プロパティ | 説明 | 型 | 省略時の動作 |
 |-----------|------|-----|------------|
@@ -64,7 +64,6 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | EnvVarIsLiteral | リテラル値として扱う環境変数名の配列 | string[] | `@()` (全てパスとして結合) |
 | DetectFiles | インストール状態を検出するファイル ($InstallDir からの相対パス) | string[] | `@()` (ファイル検出なし) |
 | PostInstallScripts | インストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
-| RunPostInstallInBatch | 一括インストール (`Setup-Bin.ps1 -Install`) でも `PostInstallScripts` を実行するかどうか | bool | `$false` |
 | PostUninstallScripts | アンインストール完了後に実行する後処理スクリプト定義の配列 | hashtable[] | `@()` (後処理なし) |
 | SkipIfCommand | このコマンドが PATH にある場合は PathDirs の追加をスキップ | string | なし (常に追加) |
 | DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |
@@ -234,7 +233,6 @@ DownloadHeaders = @{
         Path = "psversion.txt"
         Pattern = "\d+(?:\.\d+)+"
     }
-    RunPostInstallInBatch = $true
 }
 ```
 
@@ -631,9 +629,9 @@ packages.psd1 の `Packages` 配列に新しいパッケージ定義を追加す
 
 ## パッケージ定義の順序
 
-packages.psd1 内のパッケージ定義の順序は一括インストール (`-Install`) の実行順序を決定します。依存関係がある場合は、依存先のパッケージを先に定義する必要があります。
+packages.psd1 内のパッケージ定義の順序は、コンポーネントマネージャーの表示順と PATH の並び順を決めます。
 
-コンポーネントマネージャー (`-Manage`) では `DependsOn` に基づいて依存を自動解決するため、順序に依存しません。ただし、一括インストールとの一貫性を保つため、依存先を先に記述することを推奨します。
+導入順は `DependsOn` から自動で解決するため、定義の順序には依存しません。ただし読みやすさのため、依存先を先に記述することを推奨します。
 
 例: OpenCppCoverage は innoextract に依存するため、innoextract を先に定義します。
 

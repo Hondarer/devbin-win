@@ -769,69 +769,41 @@ function Apply-CheckedState {
         [hashtable]$InputModeState
     )
 
-    $toInstall   = [System.Collections.Generic.List[object]]::new()
-    $toUninstall = [System.Collections.Generic.List[object]]::new()
-    $toReinstall = [System.Collections.Generic.List[object]]::new()
+    # 操作計画の作成は Devbin/Install が担当する。UI は表示と確認だけを行う
+    $plan = New-ComponentChangePlan `
+        -Packages $State.Packages `
+        -Items $State.Items `
+        -Checked $State.Checked `
+        -Reinstall $State.Reinstall `
+        -Statuses $State.Statuses `
+        -Manifest $State.Manifest `
+        -InstallDir $State.InstallDir `
+        -PackagesDir $State.PackagesDir
 
-    foreach ($item in $State.Items) {
-        $sn     = $item.ShortName
-        $checked = $State.Checked[$sn]
-        $status  = $State.Statuses[$sn]
-
-        if ($checked -and $status -eq "NotInstalled") {
-            $toInstall.Add($item)
-        } elseif ($checked -and $status -eq "Broken") {
-            $toReinstall.Add($item)
-        } elseif ($State.Reinstall[$sn] -and ($status -eq "Installed" -or $status -eq "Legacy" -or $status -eq "Updateable")) {
-            $toReinstall.Add($item)
-        } elseif (-not $checked -and ($status -eq "Installed" -or $status -eq "Legacy" -or $status -eq "Updateable")) {
-            $toUninstall.Add($item)
-        }
-    }
-
-    # 依存関係の検証: チェック済みアイテムの依存先が未チェック+未インストールなら警告
-    $missingDeps = @()
-    foreach ($item in $State.Items) {
-        if (-not $State.Checked[$item.ShortName]) { continue }
-        $deps = if ($item.ContainsKey("DependsOn")) { @($item.DependsOn) } else { @() }
-        foreach ($dep in $deps) {
-            # 可視パッケージで未チェックかつ未インストールなら問題
-            $depItem = $State.Items | Where-Object { $_.ShortName -eq $dep }
-            if (-not $depItem) { continue }  # Hidden パッケージは Install-Component が処理する
-            $depChecked = $State.Checked[$dep]
-            $depStatus = $State.Statuses[$dep]
-            if (-not $depChecked -and $depStatus -ne "Installed" -and $depStatus -ne "Legacy" -and $depStatus -ne "Updateable") {
-                $missingDeps += @{ Item = $item; Dependency = $depItem }
-            }
-        }
-    }
-
-    if ($missingDeps.Count -gt 0) {
+    if (-not $plan.Success) {
         [Console]::Clear()
         [Console]::CursorVisible = $true
         Write-Host ""
-        Write-Host " 依存関係エラー: 必要なコンポーネントがチェックされていません" -ForegroundColor Red
+        Write-Host " 依存関係エラー: 計画を作成できません" -ForegroundColor Red
         Write-Host ""
-        foreach ($m in $missingDeps) {
-            Write-Host "   $($m.Item.Name) -> $($m.Dependency.Name) が必要です" -ForegroundColor Yellow
+        foreach ($message in $plan.Errors) {
+            Write-Host "   $message" -ForegroundColor Yellow
         }
         Write-Host ""
         Write-Host " 依存先をチェックしてから再度 Enter を押してください。" -ForegroundColor DarkGray
         Write-Host " 何かキーを押してメニューに戻ります..." -ForegroundColor DarkGray
         [Console]::ReadKey($true) | Out-Null
-        [Console]::CursorVisible = $false
-        $State.NeedRedraw = $true
+        Resume-MenuConsole -State $State -InputModeState $InputModeState
         return
     }
 
-    if ($toInstall.Count -eq 0 -and $toUninstall.Count -eq 0 -and $toReinstall.Count -eq 0) {
+    if ($plan.IsEmpty) {
         [Console]::Clear()
         [Console]::CursorVisible = $true
         Write-Host ""
         Write-Host " 変更はありません。" -ForegroundColor Green
         Start-Sleep -Seconds 1
-        [Console]::CursorVisible = $false
-        $State.NeedRedraw = $true
+        Resume-MenuConsole -State $State -InputModeState $InputModeState
         return
     }
 
@@ -840,189 +812,136 @@ function Apply-CheckedState {
     [Console]::CursorVisible = $true
     Restore-ConsoleInputMode -InputModeState $InputModeState
 
-    Write-Host ""
-    Write-Host "=== 適用内容の確認 ==="
-    Write-Host ""
+    Show-ChangePlan -Plan $plan
 
-    # インストール: 依存も展開して表示
-    $resolvedInstall = [System.Collections.Generic.List[object]]::new()
-    if ($toInstall.Count -gt 0) {
-        $installShortNames = @($toInstall | ForEach-Object { $_.ShortName })
-        $resolution = Resolve-DependencyOrder -ShortNames $installShortNames -Packages $State.Packages
-        if (-not $resolution.Success) {
-            Write-Host " 依存関係を解決できません:" -ForegroundColor Red
-            foreach ($message in $resolution.Errors) {
-                Write-Host "   $message" -ForegroundColor Red
-            }
-            Write-Host ""
-            Write-Host " 何かキーを押してメニューに戻ります..."
-            [Console]::ReadKey($true) | Out-Null
-            [Console]::CursorVisible = $false
-            $State.NeedRedraw = $true
-            return
-        }
-
-        $seen = @{}
-        foreach ($dep in $resolution.Order) {
-            if ($seen[$dep]) { continue }
-            $seen[$dep] = $true
-            $depPkg = Get-PackageByShortName -ShortName $dep -Packages $State.Packages
-            if ($depPkg) {
-                $depStatus = Get-ComponentStatus -Manifest $State.Manifest -InstallDir $State.InstallDir -PackageConfig $depPkg -PackagesDir $State.PackagesDir
-                if ($depStatus -ne "Installed" -and $depStatus -ne "Updateable") {
-                    $resolvedInstall.Add($depPkg)
-                }
-            }
-        }
-
-        Write-Host " インストール:"
-        foreach ($item in $resolvedInstall) {
-            Write-Host "   + $($item.Name)"
-        }
-        Write-Host ""
-    }
-
-    if ($toReinstall.Count -gt 0) {
-        Write-Host " 再インストール:"
-        foreach ($item in $toReinstall) {
-            Write-Host "   ~ $($item.Name)"
-        }
-        Write-Host ""
-    }
-
-    if ($toUninstall.Count -gt 0) {
-        Write-Host " アンインストール:"
-        foreach ($item in $toUninstall) {
-            Write-Host "   - $($item.Name)"
-        }
-        Write-Host ""
-    }
-
-    Write-Host " 続行しますか? [Y/n/Esc] " -NoNewline
-    $confirmed = $false
-    while ($true) {
-        $key = [Console]::ReadKey($true)
-        if ($key.Key -eq "Escape" -or $key.KeyChar -eq 'n' -or $key.KeyChar -eq 'N') {
-            Write-Host "n"
-            break
-        } elseif ($key.Key -eq "Enter" -or $key.KeyChar -eq 'y' -or $key.KeyChar -eq 'Y') {
-            Write-Host "y"
-            $confirmed = $true
-            break
-        }
-    }
-    if (-not $confirmed) {
+    if (-not (Confirm-ChangePlan)) {
         Write-Host ""
         Write-Host "キャンセルしました"
         Start-Sleep -Milliseconds 500
-        [Console]::CursorVisible = $false
-        $State.NeedRedraw = $true
+        Resume-MenuConsole -State $State -InputModeState $InputModeState
         return
     }
 
     Write-Host ""
 
-    # インストール実行 (-SkipDeps: 依存は上で展開済み)
-    # 依存先が失敗した場合、それを必要とするコンポーネントは実行せずスキップする
-    $failedShortNames = @{}
-    if ($resolvedInstall.Count -gt 0) {
-        foreach ($item in $resolvedInstall) {
-            $deps = if ($item.ContainsKey("DependsOn")) { @($item.DependsOn) } else { @() }
-            $blockedBy = @($deps | Where-Object { $failedShortNames.ContainsKey($_) })
-            if ($blockedBy.Count -gt 0) {
-                $failedShortNames[$item.ShortName] = $true
-                Write-Host ""
-                Write-Host "  スキップ: $($item.Name) (依存先の失敗: $($blockedBy -join ', '))" -ForegroundColor Yellow
-                continue
-            }
-
-            $r = Install-Component `
-                -ShortName $item.ShortName `
-                -Packages $State.Packages `
-                -InstallDir $State.InstallDir `
-                -ScriptDir $State.ScriptDir `
-                -Manifest $State.Manifest `
-                -SkipDeps
-            if ($r) {
-                if (-not (Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest)) {
-                    Write-Host " マニフェストを保存できないため、適用を中止します" -ForegroundColor Red
-                    break
-                }
-            } else {
-                $failedShortNames[$item.ShortName] = $true
-            }
-        }
-    }
-
-    # 再インストール実行
-    # Update-Component は失敗時もマニフェストから対象を外すため、成否によらず保存する
-    foreach ($item in $toReinstall) {
-        $r = Update-Component `
-            -ShortName $item.ShortName `
+    # 適用中はスリープ / スクリーンセーバーを抑止する
+    Start-BusySignal
+    try {
+        $outcome = Invoke-ComponentChangePlan `
+            -Plan $plan `
             -Packages $State.Packages `
             -InstallDir $State.InstallDir `
             -ScriptDir $State.ScriptDir `
             -Manifest $State.Manifest
-        if (-not $r) {
-            $failedShortNames[$item.ShortName] = $true
-        }
-        if (-not (Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest)) {
-            Write-Host " マニフェストを保存できないため、適用を中止します" -ForegroundColor Red
-            break
-        }
+
+        Sync-EnvironmentVariables -VariableNames @("PATH", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
+
+        Show-ChangeOutcome -Outcome $outcome
+    } finally {
+        Stop-BusySignal
+        # 失敗しても状態表示とコンソールの復元は必ず行う
+        Update-MenuStatuses -State $State -Plan $plan
     }
-
-    # Legacy アイテムをアンインストールできるよう、マニフェストに仮エントリを登録する
-    # (Test-ComponentInstalled が false を返して早期リターンするのを防ぐ)
-    foreach ($item in $toUninstall) {
-        if ($State.Statuses[$item.ShortName] -eq "Legacy") {
-            $pathDirs = if ($item.ContainsKey("PathDirs")) { @($item.PathDirs) } else { @() }
-            $envVars  = if ($item.ContainsKey("EnvVars"))  { $item.EnvVars }     else { @{} }
-            $version  = if ($item.ContainsKey("Version"))  { $item.Version }     else { "" }
-            Add-ComponentToManifest `
-                -Manifest $State.Manifest `
-                -ShortName $item.ShortName `
-                -Version $version `
-                -ArchiveFile "(legacy)" `
-                -Files @() `
-                -PathDirs $pathDirs `
-                -EnvVars $envVars
-        }
-    }
-
-    # アンインストール実行 (依存逆順)
-    if ($toUninstall.Count -gt 0) {
-        $uninstallShortNames = @($toUninstall | ForEach-Object { $_.ShortName })
-        $orderedShortNames = @(Get-UninstallOrder -ShortNames $uninstallShortNames -Packages $State.Packages -Manifest $State.Manifest)
-        $ordered = @()
-        foreach ($shortName in $orderedShortNames) {
-            $ordered += @($toUninstall | Where-Object { $_.ShortName -eq $shortName })
-        }
-
-        foreach ($pkg in $ordered) {
-            $r = Uninstall-Component `
-                -ShortName $pkg.ShortName `
-                -Packages $State.Packages `
-                -InstallDir $State.InstallDir `
-                -ScriptDir $State.ScriptDir `
-                -Manifest $State.Manifest `
-                -Force
-            if ($r) {
-                if (-not (Write-Manifest -InstallDir $State.InstallDir -Manifest $State.Manifest)) {
-                    Write-Host " マニフェストを保存できないため、適用を中止します" -ForegroundColor Red
-                    break
-                }
-            }
-        }
-    }
-
-    Sync-EnvironmentVariables -VariableNames @("PATH", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
 
     Write-Host ""
-    Write-Host " 完了しました。何かキーを押してメニューに戻ります..."
+    Write-Host " 何かキーを押してメニューに戻ります..."
     [Console]::ReadKey($true) | Out-Null
 
-    # ステータスとチェック状態をリフレッシュ
+    Resume-MenuConsole -State $State -InputModeState $InputModeState
+}
+
+# 適用内容を表示する
+function Show-ChangePlan {
+    param([PSCustomObject]$Plan)
+
+    Write-Host ""
+    Write-Host "=== 適用内容の確認 ==="
+    Write-Host ""
+
+    if ($Plan.Install.Count -gt 0) {
+        Write-Host " インストール:"
+        foreach ($entry in $Plan.Install) {
+            Write-Host "   + $($entry.Name)"
+        }
+        Write-Host ""
+    }
+
+    if ($Plan.Reinstall.Count -gt 0) {
+        Write-Host " 再インストール:"
+        foreach ($entry in $Plan.Reinstall) {
+            Write-Host "   ~ $($entry.Name)"
+        }
+        Write-Host ""
+    }
+
+    if ($Plan.Uninstall.Count -gt 0) {
+        Write-Host " アンインストール:"
+        foreach ($entry in $Plan.Uninstall) {
+            Write-Host "   - $($entry.Name)"
+        }
+        Write-Host ""
+    }
+}
+
+# 続行するかを確認する
+function Confirm-ChangePlan {
+    Write-Host " 続行しますか? [Y/n/Esc] " -NoNewline
+    while ($true) {
+        $key = [Console]::ReadKey($true)
+        if ($key.Key -eq "Escape" -or $key.KeyChar -eq 'n' -or $key.KeyChar -eq 'N') {
+            Write-Host "n"
+            return $false
+        }
+        if ($key.Key -eq "Enter" -or $key.KeyChar -eq 'y' -or $key.KeyChar -eq 'Y') {
+            Write-Host "y"
+            return $true
+        }
+    }
+}
+
+# 適用結果を表示する
+function Show-ChangeOutcome {
+    param([PSCustomObject]$Outcome)
+
+    Write-Host ""
+    Write-Host "=== 適用結果 ==="
+    Write-Host ""
+
+    foreach ($result in $Outcome.Results) {
+        $color = switch ($result.Status) {
+            "Failed"  { "Red" }
+            "Skipped" { "Yellow" }
+            "Aborted" { "Red" }
+            default   { "Green" }
+        }
+        $text = "   $($result.Status): $($result.ShortName)"
+        if (-not [string]::IsNullOrWhiteSpace($result.Message)) {
+            $text += " - $($result.Message)"
+        }
+        Write-Host $text -ForegroundColor $color
+
+        foreach ($warning in $result.Warnings) {
+            Write-Host "     警告: $warning" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host ""
+    if ($Outcome.Aborted) {
+        Write-Host " 適用を中止しました。完了済みの操作は上記のとおりです。" -ForegroundColor Red
+    } elseif ($Outcome.Success) {
+        Write-Host " 完了しました。" -ForegroundColor Green
+    } else {
+        Write-Host " 一部の操作が完了しませんでした。" -ForegroundColor Yellow
+    }
+}
+
+# ステータスとチェック状態を取り直す
+function Update-MenuStatuses {
+    param(
+        [hashtable]$State,
+        [PSCustomObject]$Plan
+    )
+
     foreach ($item in $State.Items) {
         $State.Statuses[$item.ShortName] = Get-ComponentStatus `
             -Manifest $State.Manifest `
@@ -1032,12 +951,11 @@ function Apply-CheckedState {
     }
 
     foreach ($item in $State.Items) {
-        $status = $State.Statuses[$item.ShortName]
         Set-MenuSelectionState `
             -Checked $State.Checked `
             -Reinstall $State.Reinstall `
             -ShortName $item.ShortName `
-            -Status $status `
+            -Status $State.Statuses[$item.ShortName] `
             -IsDisabled $State.Disabled[$item.ShortName] `
             -HasAnyInstalled $true `
             -IsDefaultChecked $false
@@ -1045,11 +963,19 @@ function Apply-CheckedState {
 
     # アンインストール対象だったアイテムは、操作結果にかかわらず強制 OFF
     # (Legacy 状態でファイルが残っていても、ユーザーの意図は「外す」なので再チェックしない)
-    foreach ($item in $toUninstall) {
-        $State.Checked[$item.ShortName] = $false
+    foreach ($entry in $Plan.Uninstall) {
+        $State.Checked[$entry.ShortName] = $false
     }
+}
 
-    # メニュー復帰前にマウス入力モードを再有効化
+# メニュー表示へ戻る前に、コンソールの入力モードとカーソル状態を復元する
+# キャンセル時・失敗時にも必ず通す
+function Resume-MenuConsole {
+    param(
+        [hashtable]$State,
+        [hashtable]$InputModeState
+    )
+
     $newInputModeState = Enable-ConsoleMouseInput
     if ($newInputModeState.Enabled) {
         $InputModeState.Handle = $newInputModeState.Handle
@@ -1190,27 +1116,19 @@ function Invoke-MenuLoop {
         [string]$ScriptDir
     )
 
-    if (-not (Test-Path $InstallDir)) {
-        New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-    }
+    # 導入先の作成、マニフェストの読み込み、Legacy 検出は State が担当する
+    $initialized = Initialize-ComponentManifest -InstallDir $InstallDir -Packages $Packages
+    $manifest = $initialized.Manifest
 
-    $manifest = Read-Manifest -InstallDir $InstallDir
-
-    # レガシーインストール検出
-    $manifestPath = Get-ManifestPath -InstallDir $InstallDir
-    if (-not (Test-Path $manifestPath) -and (Test-Path $InstallDir)) {
-        $existingFiles = Get-ChildItem -Path $InstallDir -File -ErrorAction SilentlyContinue
-        if ($existingFiles -and $existingFiles.Count -gt 0) {
-            Write-Host ""
-            Write-Host "既存のインストールを検出しました (マニフェストなし)" -ForegroundColor Cyan
-            $manifest = Initialize-LegacyManifest -InstallDir $InstallDir -Packages $Packages
-            if (Write-Manifest -InstallDir $InstallDir -Manifest $manifest) {
-                Write-Host "マニフェストを生成しました" -ForegroundColor Green
-            } else {
-                Write-Host "マニフェストの保存に失敗しました" -ForegroundColor Red
-            }
-            Start-Sleep -Seconds 1
+    if ($initialized.LegacyDetected) {
+        Write-Host ""
+        Write-Host "既存のインストールを検出しました (マニフェストなし)" -ForegroundColor Cyan
+        if ($initialized.Saved) {
+            Write-Host "マニフェストを生成しました" -ForegroundColor Green
+        } else {
+            Write-Host "マニフェストの保存に失敗しました" -ForegroundColor Red
         }
+        Start-Sleep -Seconds 1
     }
 
     $state = Initialize-MenuState `

@@ -152,7 +152,7 @@ GitHub Copilot CLI は、ターミナルから GitHub Copilot を利用するた
 - **プロジェクト**: [github/copilot-cli](https://github.com/github/copilot-cli)
 - **前提条件**: PowerShell 6 以上、GitHub Copilot の有効な契約
 
-Copilot CLI は一括インストールでは既定で選択されません。コンポーネントマネージャーで選択して導入し、初回起動時に `copilot login` または CLI 内の `/login` で認証してください。
+Copilot CLI は既定では選択されていません。コンポーネントマネージャーで選択して導入し、初回起動時に `copilot login` または CLI 内の `/login` で認証してください。
 
 #### glab について
 
@@ -331,21 +331,17 @@ Space キーで選択状態を切り替えます。未インストール項目�
 より詳細な制御が必要な場合は、PowerShell スクリプトを直接実行できます。
 
 ```powershell
-# ファイル抽出のみ
-.\subscripts\Setup-Bin.ps1 -Extract
-
-# インストール (抽出 + PATH 追加)
-.\subscripts\Setup-Bin.ps1 -Install
-
-# 完全アンインストール (フォルダとそこを指す参照を削除)
-.\subscripts\Setup-Bin.ps1 -Uninstall -InstallDir "$env:ProgramData\$env:USERNAME\devbin-win\bin"
-
 # 対話型コンポーネントマネージャー
 .\subscripts\Setup-Bin.ps1 -Manage
 
 # カスタムインストール先
-.\subscripts\Setup-Bin.ps1 -Install -InstallDir "C:\MyTools"
+.\subscripts\Setup-Bin.ps1 -Manage -InstallDir "C:\MyTools"
+
+# 完全アンインストール (フォルダとそこを指す参照を削除)
+.\subscripts\Setup-Bin.ps1 -Uninstall -InstallDir "$env:ProgramData\$env:USERNAME\devbin-win\bin"
 ```
+
+一括導入専用のモード (`-Extract` / `-Install`) は廃止しました。すべてを導入する場合は、コンポーネントマネージャーで全選択してください。
 
 ### 利用可能なオプション
 

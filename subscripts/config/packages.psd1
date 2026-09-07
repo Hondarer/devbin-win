@@ -479,7 +479,6 @@ endlocal
                     Arguments = @("-InstallDir", "<InstallDir>")
                 }
             )
-            RunPostInstallInBatch = $true
             DetectFiles = @("pstools\PsExec.exe", "pstools\PsPing.exe")
             DefaultChecked = $true
         },

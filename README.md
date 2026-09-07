@@ -294,7 +294,7 @@ from [github/copilot-cli](https://github.com/github/copilot-cli)
 - [/releases/tag/v1.0.81](https://github.com/github/copilot-cli/releases/tag/v1.0.81)
     - [copilot-win32-x64.zip](https://github.com/github/copilot-cli/releases/download/v1.0.81/copilot-win32-x64.zip)
 
-Windows 版は PowerShell 6 以上が必要です。devbin-win では PowerShell 7 を依存コンポーネントとして導入します。Copilot CLI は一括インストールでは既定で選択されず、コンポーネントマネージャーから選択して導入できます。利用には GitHub Copilot の契約と初回認証 (`copilot login`) が必要です。
+Windows 版は PowerShell 6 以上が必要です。devbin-win では PowerShell 7 を依存コンポーネントとして導入します。Copilot CLI は既定では選択されていないため、コンポーネントマネージャーで選択して導入してください。利用には GitHub Copilot の契約と初回認証 (`copilot login`) が必要です。
 
 ### GitLab CLI
 

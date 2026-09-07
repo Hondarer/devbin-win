@@ -18,6 +18,7 @@ $script:DevbinSourceFiles = @(
     "Catalog\PipPackage.ps1"
     "State\Manifest.ps1"
     "State\ComponentStatus.ps1"
+    "Install\ComponentChangePlan.ps1"
 )
 
 foreach ($relativePath in $script:DevbinSourceFiles) {
@@ -59,9 +60,13 @@ Export-ModuleMember -Function @(
     'Test-ComponentInstalled',
     'Test-ComponentFiles',
     'Initialize-LegacyManifest',
+    'Initialize-ComponentManifest',
     'Compare-PackageVersion',
     'Test-ComponentUpdateable',
     'Get-ComponentStatus',
     'Get-DirectorySnapshot',
-    'Get-FileSnapshotDiff'
+    'Get-FileSnapshotDiff',
+    # Install
+    'New-ComponentChangePlan',
+    'Invoke-ComponentChangePlan'
 )

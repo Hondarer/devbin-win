@@ -44,6 +44,7 @@ package "処理層" {
   [Setup-Common.psm1] as common
   [Devbin/Catalog] as catalog
   [Devbin/State] as state
+  [Devbin/Install] as plan
   [Setup-Components.psm1] as components
   [Setup-Menu.psm1] as menu
 }
@@ -55,10 +56,11 @@ package "実行結果" {
 
 config --> catalog : 読み込みと整合性検査
 catalog --> main : パッケージ定義
-main --> strategies : 戦略実行 (一括)
 main --> menu : 対話型メニュー起動
-menu --> components : コンポーネント操作
-components --> catalog : 依存解決・保存名の判定
+menu --> plan : 計画の作成と適用
+plan --> components : コンポーネント操作
+plan --> catalog : 依存解決
+components --> catalog : 保存名と版の判定
 components --> strategies : 戦略実行 (個別)
 components --> state : 状態管理
 strategies --> common : 共通関数呼び出し
@@ -206,15 +208,26 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 
 ### 概要
 
-コンポーネント単位のインストール・アンインストール・更新と、依存関係の解決を担います。
+コンポーネント単位のインストール・アンインストール・更新を担います。依存関係の解決は Devbin/Catalog が行います。
 
 ### 主要関数
 
-- `Resolve-Dependencies`: DependsOn を再帰解決し、トポロジカルソート順で返す (循環検出付き)
-- `Get-Dependents`: 指定コンポーネントに依存するインストール済みコンポーネントを返す
-- `Install-Component`: 依存を解決してコンポーネントをインストール
-- `Uninstall-Component`: 依存元を確認してコンポーネントをアンインストール
+- `Install-Component`: コンポーネントを取得・展開し、環境変数と PATH を設定してマニフェストに登録する
+- `Uninstall-Component`: 依存元を確認してコンポーネントを削除し、孤立した隠し依存も片付ける
 - `Update-Component`: コンポーネントを再インストール (更新)
+
+## 操作計画 (Devbin/Install)
+
+### 概要
+
+導入・再導入・削除を 1 本の経路に集約します。UI は計画の表示と確認だけを行い、依存解決もマニフェストの書き込みも行いません。
+
+### 主要関数
+
+- `New-ComponentChangePlan`: 定義・現在状態・選択から操作順を作る。導入は依存先から、削除は依存元から並べ、残るパッケージが必要とする依存先は削除対象にしない。依存の欠落・循環はここで失敗として返す
+- `Invoke-ComponentChangePlan`: 確認画面に表示した計画をそのまま実行する。操作ごとにマニフェストを保存し、保存に失敗した時点で適用を止める。依存先が失敗した場合、それを必要とするコンポーネントはスキップする
+
+操作結果は `Status` / `ShortName` / `Message` / `Warnings` を持つオブジェクトで返します。`Status` は `Installed` / `Reinstalled` / `Uninstalled` / `Failed` / `Skipped` / `Aborted` のいずれかです。バッチ全体の自動ロールバックは行わず、完了済みの操作と失敗箇所を示します。
 
 ## CLI メニューモジュール (Setup-Menu.psm1)
 
@@ -232,7 +245,7 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 
 ### 概要
 
-パッケージ定義を読み込み、抽出戦略を実行するメインスクリプトです。
+引数を処理し、コンポーネントマネージャーの起動か製品の完全アンインストールへ振り分けます。一括導入専用のモード (`-Extract` / `-Install`) は廃止し、すべてを導入する操作はコンポーネントマネージャーの全選択に集約しました。
 
 ### 処理フロー
 
@@ -241,6 +254,8 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 caption Setup-Bin.ps1 処理フロー
 start
 :引数を解析;
+:モジュールをインポート;
+:実行コンテキストを作る;
 
 if (Uninstall?) then (yes)
   :Invoke-ProductUninstall を実行;
@@ -248,34 +263,18 @@ if (Uninstall?) then (yes)
 else (no)
 endif
 
-if (Manage?) then (yes)
-  :Setup-Menu.psm1 をインポート;
-  :Invoke-MenuLoop を実行;
+:packages.psd1 を読み込み、整合性を検査;
+
+if (定義に問題あり?) then (yes)
+  :問題を表示;
   stop
 else (no)
 endif
 
-:モジュールをインポート;
-:packages.psd1 を読み込み;
-:環境変数を同期;
-
-if (Install または Extract?) then (yes)
-  :クリーンアップ処理;
-  :bin ディレクトリを作成;
-
-  partition "パッケージ処理" {
-    repeat
-      :アーカイブファイルを検索;
-      :Invoke-ExtractStrategy を実行;
-    repeat while (次のパッケージ?)
-  }
-
-  if (Install?) then (yes)
-    :PATH に追加;
-    :環境変数を設定;
-    :マニフェストを生成;
-  else (no)
-  endif
+if (Manage?) then (yes)
+  :Setup-Menu.psm1 をインポート;
+  :環境変数を同期;
+  :Invoke-MenuLoop を実行;
 else (no)
   :使用方法を表示;
 endif
@@ -285,34 +284,13 @@ stop
 
 ### 主要機能
 
-#### パッケージ処理
+#### コンポーネントマネージャーの起動
 
-```powershell
-foreach ($packageConfig in $Packages) {
-    $packageName = $packageConfig.Name
-    $archivePattern = $packageConfig.ArchivePattern
+`-Manage` では、環境変数をレジストリから同期したうえで `Invoke-MenuLoop` を呼びます。導入・再導入・削除の実処理は `New-ComponentChangePlan` と `Invoke-ComponentChangePlan` が担当します。
 
-    # packages フォルダ内でアーカイブファイルを検索
-    $archiveFiles = Get-ChildItem -Path $packagesDir -File |
-        Where-Object { $_.Name -match $archivePattern }
+#### 完全アンインストール
 
-    if ($archiveFiles.Count -eq 0) {
-        Write-Host "Warning: Archive for $packageName not found" -ForegroundColor Yellow
-        continue
-    }
-
-    # パッケージを抽出
-    $result = Invoke-ExtractStrategy `
-        -PackageConfig $packageConfig `
-        -ArchiveFile $archiveFiles[0].FullName `
-        -BinDir $InstallDir `
-        -ScriptDir $ScriptDir
-
-    if ($result) {
-        $successCount++
-    }
-}
-```
+`-Uninstall` は `Invoke-ProductUninstall` への薄い入口です。対象ルートが `%ProgramData%\%USERNAME%\devbin-win` でない場合は、何も削除せず拒否します。終了コードは成功が 0、キャンセルが 2、拒否と失敗が 1 です。
 
 ## ダウンロードスクリプト (Get-Packages.ps1)
 
