@@ -213,7 +213,7 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 ### 主要関数
 
 - `Read-Manifest`: マニフェストを読み込む (存在しなければ空を返す)
-- `Write-Manifest`: マニフェストを保存する (擬似アトミック)
+- `Write-Manifest`: 一時ファイルからマニフェストを置換する。失敗時は旧ファイルを保持し、失敗を返す
 - `Add-ComponentToManifest`: コンポーネント記録を追加
 - `Remove-ComponentFromManifest`: コンポーネント記録を削除
 - `Test-ComponentInstalled`: マニフェスト上のインストール状態を確認
@@ -255,6 +255,8 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 - `Invoke-ComponentChangePlan`: 確認画面に表示した計画をそのまま実行する。操作ごとにマニフェストを保存し、保存に失敗した時点で適用を止める。依存先が失敗した場合、それを必要とするコンポーネントはスキップする
 
 操作結果は `Status` / `ShortName` / `Message` / `Warnings` を持つオブジェクトで返します。`Status` は `Installed` / `Reinstalled` / `Uninstalled` / `Failed` / `Skipped` / `Aborted` のいずれかです。バッチ全体の自動ロールバックは行わず、完了済みの操作と失敗箇所を示します。
+
+新規導入と再インストールは合わせて依存先から実行します。再インストール時も不足した Hidden 依存を計画に含め、Broken な依存先は再インストールで修復します。依存先の失敗によるスキップは新規導入・再インストールの両方に適用します。削除の可否はマニフェストだけでなく、選択されている新規導入予定と Legacy の依存元も含めて判定します。
 
 ## CLI 対話型メニュー (Devbin/Menu)
 
@@ -341,7 +343,7 @@ packages.psd1 からダウンロード URL を読み込み、パッケージを�
 3. DownloadHeaders が指定されていれば HTTP ヘッダーとして付与してファイルをダウンロード
 4. 対象パッケージの ArchivePattern に一致する過去バージョンのファイルと、不要になった元ファイル名を削除
 5. .exe ファイルをブロック解除
-6. `NpmInstall` 定義については `Setup-NpmCache.psm1` を呼び出し、ShortName ごとに依存木、`package-lock.json`、`npm-cache-manifest.json` を `packages/npm-packages/<ShortName>/` へ保存
+6. `NpmInstall` 定義については `Devbin/Packages/Npm/DevbinNpm.psm1` を呼び出し、ShortName ごとに依存木、`package-lock.json`、`npm-cache-manifest.json` を `packages/npm-packages/<ShortName>/` へ保存
 
 `NpmInstall` の導入時は manifest、lock、全 archive の SHA-512 を検証したうえで、一時 npm cache に archive を登録します。lockfile の `resolved` と `integrity` をローカル archive に差し替えた一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim をインストール先へマージします。キャッシュ不足時だけ `Get-Packages.ps1 -PackageShortNames` の自動実行を試み、取得後も不完全な場合は導入を開始しません。
 

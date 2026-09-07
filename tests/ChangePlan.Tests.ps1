@@ -93,6 +93,25 @@ Describe "New-ComponentChangePlan" {
         ($plan.Errors -join " ") | Should Match "base"
     }
 
+    It "新規導入する依存元が必要とする導入済み依存先を削除しない" {
+        $state = New-TestPlanState -Packages $packages `
+            -Manifest (New-TestManifest -Components @{ base = (New-TestManifestEntry) }) `
+            -Checked @{ mid = $true } -Statuses @{ base = "Installed" }
+        $plan = Invoke-TestPlan -State $state
+
+        $plan.Success | Should Be $false
+        ($plan.Errors -join " ") | Should Match "base"
+    }
+
+    It "Legacy の依存元が必要とする依存先を削除しない" {
+        $state = New-TestPlanState -Packages $packages `
+            -Checked @{ mid = $true } -Statuses @{ base = "Legacy"; mid = "Legacy" }
+        $plan = Invoke-TestPlan -State $state
+
+        $plan.Success | Should Be $false
+        ($plan.Errors -join " ") | Should Match "base"
+    }
+
     It "依存先が未チェックかつ未インストールなら失敗として返す" {
         $state = New-TestPlanState -Packages $packages -Checked @{ leaf = $true }
         $plan = Invoke-TestPlan -State $state
@@ -124,6 +143,30 @@ Describe "New-ComponentChangePlan" {
         $plan = Invoke-TestPlan -State $state
 
         (@($plan.Reinstall | ForEach-Object { $_.ShortName }) -join ",") | Should Be "base,mid"
+    }
+
+    It "再導入でも不足した Hidden 依存を計画に含める" {
+        $packagesWithHidden = @(
+            (New-TestPackage -ShortName "app" -DependsOn @("hidden")),
+            (New-TestPackage -ShortName "hidden" -Extra @{ Hidden = $true })
+        )
+        $state = New-TestPlanState -Packages $packagesWithHidden -Checked @{ app = $true } `
+            -Statuses @{ app = "Updateable" } -Reinstall @{ app = $true }
+        $plan = Invoke-TestPlan -State $state
+        $plan.Success | Should Be $true
+        $plan.Install.Count | Should Be 1
+        $plan.Install[0].ShortName | Should Be "hidden"
+        $plan.Reinstall[0].ShortName | Should Be "app"
+    }
+
+    It "壊れた依存先を新規導入と再導入に重複登録しない" {
+        $state = New-TestPlanState -Packages $packages -Checked @{ base = $true; mid = $true } `
+            -Statuses @{ base = "Broken" }
+        $plan = Invoke-TestPlan -State $state
+        $plan.Install.Count | Should Be 1
+        $plan.Install[0].ShortName | Should Be "mid"
+        $plan.Reinstall.Count | Should Be 1
+        $plan.Reinstall[0].ShortName | Should Be "base"
     }
 
     It "Legacy の削除対象には印を付ける" {
@@ -197,6 +240,32 @@ Describe "Invoke-ComponentChangePlan" {
             $outcome.Results[0].Status | Should Be "Failed"
             $outcome.Results[1].Status | Should Be "Skipped"
             $outcome.Results[1].Message | Should Match "base"
+        } finally {
+            Remove-TestDirectory -Path $installDir
+        }
+    }
+
+    It "依存先の修復失敗後は新規導入も再導入も実行しない" {
+        $installDir = New-TestDirectory
+        try {
+            InModuleScope Devbin {
+                Mock Install-Component { throw "依存先の失敗後に導入してはいけません" }
+                Mock Update-Component {
+                    if ($ShortName -ne "base") { throw "依存先の失敗後に再導入してはいけません" }
+                    return $false
+                }
+            }
+            foreach ($action in @("Install", "Reinstall")) {
+                $plan = New-TestChangePlan -Reinstall @((New-TestEntry -Action "Reinstall" -ShortName "base"))
+                $plan.$action += New-TestEntry -Action $action -ShortName "mid"
+                $outcome = Invoke-ComponentChangePlan -Plan $plan -Packages $packages `
+                    -InstallDir $installDir -ScriptDir (Get-DevbinSubscriptsDir) -Manifest (New-TestManifest)
+                $outcome.Success | Should Be $false
+                $outcome.Results.Count | Should Be 2
+                $outcome.Results[0].ShortName | Should Be "base"
+                $outcome.Results[0].Status | Should Be "Failed"
+                $outcome.Results[1].Status | Should Be "Skipped"
+            }
         } finally {
             Remove-TestDirectory -Path $installDir
         }

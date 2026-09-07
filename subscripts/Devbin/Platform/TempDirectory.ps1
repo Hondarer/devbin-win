@@ -25,13 +25,14 @@ function Remove-DevbinTempDirectory {
 
     try {
         $fullPath = [System.IO.Path]::GetFullPath($Path)
-        $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+        $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\', '/')
     } catch {
         Write-Host "Warning: 一時ディレクトリのパスを解決できません: $Path" -ForegroundColor Yellow
         return
     }
 
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if ($fullPath.TrimEnd('\', '/') -eq $tempRoot -or
+        -not $fullPath.StartsWith(($tempRoot + [System.IO.Path]::DirectorySeparatorChar), [System.StringComparison]::OrdinalIgnoreCase)) {
         Write-Host "Warning: 一時領域の外を指しているため削除しません: $fullPath" -ForegroundColor Yellow
         return
     }

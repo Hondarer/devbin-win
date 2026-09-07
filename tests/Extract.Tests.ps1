@@ -189,6 +189,23 @@ Describe "Invoke-ExtractStrategy" {
     }
 }
 
+Describe "パッケージ管理戦略の既定キャッシュ" {
+    It "npm と pip はリポジトリ直下の packages を使う" {
+        InModuleScope Devbin {
+            Mock Test-Path { return $true }
+            Mock Invoke-NpmInstallFromCache {
+                return ($PackagesDir -eq (Join-Path $script:DevbinRepositoryRoot "packages"))
+            }
+            (Invoke-NpmInstallStrategy -BinDir "C:\test" -Config @{}) | Should Be $true
+            Mock Test-PipWheelPackages { return @("missing") }
+            (Invoke-PipInstallStrategy -BinDir "C:\test" -Config @{ Name = "app"; PipPackage = "app" }) | Should Be $false
+            Assert-MockCalled Test-PipWheelPackages -Times 1 -Exactly -ParameterFilter {
+                $DirectoryPath -eq (Join-Path $script:DevbinRepositoryRoot "packages\pip-packages")
+            }
+        }
+    }
+}
+
 Describe "抽出戦略の分割" {
 
     $subscriptsDir = Get-DevbinSubscriptsDir

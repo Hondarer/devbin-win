@@ -19,6 +19,28 @@ Describe "Write-Manifest" {
         }
     }
 
+    It "既存ファイルを置換できない場合は false を返して旧内容を保持する" {
+        $root = New-TestDirectory
+        $lockedFile = $null
+        try {
+            $old = New-TestManifest -Components @{ app = (New-TestManifestEntry -Version "1.0.0") }
+            (Write-Manifest -InstallDir $root -Manifest $old) | Should Be $true
+            $path = Get-ManifestPath -InstallDir $root
+            $lockedFile = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            $new = New-TestManifest -Components @{ app = (New-TestManifestEntry -Version "2.0.0") }
+            (Write-Manifest -InstallDir $root -Manifest $new) | Should Be $false
+            (Read-Manifest -InstallDir $root).components.app.version | Should Be "1.0.0"
+            (Test-Path "$path.tmp") | Should Be $false
+            $lockedFile.Dispose()
+            $lockedFile = $null
+            (Write-Manifest -InstallDir $root -Manifest $new) | Should Be $true
+            (Read-Manifest -InstallDir $root).components.app.version | Should Be "2.0.0"
+        } finally {
+            if ($lockedFile) { $lockedFile.Dispose() }
+            Remove-TestDirectory -Path $root
+        }
+    }
+
     It "保存に失敗すると false を返す" {
         $root = New-TestDirectory
         try {

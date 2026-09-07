@@ -95,6 +95,12 @@ function New-ComponentChangePlan {
     $uninstallShortNames = @($toUninstall | ForEach-Object { [string]$_.ShortName })
     foreach ($item in $toUninstall) {
         $dependents = @(Get-Dependents -ShortName $item.ShortName -Packages $Packages -Manifest $Manifest)
+        # 新規導入予定と Legacy はマニフェストにないため、選択状態も確認する。
+        $dependents += @($Items | Where-Object {
+            $Checked[$_.ShortName] -and $_.ContainsKey("DependsOn") -and
+            (@($_.DependsOn) -contains $item.ShortName)
+        } | ForEach-Object { [string]$_.ShortName })
+        $dependents = @($dependents | Select-Object -Unique)
         $stillNeededBy = @($dependents | Where-Object { $uninstallShortNames -notcontains $_ })
         foreach ($dependent in $stillNeededBy) {
             $dependentPackage = Get-PackageByShortName -ShortName $dependent -Packages $Packages
@@ -105,8 +111,10 @@ function New-ComponentChangePlan {
 
     # 導入順: 依存先から
     $installEntries = @()
-    if ($toInstall.Count -gt 0) {
-        $resolution = Resolve-DependencyOrder -ShortNames @($toInstall | ForEach-Object { $_.ShortName }) -Packages $Packages
+    $reinstallEntries = @()
+    $reinstallNames = @($toReinstall | ForEach-Object { $_.ShortName })
+    if (($toInstall.Count + $toReinstall.Count) -gt 0) {
+        $resolution = Resolve-DependencyOrder -ShortNames @(($toInstall + $toReinstall) | ForEach-Object { $_.ShortName }) -Packages $Packages
         if (-not $resolution.Success) {
             $errors += $resolution.Errors
         } else {
@@ -118,21 +126,20 @@ function New-ComponentChangePlan {
                 $package = Get-PackageByShortName -ShortName $shortName -Packages $Packages
                 if (-not $package) { continue }
 
-                $status = Get-ComponentStatus `
+                $status = if ($Statuses.ContainsKey($shortName)) { $Statuses[$shortName] } else { Get-ComponentStatus `
                     -Manifest $Manifest `
                     -InstallDir $InstallDir `
                     -PackageConfig $package `
-                    -PackagesDir $PackagesDir
-                if ($status -eq "Installed" -or $status -eq "Updateable") { continue }
+                    -PackagesDir $PackagesDir }
+                if ($reinstallNames -contains $shortName -or $status -eq "Broken") {
+                    $reinstallEntries += New-ComponentChangeEntry -Action "Reinstall" -PackageConfig $package
+                    continue
+                }
+                if ($installedStatuses -contains $status) { continue }
 
                 $installEntries += New-ComponentChangeEntry -Action "Install" -PackageConfig $package
             }
         }
-    }
-
-    $reinstallEntries = @()
-    foreach ($item in $toReinstall) {
-        $reinstallEntries += New-ComponentChangeEntry -Action "Reinstall" -PackageConfig $item
     }
 
     # 削除順: 依存元から。残るパッケージが必要とする依存先は対象に含まれない
@@ -182,7 +189,15 @@ function Invoke-ComponentChangePlan {
     $aborted = $false
     $abortMessage = "マニフェストを保存できませんでした"
 
-    foreach ($entry in $Plan.Install) {
+    # 新規導入と再導入を一緒に並べる。修復前の依存先で新規導入しない。
+    $deploymentEntries = @($Plan.Install) + @($Plan.Reinstall)
+    $deploymentOrder = Resolve-DependencyOrder -ShortNames @($deploymentEntries | ForEach-Object { $_.ShortName }) -Packages $Packages
+    if (-not $Plan.Success -or -not $deploymentOrder.Success) {
+        return [PSCustomObject]@{ Success = $false; Aborted = $true; Results = @() }
+    }
+    foreach ($shortName in $deploymentOrder.Order) {
+        $entry = $deploymentEntries | Where-Object { $_.ShortName -eq $shortName } | Select-Object -First 1
+        if (-not $entry) { continue }
         $package = Get-PackageByShortName -ShortName $entry.ShortName -Packages $Packages
         $deps = if ($package -and $package.ContainsKey("DependsOn")) { @($package.DependsOn) } else { @() }
         $blockedBy = @($deps | Where-Object { $failed.ContainsKey($_) })
@@ -196,52 +211,33 @@ function Invoke-ComponentChangePlan {
         }
 
         # 依存は計画側で展開済みのため -SkipDeps で実行する
-        $succeeded = Install-Component `
-            -ShortName $entry.ShortName `
-            -Packages $Packages `
-            -InstallDir $InstallDir `
-            -ScriptDir $ScriptDir `
-            -Manifest $Manifest `
-            -SkipDeps
-
-        if ($succeeded) {
-            if (-not (Write-Manifest -InstallDir $InstallDir -Manifest $Manifest)) {
-                $results += New-ComponentChangeResult -Status "Aborted" -ShortName $entry.ShortName -Message $abortMessage
-                $aborted = $true
-                break
-            }
-            $results += New-ComponentChangeResult -Status "Installed" -ShortName $entry.ShortName
+        if ($entry.Action -eq "Reinstall") {
+            $succeeded = Update-Component -ShortName $entry.ShortName -Packages $Packages `
+                -InstallDir $InstallDir -ScriptDir $ScriptDir -Manifest $Manifest
         } else {
-            $failed[$entry.ShortName] = $true
-            $results += New-ComponentChangeResult -Status "Failed" -ShortName $entry.ShortName -Message "インストールに失敗しました"
-        }
-    }
-
-    if (-not $aborted) {
-        foreach ($entry in $Plan.Reinstall) {
-            $succeeded = Update-Component `
+            $succeeded = Install-Component `
                 -ShortName $entry.ShortName `
                 -Packages $Packages `
                 -InstallDir $InstallDir `
                 -ScriptDir $ScriptDir `
-                -Manifest $Manifest
+                -Manifest $Manifest `
+                -SkipDeps
+        }
 
-            if (-not $succeeded) {
-                $failed[$entry.ShortName] = $true
-            }
-
-            # Update-Component は失敗時もマニフェストから対象を外すため、成否によらず保存する
+        # 再導入は失敗時にもマニフェストから対象を外すため、成否によらず保存する。
+        if ($succeeded -or $entry.Action -eq "Reinstall") {
             if (-not (Write-Manifest -InstallDir $InstallDir -Manifest $Manifest)) {
                 $results += New-ComponentChangeResult -Status "Aborted" -ShortName $entry.ShortName -Message $abortMessage
                 $aborted = $true
                 break
             }
-
-            if ($succeeded) {
-                $results += New-ComponentChangeResult -Status "Reinstalled" -ShortName $entry.ShortName
-            } else {
-                $results += New-ComponentChangeResult -Status "Failed" -ShortName $entry.ShortName -Message "再インストールに失敗しました"
-            }
+        }
+        if ($succeeded) {
+            $resultStatus = if ($entry.Action -eq "Reinstall") { "Reinstalled" } else { "Installed" }
+            $results += New-ComponentChangeResult -Status $resultStatus -ShortName $entry.ShortName
+        } else {
+            $failed[$entry.ShortName] = $true
+            $results += New-ComponentChangeResult -Status "Failed" -ShortName $entry.ShortName -Message "インストールに失敗しました"
         }
     }
 

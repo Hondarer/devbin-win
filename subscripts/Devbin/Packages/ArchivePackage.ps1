@@ -16,7 +16,8 @@ function Select-TargetPackages {
     $targets = @()
     $seen = @{}
 
-    foreach ($shortName in $ShortNames) {
+    # cmd 経由の powershell.exe -File はカンマ区切りを単一文字列として渡す。
+    foreach ($shortName in @($ShortNames | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() })) {
         if ([string]::IsNullOrWhiteSpace($shortName)) { continue }
         if ($seen.ContainsKey($shortName)) { continue }
 

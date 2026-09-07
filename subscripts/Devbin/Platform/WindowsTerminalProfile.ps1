@@ -39,13 +39,16 @@ function Get-TerminalSettings {
     param([string]$SettingsPath)
 
     $jsonContent = Get-Content -Path $SettingsPath -Raw -Encoding UTF8
-    $settings = $jsonContent | ConvertFrom-Json
+    $settings = ConvertFrom-JsonWithComments -JsonText $jsonContent
+    if ($null -eq $settings -or $settings -isnot [PSCustomObject]) {
+        throw "Windows Terminal settings must be a JSON object: $SettingsPath"
+    }
 
     if (-not $settings.profiles) {
-        $settings | Add-Member -MemberType NoteProperty -Name "profiles" -Value ([PSCustomObject]@{})
+        $settings | Add-Member -MemberType NoteProperty -Name "profiles" -Value ([PSCustomObject]@{}) -Force
     }
     if (-not $settings.profiles.list) {
-        $settings.profiles | Add-Member -MemberType NoteProperty -Name "list" -Value @()
+        $settings.profiles | Add-Member -MemberType NoteProperty -Name "list" -Value @() -Force
     }
 
     return $settings

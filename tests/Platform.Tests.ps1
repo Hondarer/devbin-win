@@ -36,6 +36,14 @@ Describe "New-DevbinTempDirectory / Remove-DevbinTempDirectory" {
         (Test-Path $outside) | Should Be $true
     }
 
+    It "一時領域のルート自体は削除しない" {
+        InModuleScope Devbin {
+            Mock Remove-Item { throw "ルートを削除してはいけません" }
+            Remove-DevbinTempDirectory -Path ([IO.Path]::GetTempPath())
+            Assert-MockCalled Remove-Item -Times 0 -Exactly
+        }
+    }
+
     It "空のパスを渡しても何も起きない" {
         { Remove-DevbinTempDirectory -Path "" } | Should Not Throw
     }
@@ -117,6 +125,38 @@ Describe "Get-ManagedUserPathValue (Platform への移動後)" {
             $result | Should Be ((Join-Path $installDir "a\bin") + ";C:\External\Tool")
         } finally {
             Remove-TestDirectory -Path $installDir
+        }
+    }
+}
+
+Describe "Windows Terminal の設定読み込み" {
+    It "コメントと URL を含む設定を読み込み既存プロファイルを保持する" {
+        $root = New-TestDirectory
+        try {
+            $path = Join-Path $root "settings.json"
+            [IO.File]::WriteAllText($path, '{ /* comment */ "profiles": { "list": [{ "name": "keep", "icon": "https://example.invalid/icon" }] } }')
+            $settings = Get-TerminalSettings -SettingsPath $path
+            $settings.profiles.list[0].name | Should Be "keep"
+            $settings.profiles.list[0].icon | Should Be "https://example.invalid/icon"
+            Save-TerminalSettings -Settings $settings -SettingsPath $path
+            (Get-TerminalSettings -SettingsPath $path).profiles.list[0].name | Should Be "keep"
+        } finally {
+            Remove-TestDirectory -Path $root
+        }
+    }
+
+    It "既存の空配列や null をエラーなく初期化する" {
+        $root = New-TestDirectory
+        try {
+            $path = Join-Path $root "settings.json"
+            foreach ($json in @('{"profiles":{"list":[]}}', '{"profiles":null}', '{}')) {
+                [IO.File]::WriteAllText($path, $json)
+                $settings = Get-TerminalSettings -SettingsPath $path -ErrorAction Stop
+                $settings.profiles.PSObject.Properties.Match("list").Count | Should Be 1
+                $settings.profiles.list.Count | Should Be 0
+            }
+        } finally {
+            Remove-TestDirectory -Path $root
         }
     }
 }

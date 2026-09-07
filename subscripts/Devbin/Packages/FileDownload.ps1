@@ -85,7 +85,7 @@ function Save-DownloadedFile {
             throw "Download failed"
         }
 
-        Move-Item -LiteralPath $temporaryPath -Destination $OutputPath -Force
+        Move-Item -LiteralPath $temporaryPath -Destination $OutputPath -Force -ErrorAction Stop
 
         $fileSizeMB = [math]::Round((Get-Item $OutputPath).Length / 1MB, 2)
         Write-Host "  $fileName download completed. (${fileSizeMB} MB)"

@@ -60,7 +60,7 @@ function Read-Manifest {
     }
 }
 
-# マニフェストを保存する (擬似アトミック: .tmp に書いてからリネーム)
+# マニフェストを保存する (.tmp に書いてから置換。失敗時は旧ファイルを保持)
 # 戻り値: 保存に成功したかどうか
 function Write-Manifest {
     param(
@@ -76,9 +76,10 @@ function Write-Manifest {
         [System.IO.File]::WriteAllText($tmpPath, $json, [System.Text.Encoding]::UTF8)
 
         if (Test-Path $manifestPath) {
-            Remove-Item $manifestPath -Force
+            [System.IO.File]::Replace($tmpPath, $manifestPath, [System.Management.Automation.Language.NullString]::Value)
+        } else {
+            [System.IO.File]::Move($tmpPath, $manifestPath)
         }
-        Move-Item $tmpPath $manifestPath -Force
         return $true
     } catch {
         Write-Host "Error: Failed to write manifest: $($_.Exception.Message)" -ForegroundColor Red

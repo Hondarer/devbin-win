@@ -20,6 +20,10 @@ Describe "Select-TargetPackages" {
         (@(Select-TargetPackages -Packages $packages -ShortNames @("b")) | ForEach-Object { $_.ShortName }) -join "," | Should Be "b"
     }
 
+    It "cmd から渡されるカンマ区切りも複数の名前として選択する" {
+        (@(Select-TargetPackages -Packages $packages -ShortNames @("a, b")) | ForEach-Object { $_.ShortName }) -join "," | Should Be "a,b"
+    }
+
     It "重複した指定はひとつにまとめる" {
         @(Select-TargetPackages -Packages $packages -ShortNames @("a", "a")).Count | Should Be 1
     }
@@ -151,6 +155,25 @@ Describe "Save-DownloadedFile" {
             (Save-DownloadedFile -Url "https://example.com/tool.zip" -OutputPath $outputPath) | Should Be $true
             (Get-Content $outputPath -Raw).Trim() | Should Be "original"
         } finally {
+            Remove-TestDirectory -Path $dir
+        }
+    }
+
+    It "配置に失敗した場合も取得失敗を返す" {
+        $dir = New-TestDirectory
+        $lockedFile = $null
+        try {
+            $outputPath = Join-Path $dir "tool.zip"
+            [IO.File]::WriteAllText($outputPath, "original")
+            $lockedFile = [IO.File]::Open($outputPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            InModuleScope Devbin {
+                Mock Invoke-WebRequest { [IO.File]::WriteAllText($OutFile, "downloaded") }
+            }
+            (Save-DownloadedFile -Url "https://example.invalid/tool.zip" -OutputPath $outputPath -Force) | Should Be $false
+            [IO.File]::ReadAllText($outputPath) | Should Be "original"
+            (Test-Path "$outputPath.download") | Should Be $false
+        } finally {
+            if ($lockedFile) { $lockedFile.Dispose() }
             Remove-TestDirectory -Path $dir
         }
     }

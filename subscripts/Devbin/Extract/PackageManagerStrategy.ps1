@@ -10,7 +10,7 @@ function Invoke-PipInstallStrategy {
     )
 
     if ([string]::IsNullOrWhiteSpace($PackagesDir)) {
-        $PackagesDir = Join-Path (Split-Path $PSScriptRoot -Parent) "packages"
+        $PackagesDir = Get-DevbinDefaultPackagesDir
     }
 
     $pipPackage = $Config.PipPackage
@@ -79,7 +79,7 @@ function Invoke-NpmInstallStrategy {
     }
 
     if ([string]::IsNullOrWhiteSpace($PackagesDir)) {
-        $PackagesDir = Join-Path (Split-Path $PSScriptRoot -Parent) "packages"
+        $PackagesDir = Get-DevbinDefaultPackagesDir
     }
 
     return Invoke-NpmInstallFromCache `
