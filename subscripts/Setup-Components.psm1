@@ -1,55 +1,40 @@
 ﻿# Setup-Components.psm1
 # コンポーネント単位のインストール/アンインストール/更新操作モジュール
 
-function Ensure-NpmCacheModule {
-    if (Get-Command Get-NpmCacheStatus -ErrorAction SilentlyContinue) {
-        return $true
-    }
-
-    $modulePath = Join-Path $PSScriptRoot "Setup-NpmCache.psm1"
-    if (-not (Test-Path $modulePath)) {
-        Write-Host "Error: Setup-NpmCache.psm1 not found at: $modulePath" -ForegroundColor Red
-        return $false
-    }
-
-    try {
-        Import-Module $modulePath -Force -ErrorAction Stop
-        return $true
-    } catch {
-        Write-Host "Error importing Setup-NpmCache: $($_.Exception.Message)" -ForegroundColor Red
-        return $false
-    }
-}
-
-function Invoke-GetPackagesForPipInstall {
+# 導入中に不足したキャッシュを取得する
+# 取得スクリプトと同じ Invoke-PackageAcquisition を通す
+function Invoke-PackageAcquisitionForShortNames {
     param(
-        [string]$ShortName,
+        [string[]]$ShortNames,
         [string]$InstallDir,
         [string]$ScriptDir,
-        [array]$Packages = @()
+        [array]$Packages = @(),
+        [switch]$WithInstalledPython
     )
 
-    $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
-    if (-not (Test-Path $getPackagesScript)) {
-        Write-Host "Error: Get-Packages.ps1 not found at: $getPackagesScript" -ForegroundColor Red
-        return
-    }
-
+    $context = New-DevbinContext -InstallDir $InstallDir -SubscriptsDir $ScriptDir
     $originalPath = $env:PATH
     # Python の配置先はパッケージ定義の TargetDirectory から引く
     $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $InstallDir
     $pythonScriptsDir = if ([string]::IsNullOrWhiteSpace($pythonDir)) { "" } else { Join-Path $pythonDir "Scripts" }
 
     try {
-        if (-not [string]::IsNullOrWhiteSpace($pythonDir) -and (Test-Path (Join-Path $pythonDir "python.exe"))) {
+        # 導入済みの Python を使って wheel を取得できるよう PATH の先頭へ置く
+        if ($WithInstalledPython -and -not [string]::IsNullOrWhiteSpace($pythonDir) -and (Test-Path (Join-Path $pythonDir "python.exe"))) {
             $pathEntries = @($pythonDir, $pythonScriptsDir) | Where-Object { Test-Path $_ }
             if ($pathEntries.Count -gt 0) {
                 $env:PATH = ($pathEntries -join ';') + ";" + $env:PATH
             }
         }
 
-        Write-Host "  ダウンロード対象: $ShortName"
-        & $getPackagesScript -PackageShortNames @($ShortName)
+        Write-Host "  ダウンロード対象: $($ShortNames -join ', ')"
+        $result = Invoke-PackageAcquisition -Packages $Packages -Context $context -ShortNames $ShortNames
+        if (-not $result.Success) {
+            foreach ($message in $result.Messages) {
+                Write-Host "  $message" -ForegroundColor Yellow
+            }
+        }
+        return $result.Success
     } finally {
         $env:PATH = $originalPath
     }
@@ -463,10 +448,6 @@ function Install-Component {
     $archiveFile = $null
 
     if ($pkg.ExtractStrategy -eq "NpmInstall") {
-        if (-not (Ensure-NpmCacheModule)) {
-            return $false
-        }
-
         $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $pkg -PackagesDir $packagesDir
         if (-not $npmCacheStatus.IsValid) {
             Write-Host "  npm パッケージアーカイブが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
@@ -475,11 +456,7 @@ function Install-Component {
                 Write-Host "  不正: $($npmCacheStatus.Invalid -join ', ')"
             }
 
-            $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
-            if (Test-Path $getPackagesScript) {
-                Write-Host "  ダウンロード対象: $ShortName"
-                & $getPackagesScript -PackageShortNames @($ShortName)
-            }
+            Invoke-PackageAcquisitionForShortNames -ShortNames @($ShortName) -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages | Out-Null
 
             $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $pkg -PackagesDir $packagesDir
             if (-not $npmCacheStatus.IsValid) {
@@ -500,7 +477,7 @@ function Install-Component {
             Write-Host "  pip wheel ファイルが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
             Write-Host "  不足: $($missingPipWheels -join ', ')"
 
-            Invoke-GetPackagesForPipInstall -ShortName $ShortName -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages
+            Invoke-PackageAcquisitionForShortNames -ShortNames @($ShortName) -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages -WithInstalledPython | Out-Null
 
             $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
             if ($missingPipWheels.Count -gt 0) {
@@ -538,23 +515,19 @@ function Install-Component {
             } else {
                 # アーカイブが見つからない場合はダウンロードを試みる
                 Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
-                $getPackagesScript = Join-Path $ScriptDir "Get-Packages.ps1"
-                if (Test-Path $getPackagesScript) {
-                    $resolution = Resolve-DependencyOrder -ShortNames @($ShortName) -Packages $Packages
-                    if (-not $resolution.Success) {
-                        foreach ($message in $resolution.Errors) {
-                            Write-Host "Error: $message" -ForegroundColor Red
-                        }
-                        return $false
+                $resolution = Resolve-DependencyOrder -ShortNames @($ShortName) -Packages $Packages
+                if (-not $resolution.Success) {
+                    foreach ($message in $resolution.Errors) {
+                        Write-Host "Error: $message" -ForegroundColor Red
                     }
-                    $downloadTargets = @($resolution.Order | Select-Object -Unique)
-                    if (-not $downloadTargets -or $downloadTargets.Count -eq 0) {
-                        $downloadTargets = @($ShortName)
-                    }
-
-                    Write-Host "  ダウンロード対象: $($downloadTargets -join ', ')"
-                    & $getPackagesScript -PackageShortNames $downloadTargets
+                    return $false
                 }
+                $downloadTargets = @($resolution.Order | Select-Object -Unique)
+                if (-not $downloadTargets -or $downloadTargets.Count -eq 0) {
+                    $downloadTargets = @($ShortName)
+                }
+
+                Invoke-PackageAcquisitionForShortNames -ShortNames $downloadTargets -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages | Out-Null
 
                 $archiveFiles = Get-ChildItem -Path $packagesDir -File -ErrorAction SilentlyContinue |
                     Where-Object { $_.Name -match $pkg.ArchivePattern }

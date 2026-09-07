@@ -54,19 +54,6 @@ try {
     exit 1
 }
 
-$npmCacheModulePath = "$ScriptDir\Setup-NpmCache.psm1"
-if (Test-Path $npmCacheModulePath) {
-    try {
-        Import-Module $npmCacheModulePath -Force -ErrorAction Stop
-    } catch {
-        Write-Host "Error importing Setup-NpmCache: $($_.Exception.Message)" -ForegroundColor Red
-        exit 1
-    }
-} else {
-    Write-Host "Error: Setup-NpmCache.psm1 not found at: $npmCacheModulePath" -ForegroundColor Red
-    exit 1
-}
-
 $componentsModulePath = "$ScriptDir\Setup-Components.psm1"
 
 if (Test-Path $componentsModulePath) {

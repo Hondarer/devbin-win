@@ -793,20 +793,6 @@ function Invoke-NpmInstallStrategy {
         return $false
     }
 
-    if (-not (Get-Command Invoke-NpmInstallFromCache -ErrorAction SilentlyContinue)) {
-        $npmCacheModulePath = Join-Path $PSScriptRoot "Setup-NpmCache.psm1"
-        if (-not (Test-Path $npmCacheModulePath)) {
-            Write-Host "Error: Setup-NpmCache.psm1 not found at: $npmCacheModulePath" -ForegroundColor Red
-            return $false
-        }
-        try {
-            Import-Module $npmCacheModulePath -Force -ErrorAction Stop
-        } catch {
-            Write-Host "Error importing Setup-NpmCache: $($_.Exception.Message)" -ForegroundColor Red
-            return $false
-        }
-    }
-
     if ([string]::IsNullOrWhiteSpace($PackagesDir)) {
         $PackagesDir = Join-Path (Split-Path $PSScriptRoot -Parent) "packages"
     }

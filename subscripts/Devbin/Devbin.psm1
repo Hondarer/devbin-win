@@ -8,6 +8,13 @@ $script:DevbinModuleRoot = $PSScriptRoot
 $script:DevbinSubscriptsDir = Split-Path -Parent $PSScriptRoot
 $script:DevbinRepositoryRoot = Split-Path -Parent $script:DevbinSubscriptsDir
 
+# npm は StrictMode を使うため子モジュールとして分離し、他の処理へ波及させない
+$script:DevbinNpmModulePath = Join-Path $script:DevbinModuleRoot "Packages\Npm\DevbinNpm.psm1"
+if (-not (Test-Path $script:DevbinNpmModulePath -PathType Leaf)) {
+    throw "Devbin npm module not found: $($script:DevbinNpmModulePath)"
+}
+Import-Module $script:DevbinNpmModulePath -Force -ErrorAction Stop
+
 $script:DevbinSourceFiles = @(
     "Context\DevbinContext.ps1"
     "Catalog\PackageDataFile.ps1"
@@ -18,6 +25,12 @@ $script:DevbinSourceFiles = @(
     "Catalog\PipPackage.ps1"
     "State\Manifest.ps1"
     "State\ComponentStatus.ps1"
+    "Packages\FileDownload.ps1"
+    "Packages\ArchivePackage.ps1"
+    "Packages\PipCache.ps1"
+    "Packages\NpmCacheDownload.ps1"
+    "Packages\VsBuildToolsDownload.ps1"
+    "Packages\PackageAcquisition.ps1"
     "Install\ComponentChangePlan.ps1"
 )
 
@@ -66,6 +79,25 @@ Export-ModuleMember -Function @(
     'Get-ComponentStatus',
     'Get-DirectorySnapshot',
     'Get-FileSnapshotDiff',
+    # Packages
+    'Save-DownloadedFile',
+    'Unblock-PackageFiles',
+    'Select-TargetPackages',
+    'Get-ArchiveDownloadTargets',
+    'Remove-OldPackageFiles',
+    'Invoke-ArchiveDownload',
+    'Save-PipWheelPackages',
+    'Invoke-PipWheelDownload',
+    'Invoke-NpmCacheDownload',
+    'Invoke-VsBuildToolsDownload',
+    'Invoke-PackageAcquisition',
+    # Packages/Npm (子モジュールからの再公開)
+    'Get-NpmPackageSpecs',
+    'Get-NpmPackageCacheDirectory',
+    'Get-NpmCacheManifestPath',
+    'Get-NpmCacheStatus',
+    'Save-NpmPackageCache',
+    'Invoke-NpmInstallFromCache',
     # Install
     'New-ComponentChangePlan',
     'Invoke-ComponentChangePlan'
