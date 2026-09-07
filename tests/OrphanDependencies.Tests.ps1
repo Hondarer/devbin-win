@@ -21,7 +21,7 @@ Describe "Remove-OrphanDependencies" {
     }
 
     It "他に依存元がない隠し依存を削除する" {
-        InModuleScope Setup-Components {
+        InModuleScope Devbin {
             . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
             $packages = @(
                 (New-TestPackage -ShortName "hidden-dep" -Extra @{ Hidden = $true }),
@@ -36,7 +36,7 @@ Describe "Remove-OrphanDependencies" {
     }
 
     It "他の依存元が残っている隠し依存は削除しない" {
-        InModuleScope Setup-Components {
+        InModuleScope Devbin {
             . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
             $packages = @(
                 (New-TestPackage -ShortName "hidden-dep" -Extra @{ Hidden = $true }),
@@ -55,7 +55,7 @@ Describe "Remove-OrphanDependencies" {
     }
 
     It "Hidden でない依存先は削除しない" {
-        InModuleScope Setup-Components {
+        InModuleScope Devbin {
             . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
             $packages = @(
                 (New-TestPackage -ShortName "visible-dep"),

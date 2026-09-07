@@ -45,6 +45,13 @@ $script:DevbinSourceFiles = @(
     "Packages\NpmCacheDownload.ps1"
     "Packages\VsBuildToolsDownload.ps1"
     "Packages\PackageAcquisition.ps1"
+    "Install\ComponentEnvironment.ps1"
+    "Install\ComponentPath.ps1"
+    "Install\LifecycleScript.ps1"
+    "Install\ComponentSource.ps1"
+    "Install\ComponentInstall.ps1"
+    "Install\ComponentFileRemoval.ps1"
+    "Install\ComponentUninstall.ps1"
     "Install\ComponentChangePlan.ps1"
 )
 
@@ -150,6 +157,24 @@ Export-ModuleMember -Function @(
     'Save-NpmPackageCache',
     'Invoke-NpmInstallFromCache',
     # Install
+    'Get-ComponentEnvVarValues',
+    'Test-ComponentUsesEdge',
+    'Resolve-ComponentSource',
+    'Set-ComponentEnvVars',
+    'Remove-ComponentEnvVars',
+    'Add-ComponentPathDirs',
+    'Remove-ComponentPathDirs',
+    'Add-BasePathDir',
+    'Remove-BasePathDir',
+    'Sync-ComponentManagerPath',
+    'Invoke-PackageLifecycleScripts',
+    'Install-Component',
+    'Get-OtherComponentFiles',
+    'Get-ComponentRootDirectories',
+    'Remove-ComponentInstalledFiles',
+    'Uninstall-Component',
+    'Update-Component',
+    'Remove-OrphanDependencies',
     'New-ComponentChangePlan',
     'Invoke-ComponentChangePlan'
 )

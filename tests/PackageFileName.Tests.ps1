@@ -83,7 +83,7 @@ Describe "保存ファイル名の実装の一本化" {
 
     # 取得側・導入側それぞれに残っていた重複定義が無いことを確認する
     $subscriptsDir = Get-DevbinSubscriptsDir
-    $targets = @("Get-Packages.ps1", "Setup-Components.psm1")
+    $targets = @("Get-Packages.ps1", "Devbin\Install\ComponentInstall.ps1", "Devbin\Install\ComponentSource.ps1")
     $fileNameFunctions = @("Get-PackageBaseFileName", "Get-PackageDownloadFileName", "Test-FileNameContainsVersion")
 
     foreach ($fileName in $targets) {
@@ -103,7 +103,7 @@ Describe "保存ファイル名の実装の一本化" {
 
     It "導入側が取得側と同じ保存ファイル名を期待する" {
         # 区切り文字の違いを吸収しない実装が残っていると、ここで食い違う
-        $componentsPath = Join-Path $subscriptsDir "Setup-Components.psm1"
+        $componentsPath = Join-Path $subscriptsDir "Devbin\Install\ComponentSource.ps1"
         $source = Get-Content $componentsPath -Raw
         ($source -match '\$baseFileName -notlike') | Should Be $false
         ($source -match 'Get-PackageDownloadFileName') | Should Be $true

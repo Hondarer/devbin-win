@@ -252,8 +252,8 @@ Describe "取得処理の一本化" {
     }
 
     It "導入中の自動取得も Invoke-PackageAcquisition を通る" {
-        $filePath = Join-Path $subscriptsDir "Setup-Components.psm1"
-        $source = Get-Content $filePath -Raw
+        $installDir = Join-Path $subscriptsDir "Devbin\Install"
+        $source = ((Get-ChildItem $installDir -Filter "*.ps1" | ForEach-Object { Get-Content $_.FullName -Raw }) -join "`n")
 
         ($source -match "Invoke-PackageAcquisition") | Should Be $true
         # 案内メッセージ以外で取得スクリプトを起動していないこと

@@ -41,16 +41,6 @@ try {
     exit 1
 }
 
-$componentsModulePath = "$ScriptDir\Setup-Components.psm1"
-
-if (Test-Path $componentsModulePath) {
-    try {
-        Import-Module $componentsModulePath -Force -ErrorAction Stop
-    } catch {
-        Write-Host "Warning: Failed to import Setup-Components: $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-}
-
 # パッケージ設定を読み込む (完全アンインストールは定義に依存しない)
 $DevbinContext = New-DevbinContext -InstallDir $InstallDir -SubscriptsDir $ScriptDir
 $Packages = @()

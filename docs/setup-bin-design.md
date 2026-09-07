@@ -15,7 +15,6 @@ subscripts/
 +- Setup-Bin.ps1          (メインスクリプト)
 +- Get-Packages.ps1       (パッケージ取得)
 +- Setup-Strategies.psm1  (抽出戦略の実装)
-+- Setup-Components.psm1  (コンポーネント操作)
 +- Setup-Menu.psm1        (CLI 対話型メニュー)
 +- Devbin/                (内部モジュール)
 |  +- Devbin.psm1         (読み込み窓口と公開関数の宣言)
@@ -24,7 +23,7 @@ subscripts/
 |  +- Catalog/            (設定読み込み、パッケージ検索、版・保存名、依存関係)
 |  +- State/              (マニフェスト入出力、状態判定、ファイル一覧)
 |  +- Packages/           (ダウンロードと取得処理)
-|  +- Install/            (コンポーネント変更計画)
+|  +- Install/            (導入・削除の実行と変更計画)
 +- config/
    +- packages.psd1       (パッケージ定義)
    +- templates/
@@ -47,7 +46,6 @@ package "処理層" {
   [Devbin/Catalog] as catalog
   [Devbin/State] as state
   [Devbin/Install] as plan
-  [Setup-Components.psm1] as components
   [Setup-Menu.psm1] as menu
 }
 
@@ -60,11 +58,9 @@ config --> catalog : 読み込みと整合性検査
 catalog --> main : パッケージ定義
 main --> menu : 対話型メニュー起動
 menu --> plan : 計画の作成と適用
-plan --> components : コンポーネント操作
-plan --> catalog : 依存解決
-components --> catalog : 保存名と版の判定
-components --> strategies : 戦略実行 (個別)
-components --> state : 状態管理
+plan --> catalog : 依存解決、保存名と版の判定
+plan --> strategies : 戦略実行 (個別)
+plan --> state : 状態管理
 strategies --> platform : OS 操作の呼び出し
 strategies --> bin : ファイル展開
 state --> mfile : 読み書き
@@ -229,25 +225,31 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 
 `Updateable` は、`packages.psd1` の `Version` がマニフェストに記録されたインストール済みバージョンより新しい場合に返されます。メニューでは初期表示時に `[R]` 指定となり、更新インストールを促します。
 
-## コンポーネント操作モジュール (Setup-Components.psm1)
+## 導入と削除 (Devbin/Install)
 
 ### 概要
 
-コンポーネント単位のインストール・アンインストール・更新を担います。依存関係の解決は Devbin/Catalog が行います。
+コンポーネント単位の導入・再導入・削除と、その操作計画をまとめています。以前の `Setup-Components.psm1` を責務ごとのファイルに分けました。依存関係の解決は Devbin/Catalog が行います。UI は計画の表示と確認だけを行い、依存解決もマニフェストの書き込みも行いません。
+
+| ファイル | 担当 |
+|----------|------|
+| ComponentEnvironment.ps1 | 環境変数の値の決定と設定・削除 |
+| ComponentPath.ps1 | コンポーネントのディレクトリを PATH へ反映 |
+| LifecycleScript.ps1 | PostInstallScripts / PostUninstallScripts の実行 |
+| ComponentSource.ps1 | アーカイブ、npm キャッシュ、pip wheel の用意 |
+| ComponentInstall.ps1 | 導入と再導入 |
+| ComponentFileRemoval.ps1 | 削除対象ファイルの判定と削除 |
+| ComponentUninstall.ps1 | 削除と、孤立した依存の後始末 |
+| ComponentChangePlan.ps1 | 操作計画の作成と適用 |
 
 ### 主要関数
 
 - `Install-Component`: コンポーネントを取得・展開し、環境変数と PATH を設定してマニフェストに登録する
 - `Uninstall-Component`: 依存元を確認してコンポーネントを削除し、孤立した隠し依存も片付ける
 - `Update-Component`: コンポーネントを再インストール (更新)
-
-## 操作計画 (Devbin/Install)
-
-### 概要
-
-導入・再導入・削除を 1 本の経路に集約します。UI は計画の表示と確認だけを行い、依存解決もマニフェストの書き込みも行いません。
-
-### 主要関数
+- `Resolve-ComponentSource`: 導入に必要なファイルを確認し、不足していれば取得を試みる。揃わなければ失敗を返す
+- `Get-ComponentEnvVarValues`: `EnvVars` と `EnvVarIsLiteral` から実際に設定する値を求める。設定側と削除側が同じ値を見るよう、計算はここだけにある
+- `Remove-ComponentInstalledFiles`: マニフェストのファイル一覧または `DetectFiles` に基づいて実体を削除する。他コンポーネントが参照しているファイルとディレクトリは残す
 
 - `New-ComponentChangePlan`: 定義・現在状態・選択から操作順を作る。導入は依存先から、削除は依存元から並べ、残るパッケージが必要とする依存先は削除対象にしない。依存の欠落・循環はここで失敗として返す
 - `Invoke-ComponentChangePlan`: 確認画面に表示した計画をそのまま実行する。操作ごとにマニフェストを保存し、保存に失敗した時点で適用を止める。依存先が失敗した場合、それを必要とするコンポーネントはスキップする

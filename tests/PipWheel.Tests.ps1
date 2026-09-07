@@ -122,7 +122,7 @@ Describe "pip 関連実装の一本化" {
 
     # 旧実装が残っていないことを確認する (Devbin へ集約済み)
     $subscriptsDir = Get-DevbinSubscriptsDir
-    $targets = @("Setup-Bin.ps1", "Get-Packages.ps1", "Setup-Components.psm1", "Setup-Strategies.psm1")
+    $targets = @("Setup-Bin.ps1", "Get-Packages.ps1", "Devbin\Install\ComponentInstall.ps1", "Devbin\Install\ComponentSource.ps1", "Setup-Strategies.psm1")
     $pipFunctions = @("Get-NormalizedPipPackageName", "Get-PipWheelPackageNames", "Get-PipWheelDownloadSpecs", "Test-PipWheelPackages")
 
     foreach ($fileName in $targets) {
