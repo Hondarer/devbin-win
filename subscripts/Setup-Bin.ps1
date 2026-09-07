@@ -79,18 +79,6 @@ if ($currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administ
 
 # Manage モード: 対話型コンポーネントマネージャー
 if ($Manage) {
-    $menuModulePath = "$ScriptDir\Setup-Menu.psm1"
-    if (-not (Test-Path $menuModulePath)) {
-        Write-Host "Error: Setup-Menu.psm1 not found at: $menuModulePath" -ForegroundColor Red
-        exit 1
-    }
-    try {
-        Import-Module $menuModulePath -Force -ErrorAction Stop
-    } catch {
-        Write-Host "Error importing Setup-Menu: $($_.Exception.Message)" -ForegroundColor Red
-        exit 1
-    }
-
     # 導入先は実行コンテキストで解決済みの絶対パスを使う
     $absoluteInstallDir = $DevbinContext.InstallDir
 

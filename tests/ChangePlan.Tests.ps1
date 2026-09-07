@@ -299,8 +299,8 @@ Describe "一括導入モードの廃止" {
     }
 
     It "メニューが依存解決とマニフェスト保存を行わない" {
-        $menuPath = Join-Path (Get-DevbinSubscriptsDir) "Setup-Menu.psm1"
-        $source = Get-Content $menuPath -Raw
+        $menuDir = Join-Path (Get-DevbinSubscriptsDir) "Devbin\Menu"
+        $source = ((Get-ChildItem $menuDir -Filter "*.ps1" | ForEach-Object { Get-Content $_.FullName -Raw }) -join "`n")
 
         ($source -match "Write-Manifest") | Should Be $false
         ($source -match "Resolve-DependencyOrder") | Should Be $false

@@ -61,6 +61,12 @@ $script:DevbinSourceFiles = @(
     "Install\ComponentFileRemoval.ps1"
     "Install\ComponentUninstall.ps1"
     "Install\ComponentChangePlan.ps1"
+    "Menu\ConsoleInput.ps1"
+    "Menu\MenuState.ps1"
+    "Menu\MenuNavigation.ps1"
+    "Menu\MenuRender.ps1"
+    "Menu\MenuActions.ps1"
+    "Menu\MenuLoop.ps1"
 )
 
 foreach ($relativePath in $script:DevbinSourceFiles) {
@@ -192,5 +198,8 @@ Export-ModuleMember -Function @(
     'Update-Component',
     'Remove-OrphanDependencies',
     'New-ComponentChangePlan',
-    'Invoke-ComponentChangePlan'
+    'Invoke-ComponentChangePlan',
+    # Menu
+    'Get-MenuItems',
+    'Invoke-MenuLoop'
 )

@@ -14,7 +14,6 @@
 subscripts/
 +- Setup-Bin.ps1          (メインスクリプト)
 +- Get-Packages.ps1       (パッケージ取得)
-+- Setup-Menu.psm1        (CLI 対話型メニュー)
 +- Devbin/                (内部モジュール)
 |  +- Devbin.psm1         (読み込み窓口と公開関数の宣言)
 |  +- Context/            (実行コンテキスト: 絶対パスの集約)
@@ -24,6 +23,7 @@ subscripts/
 |  +- State/              (マニフェスト入出力、状態判定、ファイル一覧)
 |  +- Packages/           (ダウンロードと取得処理)
 |  +- Install/            (導入・削除の実行と変更計画)
+|  +- Menu/               (CLI 対話型メニュー)
 +- config/
    +- packages.psd1       (パッケージ定義)
    +- templates/
@@ -46,7 +46,7 @@ package "処理層" {
   [Devbin/Catalog] as catalog
   [Devbin/State] as state
   [Devbin/Install] as plan
-  [Setup-Menu.psm1] as menu
+  [Devbin/Menu] as menu
 }
 
 package "実行結果" {
@@ -256,17 +256,27 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 
 操作結果は `Status` / `ShortName` / `Message` / `Warnings` を持つオブジェクトで返します。`Status` は `Installed` / `Reinstalled` / `Uninstalled` / `Failed` / `Skipped` / `Aborted` のいずれかです。バッチ全体の自動ロールバックは行わず、完了済みの操作と失敗箇所を示します。
 
-## CLI メニューモジュール (Setup-Menu.psm1)
+## CLI 対話型メニュー (Devbin/Menu)
 
 ### 概要
 
-`Write-Host` / `Read-Host` のみで実装した、外部ライブラリ不要のテキストメニューを提供します。
+外部ライブラリを使わず、コンソール出力と Windows のコンソール入力 API だけで実装したテキストメニューです。以前の `Setup-Menu.psm1` を責務ごとのファイルに分けました。
+
+| ファイル | 担当 |
+|----------|------|
+| ConsoleInput.ps1 | キーとホイールの読み取り (ネイティブ定義を含む) |
+| MenuState.ps1 | 表示する一覧と選択状態、コンポーネントの状態の取得 |
+| MenuNavigation.ps1 | カーソル移動、表示範囲の追従、選択の切り替え |
+| MenuRender.ps1 | 画面の描画 |
+| MenuActions.ps1 | 選択内容の適用と、計画・結果の表示 |
+| MenuLoop.ps1 | キー操作の振り分けと主ループ |
 
 ### 主要関数
 
-- `Show-Menu`: コンポーネント一覧と状態を表示
+- `Get-MenuItems`: 表示するコンポーネントの一覧を作る (Hidden は除く)
 - `Invoke-MenuLoop`: 入力ループ (`Q` で終了)
 - `Invoke-MenuProductUninstall`: `U` で `Invoke-ProductUninstall` を実行する完全アンインストール
+- `Initialize-ConsoleInputType`: コンソール入力のネイティブ定義を用意する。メニューを開いたときだけ実行し、モジュールの読み込みを遅くしない
 
 ## メインスクリプト (Setup-Bin.ps1)
 
@@ -299,7 +309,6 @@ else (no)
 endif
 
 if (Manage?) then (yes)
-  :Setup-Menu.psm1 をインポート;
   :環境変数を同期;
   :Invoke-MenuLoop を実行;
 else (no)
