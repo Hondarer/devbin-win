@@ -27,23 +27,10 @@ try {
     exit 1
 }
 
-$commonModulePath = "$ScriptDir\Setup-Common.psm1"
 $strategiesModulePath = "$ScriptDir\Setup-Strategies.psm1"
-
-if (-not (Test-Path $commonModulePath)) {
-    Write-Host "Error: Setup-Common.psm1 not found at: $commonModulePath" -ForegroundColor Red
-    exit 1
-}
 
 if (-not (Test-Path $strategiesModulePath)) {
     Write-Host "Error: Setup-Strategies.psm1 not found at: $strategiesModulePath" -ForegroundColor Red
-    exit 1
-}
-
-try {
-    Import-Module $commonModulePath -Force -ErrorAction Stop
-} catch {
-    Write-Host "Error importing Setup-Common: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 

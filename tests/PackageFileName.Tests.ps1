@@ -83,7 +83,7 @@ Describe "保存ファイル名の実装の一本化" {
 
     # 取得側・導入側それぞれに残っていた重複定義が無いことを確認する
     $subscriptsDir = Get-DevbinSubscriptsDir
-    $targets = @("Get-Packages.ps1", "Setup-Common.psm1")
+    $targets = @("Get-Packages.ps1", "Setup-Components.psm1")
     $fileNameFunctions = @("Get-PackageBaseFileName", "Get-PackageDownloadFileName", "Test-FileNameContainsVersion")
 
     foreach ($fileName in $targets) {

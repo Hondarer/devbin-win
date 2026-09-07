@@ -17,6 +17,20 @@ Import-Module $script:DevbinNpmModulePath -Force -ErrorAction Stop
 
 $script:DevbinSourceFiles = @(
     "Context\DevbinContext.ps1"
+    "Platform\CommandLookup.ps1"
+    "Platform\TempDirectory.ps1"
+    "Platform\FileSystem.ps1"
+    "Platform\EnvironmentVariable.ps1"
+    "Platform\UserPath.ps1"
+    "Platform\VSCodeData.ps1"
+    "Platform\Vswhere.ps1"
+    "Platform\ProductRoot.ps1"
+    "Platform\FontRegistration.ps1"
+    "Platform\WindowsTerminal.ps1"
+    "Platform\WindowsTerminalProfile.ps1"
+    "Platform\ProductUninstall.ps1"
+    "Platform\HomeDirectory.ps1"
+    "Platform\BusySignal.ps1"
     "Catalog\PackageDataFile.ps1"
     "Catalog\PackageCatalog.ps1"
     "Catalog\PackageDependency.ps1"
@@ -45,6 +59,43 @@ foreach ($relativePath in $script:DevbinSourceFiles) {
 Export-ModuleMember -Function @(
     # Context
     'New-DevbinContext',
+    # Platform
+    'Test-CommandExists',
+    'New-DevbinTempDirectory',
+    'Remove-DevbinTempDirectory',
+    'Convert-ToLongPath',
+    'New-LongPathDirectory',
+    'Copy-LongPathFile',
+    'Remove-DirectoryTree',
+    'Sync-EnvironmentVariable',
+    'Sync-EnvironmentVariables',
+    'Add-ToUserPath',
+    'Remove-FromUserPath',
+    'Add-SinglePathDir',
+    'Remove-SinglePathDir',
+    'Get-ManagedUserPathValue',
+    'Sync-ManagedUserPath',
+    'Backup-VSCodeData',
+    'Restore-VSCodeData',
+    'Register-VswhereInstance',
+    'Unregister-VswhereInstance',
+    'Get-DevbinProductRoot',
+    'Get-DevbinExpectedProductRoot',
+    'Test-DevbinProductRootAllowed',
+    'Test-PathUnderRoot',
+    'Split-RootEntriesFromValue',
+    'ConvertFrom-JsonWithComments',
+    'Get-WindowsTerminalSettingsPath',
+    'New-SettingsBackup',
+    'Get-TerminalSettings',
+    'Save-TerminalSettings',
+    'Invoke-CompleteUninstall',
+    'Invoke-ProductUninstall',
+    'Get-DevbinHomeLayout',
+    'Get-DevbinHomePlan',
+    'Invoke-DevbinHomePlan',
+    'Start-BusySignal',
+    'Stop-BusySignal',
     # Catalog
     'Import-DevbinDataFile',
     'Import-PackageCatalog',

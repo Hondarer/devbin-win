@@ -9,7 +9,7 @@ $env:DEVBIN_TESTS_DIR = $PSScriptRoot
 
 function Import-DevbinModules {
     Import-Module (Join-Path $script:SubscriptsDir "Devbin") -Force -ErrorAction Stop
-    foreach ($name in @("Setup-Common", "Setup-Components")) {
+    foreach ($name in @("Setup-Components")) {
         Import-Module (Join-Path $script:SubscriptsDir "$name.psm1") -Force -ErrorAction Stop
     }
 }

@@ -6,6 +6,20 @@ param(
     [string]$InstallDir = ""  # devbin-win インストール先 (既定: %ProgramData%\%USERNAME%\devbin-win\bin)
 )
 
+$ScriptDir = if ($PSScriptRoot) {
+    $PSScriptRoot
+} else {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+
+# Windows Terminal の設定操作は Devbin/Platform と共通
+try {
+    Import-Module (Join-Path $ScriptDir "Devbin") -Force -ErrorAction Stop
+} catch {
+    Write-Host "Error importing Devbin: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
 # 使用方法を表示
 function Show-Usage {
     Write-Host "`n=== Windows Terminal Git Bash Profile Manager ==="
@@ -26,62 +40,6 @@ function Show-Usage {
     Write-Host "  .\Update-GitBash-Profile.ps1 -Uninstall"
     Write-Host "`n  # Force update existing profile"
     Write-Host "  .\Update-GitBash-Profile.ps1 -Install -Force`n"
-}
-
-# Settings.json のパスを特定
-function Get-WindowsTerminalSettingsPath {
-    $possiblePaths = @(
-        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json",
-        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json",
-        "$env:APPDATA\Microsoft\Windows Terminal\settings.json"
-    )
-    
-    foreach ($path in $possiblePaths) {
-        if (Test-Path $path) {
-            return $path
-        }
-    }
-    
-    Write-Warning "Windows Terminal settings.json not found. Skipping Git Bash profile update."
-    return $null
-}
-
-# バックアップを作成
-function New-SettingsBackup {
-    param([string]$SettingsPath)
-    
-    $backupPath = $SettingsPath + ".$(Get-Date -Format 'yyMMddHHmmss')"
-    Copy-Item -Path $SettingsPath -Destination $backupPath
-    return $backupPath
-}
-
-# JSON 設定を読み込み
-function Get-TerminalSettings {
-    param([string]$SettingsPath)
-    
-    $jsonContent = Get-Content -Path $SettingsPath -Raw -Encoding UTF8
-    $settings = $jsonContent | ConvertFrom-Json
-    
-    # profiles.list が存在するか確認・作成
-    if (-not $settings.profiles) {
-        $settings | Add-Member -MemberType NoteProperty -Name "profiles" -Value ([PSCustomObject]@{})
-    }
-    if (-not $settings.profiles.list) {
-        $settings.profiles | Add-Member -MemberType NoteProperty -Name "list" -Value @()
-    }
-    
-    return $settings
-}
-
-# JSON 設定を保存
-function Save-TerminalSettings {
-    param(
-        [PSCustomObject]$Settings,
-        [string]$SettingsPath
-    )
-    
-    $jsonOutput = $Settings | ConvertTo-Json -Depth 10
-    [System.IO.File]::WriteAllText($SettingsPath, $jsonOutput, [System.Text.Encoding]::UTF8)
 }
 
 # Git Bash プロファイルをインストール
@@ -273,7 +231,7 @@ function Main {
     }
     
     # Settings.jsonのパスを取得
-    $settingsPath = Get-WindowsTerminalSettingsPath
+    $settingsPath = Get-WindowsTerminalSettingsPath -ProfileLabel "Git Bash profile"
     if (-not $settingsPath) {
         exit 0
     }

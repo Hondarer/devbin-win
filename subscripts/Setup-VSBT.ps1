@@ -72,26 +72,16 @@ $ProgressPreference = 'SilentlyContinue' # Disable progress bar for performance
 # スクリプトのディレクトリを取得
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# 共通モジュールをインポート (まだロードされていない場合のみ)
-$commonModulePath = Join-Path $ScriptDir "Setup-Common.psm1"
-$moduleLoaded = Get-Module -Name "Setup-Common" -ErrorAction SilentlyContinue
-
-if (-not $moduleLoaded) {
-    if (-not (Test-Path $commonModulePath)) {
-        Write-Host "Error: Setup-Common.psm1 not found at: $commonModulePath" -ForegroundColor Red
-        exit 1
-    }
-
-    try {
-        Import-Module $commonModulePath -Force -ErrorAction Stop
-    } catch {
-        Write-Host "Error importing Setup-Common: $($_.Exception.Message)" -ForegroundColor Red
-        exit 1
-    }
+# Devbin モジュールをインポートする
+try {
+    Import-Module (Join-Path $ScriptDir "Devbin") -Force -ErrorAction Stop
+} catch {
+    Write-Host "Error importing Devbin: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
 }
 
-# Temporary download directory
-$TempExtractPath = "temp_extract"
+# 一時領域は実行ごとに分ける
+$TempExtractPath = New-DevbinTempDirectory -Prefix "devbin-vsbt"
 
 # URL definition
 $MANIFEST_URL = if ($Preview) {
@@ -178,7 +168,7 @@ function Invoke-Download {
         }
     }
 
-    # Build temp path in temp_extract
+    # Build temp path in the temporary extract directory
     if ($SubFolder) {
         $tempDir = Join-Path $TempExtractPath $SubFolder
         if (-not (Test-Path $tempDir)) {
@@ -249,10 +239,10 @@ try {
             Unregister-VswhereInstance
         }
 
-        # Clean up temp_extract, batch files, and final output
+        # Clean up the temporary extract directory, batch files, and final output
         if (Test-Path $TempExtractPath) {
             Write-ColorMessage "`nCleaning up temporary download folder..."
-            Remove-Item $TempExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-DevbinTempDirectory -Path $TempExtractPath
         }
 
         # Skip cleanup of output directory in DownloadOnly mode
@@ -826,9 +816,9 @@ try {
     Write-Error $_.ScriptStackTrace
     exit 1
 } finally {
-    # Clean up temp_extract (skip for ShowVersions mode)
-    if (-not $ShowVersions -and (Test-Path $TempExtractPath)) {
+    # Clean up the temporary extract directory (skip for ShowVersions mode)
+    if (-not $ShowVersions) {
         Write-ColorMessage "`nCleaning up temporary download folder..."
-        Remove-Item $TempExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-DevbinTempDirectory -Path $TempExtractPath
     }
 }

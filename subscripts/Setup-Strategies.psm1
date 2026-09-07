@@ -1,8 +1,8 @@
 ﻿# Setup-Strategies.psm1
 # 抽出戦略の実装
 
-# 注意: Setup-Common.psm1 は呼び出し元のスクリプトでインポートする必要があります
-# Import-Module "$PSScriptRoot\Setup-Common.psm1" -Force
+# 注意: Devbin モジュールは呼び出し元のスクリプトでインポートする必要があります
+# Import-Module "$PSScriptRoot\Devbin" -Force
 
 # アーカイブファイルをブロック解除する共通関数
 function Unblock-ArchiveFile {
@@ -824,12 +824,15 @@ function Invoke-ExtractStrategy {
 
         [array]$Packages = @(),
 
-        [string]$TempDir = "temp_extract"
+        [string]$TempDir = ""
     )
 
-    # TempDir を絶対パスに変換 (スクリプト実行ディレクトリ基準)
-    if (-not [System.IO.Path]::IsPathRooted($TempDir)) {
-        $TempDir = Join-Path (Get-Location).Path $TempDir
+    # 一時領域は実行ごとに分ける。呼び出し元が指定した場合はそれを使う
+    $ownsTempDir = [string]::IsNullOrWhiteSpace($TempDir)
+    if ($ownsTempDir) {
+        $TempDir = New-DevbinTempDirectory -Prefix "devbin-extract"
+    } elseif (-not [System.IO.Path]::IsPathRooted($TempDir)) {
+        $TempDir = [System.IO.Path]::GetFullPath($TempDir)
     }
 
     $strategy = $PackageConfig.ExtractStrategy
@@ -907,10 +910,9 @@ function Invoke-ExtractStrategy {
         return $false
     }
     finally {
-        # 一時ディレクトリをクリーンアップ
-        if ((Test-Path $TempDir) -and ($strategy -ne "JarWithWrapper") -and ($strategy -ne "SingleExecutable") -and ($strategy -ne "SelfExtractingArchive")) {
-            Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Host "Temporary directory cleaned up."
+        # 自分で作った一時領域は、成否によらず必ず片付ける
+        if ($ownsTempDir) {
+            Remove-DevbinTempDirectory -Path $TempDir
         }
     }
 }

@@ -1,0 +1,167 @@
+﻿# Platform.Tests.ps1
+# OS 操作まわり (一時領域、HOME/XDG、Terminal 設定) のテスト
+# 実ユーザーの環境変数とレジストリは変更しない
+
+. (Join-Path $PSScriptRoot "TestHelpers.ps1")
+Import-DevbinModules
+
+Describe "New-DevbinTempDirectory / Remove-DevbinTempDirectory" {
+
+    It "呼び出しごとに別の一時ディレクトリを作る" {
+        $first = New-DevbinTempDirectory -Prefix "devbin-test"
+        $second = New-DevbinTempDirectory -Prefix "devbin-test"
+        try {
+            ($first -eq $second) | Should Be $false
+            (Test-Path $first) | Should Be $true
+            (Test-Path $second) | Should Be $true
+        } finally {
+            Remove-DevbinTempDirectory -Path $first
+            Remove-DevbinTempDirectory -Path $second
+        }
+    }
+
+    It "作った一時ディレクトリを中身ごと消す" {
+        $path = New-DevbinTempDirectory -Prefix "devbin-test"
+        New-Item -ItemType File -Path (Join-Path $path "a.txt") -Force | Out-Null
+
+        Remove-DevbinTempDirectory -Path $path
+
+        (Test-Path $path) | Should Be $false
+    }
+
+    It "一時領域の外は消さない" {
+        $outside = Join-Path (Get-DevbinRepoRoot) "tests"
+        Remove-DevbinTempDirectory -Path $outside
+
+        (Test-Path $outside) | Should Be $true
+    }
+
+    It "空のパスを渡しても何も起きない" {
+        { Remove-DevbinTempDirectory -Path "" } | Should Not Throw
+    }
+}
+
+Describe "Get-DevbinHomeLayout" {
+
+    It "HOME 配下の項目と環境変数名を返す" {
+        $layout = @(Get-DevbinHomeLayout -HomePath "C:\home\user")
+        $names = @($layout | ForEach-Object { $_.EnvName })
+
+        ($names -join ",") | Should Be "CONTINUE_GLOBAL_DIR,XDG_CONFIG_HOME,XDG_CACHE_HOME,XDG_DATA_HOME,XDG_STATE_HOME"
+        ($layout | Where-Object { $_.EnvName -eq "XDG_DATA_HOME" }).Path | Should Be "C:\home\user\.local\share"
+    }
+}
+
+Describe "Get-DevbinHomePlan" {
+
+    It "計画を作るだけで、環境も作業もしない" {
+        $before = [Environment]::GetEnvironmentVariable("HOME", "User")
+        $plan = Get-DevbinHomePlan
+        $after = [Environment]::GetEnvironmentVariable("HOME", "User")
+
+        $after | Should Be $before
+        $plan.HomePath | Should Not BeNullOrEmpty
+        (Test-Path $plan.HomePath) | Should Be (Test-Path $plan.HomePath)
+    }
+
+    It "既に設定されている環境変数は計画に入れない" {
+        $plan = Get-DevbinHomePlan
+        $planned = @($plan.EnvVars | ForEach-Object { $_.Name })
+
+        foreach ($name in $planned) {
+            $current = [Environment]::GetEnvironmentVariable($name, "User")
+            [string]::IsNullOrWhiteSpace($current) | Should Be $true
+        }
+    }
+}
+
+Describe "Invoke-DevbinHomePlan" {
+
+    It "ディレクトリを作り、結果を返す" {
+        $root = New-TestDirectory
+        try {
+            $plan = [PSCustomObject]@{
+                HomePath    = $root
+                IsNewHome   = $false
+                Directories = @((Join-Path $root ".config"), (Join-Path $root ".cache"))
+                EnvVars     = @()
+                Actions     = @()
+                IsEmpty     = $false
+            }
+
+            $result = Invoke-DevbinHomePlan -Plan $plan
+
+            $result.Success | Should Be $true
+            (Test-Path (Join-Path $root ".config")) | Should Be $true
+            (Test-Path (Join-Path $root ".cache")) | Should Be $true
+        } finally {
+            Remove-TestDirectory -Path $root
+        }
+    }
+}
+
+Describe "Get-ManagedUserPathValue (Platform への移動後)" {
+
+    It "移動後も同じ順序で再構成する" {
+        $installDir = New-TestDirectory
+        try {
+            New-Item -ItemType Directory -Path (Join-Path $installDir "a\bin") -Force | Out-Null
+            $packages = @((New-TestPackage -ShortName "a" -PathDirs @("a\bin")))
+
+            $result = Get-ManagedUserPathValue `
+                -CurrentPath "C:\External\Tool" `
+                -InstallDir $installDir `
+                -Packages $packages `
+                -InstalledShortNames @("a")
+
+            $result | Should Be ((Join-Path $installDir "a\bin") + ";C:\External\Tool")
+        } finally {
+            Remove-TestDirectory -Path $installDir
+        }
+    }
+}
+
+Describe "旧モジュールの整理" {
+
+    $subscriptsDir = Get-DevbinSubscriptsDir
+
+    It "Setup-Common.psm1 が残っていない" {
+        (Test-Path (Join-Path $subscriptsDir "Setup-Common.psm1")) | Should Be $false
+    }
+
+    It "Platform が責務ごとのファイルに分かれている" {
+        $platformDir = Join-Path $subscriptsDir "Devbin\Platform"
+        $files = @(Get-ChildItem $platformDir -Filter "*.ps1" | ForEach-Object { $_.Name })
+
+        ($files -contains "UserPath.ps1") | Should Be $true
+        ($files -contains "WindowsTerminal.ps1") | Should Be $true
+        ($files -contains "ProductUninstall.ps1") | Should Be $true
+        ($files -contains "TempDirectory.ps1") | Should Be $true
+    }
+
+    It "固定名の temp_extract を使っていない" {
+        $hits = @()
+        foreach ($file in (Get-ChildItem $subscriptsDir -Recurse -Include *.ps1, *.psm1)) {
+            if (Select-String -Path $file.FullName -Pattern 'temp_extract' -Quiet) {
+                $hits += $file.Name
+            }
+        }
+        ($hits -join ", ") | Should Be ""
+    }
+
+    It "Make-Dist.ps1 がカレントディレクトリを変更しない" {
+        $source = Get-Content (Join-Path $subscriptsDir "Make-Dist.ps1") -Raw
+        ($source -match 'Set-Location') | Should Be $false
+    }
+
+    It "Terminal プロファイル操作が共通化されている" {
+        foreach ($name in @("Update-GitBash-Profile.ps1", "Update-MinGW-Profile.ps1")) {
+            $filePath = Join-Path $subscriptsDir $name
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile($filePath, [ref]$null, [ref]$null)
+            $defined = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) | ForEach-Object { $_.Name })
+
+            ($defined -contains "Get-TerminalSettings") | Should Be $false
+            ($defined -contains "Save-TerminalSettings") | Should Be $false
+        }
+    }
+}

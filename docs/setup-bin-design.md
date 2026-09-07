@@ -14,15 +14,17 @@
 subscripts/
 +- Setup-Bin.ps1          (メインスクリプト)
 +- Get-Packages.ps1       (パッケージ取得)
-+- Setup-Common.psm1      (OS 操作の共通関数)
 +- Setup-Strategies.psm1  (抽出戦略の実装)
 +- Setup-Components.psm1  (コンポーネント操作)
 +- Setup-Menu.psm1        (CLI 対話型メニュー)
 +- Devbin/                (内部モジュール)
 |  +- Devbin.psm1         (読み込み窓口と公開関数の宣言)
 |  +- Context/            (実行コンテキスト: 絶対パスの集約)
+|  +- Platform/           (OS 操作: PATH、環境変数、一時領域、アンインストール)
 |  +- Catalog/            (設定読み込み、パッケージ検索、版・保存名、依存関係)
 |  +- State/              (マニフェスト入出力、状態判定、ファイル一覧)
+|  +- Packages/           (ダウンロードと取得処理)
+|  +- Install/            (コンポーネント変更計画)
 +- config/
    +- packages.psd1       (パッケージ定義)
    +- templates/
@@ -41,7 +43,7 @@ package "定義層" {
 package "処理層" {
   [Setup-Bin.ps1] as main
   [Setup-Strategies.psm1] as strategies
-  [Setup-Common.psm1] as common
+  [Devbin/Platform] as platform
   [Devbin/Catalog] as catalog
   [Devbin/State] as state
   [Devbin/Install] as plan
@@ -63,7 +65,7 @@ plan --> catalog : 依存解決
 components --> catalog : 保存名と版の判定
 components --> strategies : 戦略実行 (個別)
 components --> state : 状態管理
-strategies --> common : 共通関数呼び出し
+strategies --> platform : OS 操作の呼び出し
 strategies --> bin : ファイル展開
 state --> mfile : 読み書き
 @enduml
@@ -121,11 +123,28 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 
 `New-DevbinContext` がリポジトリ、設定、packages、導入先、一時領域の絶対パスをまとめて返します。各処理はこのコンテキストを受け取るため、カレントディレクトリに依存しません。
 
-## 共通関数モジュール (Setup-Common.psm1)
+## OS 操作モジュール (Devbin/Platform)
 
 ### 概要
 
-複数のスクリプトで共有される汎用的な関数を提供します。
+PATH、環境変数、ファイル、一時領域、アンインストールなど、OS を触る処理をまとめています。以前の `Setup-Common.psm1` を責務ごとのファイルに分け、`Devbin.psm1` から読み込みます。
+
+| ファイル | 担当 |
+|----------|------|
+| CommandLookup.ps1 | 外部コマンドの存在確認 |
+| TempDirectory.ps1 | 実行ごとに分かれた一時領域の作成と削除 |
+| FileSystem.ps1 | 長いパス対応のファイル操作、ディレクトリツリー削除 |
+| EnvironmentVariable.ps1 | 環境変数の同期 |
+| UserPath.ps1 | ユーザー PATH の追加、削除、再構成 |
+| VSCodeData.ps1 | VS Code data フォルダの退避と復元 |
+| Vswhere.ps1 | vswhere インスタンスの登録と削除 |
+| ProductRoot.ps1 | 対象ルートの決定と、削除してよい場所かの判定 |
+| FontRegistration.ps1 | フォント登録の削除 |
+| WindowsTerminal.ps1 | settings.json の読み書きとバックアップ |
+| WindowsTerminalProfile.ps1 | Git Bash / MinGW プロファイルの更新 |
+| ProductUninstall.ps1 | 事前掃除と完全アンインストール |
+| HomeDirectory.ps1 | HOME と XDG ディレクトリの計画と適用 |
+| BusySignal.ps1 | 実行中表示 |
 
 ### 主要関数
 
@@ -152,6 +171,12 @@ Setup-Strategies.psm1 に実装された抽出パターンです。各戦略は�
 
 - `Backup-VSCodeData`: VS Code data フォルダのバックアップ
 - `Restore-VSCodeData`: VS Code data フォルダの復元
+
+#### 一時領域と HOME
+
+- `New-DevbinTempDirectory` / `Remove-DevbinTempDirectory`: 実行ごとに別の一時ディレクトリを作り、一時領域の外は消さない
+- `Get-DevbinHomeLayout`: HOME 配下に作る項目と環境変数名の対応を返す
+- `Get-DevbinHomePlan` / `Invoke-DevbinHomePlan`: 変更内容を計画として作ってから適用する
 
 #### アンインストール
 
