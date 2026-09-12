@@ -262,6 +262,103 @@ Describe "Get-VsBuildToolsParameters" {
     }
 }
 
+Describe "Setup-VSBT.ps1 のモジュール再読み込み防止" {
+
+    It "取得側は内部呼び出し用スイッチを渡す" {
+        $dir = New-TestDirectory
+        try {
+            $fakeScript = @'
+param(
+    [string]$MSVCVersion,
+    [string]$SDKVersion,
+    [string]$Target,
+    [string]$HostArch,
+    [switch]$DownloadOnly,
+    [switch]$AcceptLicense,
+    [switch]$SkipDevbinModuleImport
+)
+$global:DevbinTestVsbtDownloadSkippedImport = [bool]$SkipDevbinModuleImport
+'@
+            Set-Content -LiteralPath (Join-Path $dir "Setup-VSBT.ps1") -Value $fakeScript -Encoding UTF8
+            $global:DevbinTestVsbtDownloadSkippedImport = $false
+            $package = @{
+                ShortName = "vsbt"
+                VSBTConfig = @{
+                    MSVCVersion = "14.44"
+                    SDKVersion = "26100"
+                    Target = "x64"
+                    HostArch = "x64"
+                }
+            }
+
+            $result = Invoke-VsBuildToolsDownload -PackageConfig $package -SubscriptsDir $dir
+
+            $result.Success | Should Be $true
+            $global:DevbinTestVsbtDownloadSkippedImport | Should Be $true
+        } finally {
+            Remove-Variable -Name DevbinTestVsbtDownloadSkippedImport -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $dir
+        }
+    }
+
+    It "導入側も内部呼び出し用スイッチを渡す" {
+        $dir = New-TestDirectory
+        try {
+            $fakeScript = @'
+param(
+    [string]$MSVCVersion,
+    [string]$SDKVersion,
+    [string]$Target,
+    [string]$HostArch,
+    [string]$OutputPath,
+    [switch]$AcceptLicense,
+    [switch]$SkipDevbinModuleImport
+)
+$global:DevbinTestVsbtExtractSkippedImport = [bool]$SkipDevbinModuleImport
+'@
+            Set-Content -LiteralPath (Join-Path $dir "Setup-VSBT.ps1") -Value $fakeScript -Encoding UTF8
+            $global:DevbinTestVsbtExtractSkippedImport = $false
+            $global:DevbinTestVsbtExtractDir = $dir
+            $global:DevbinTestVsbtExtractConfig = @{
+                DisplayName = "Visual Studio Build Tools"
+                ExtractedName = "vsbt"
+                VSBTConfig = @{
+                    MSVCVersion = "14.44"
+                    SDKVersion = "26100"
+                    Target = "x64"
+                    HostArch = "x64"
+                }
+            }
+
+            InModuleScope Devbin {
+                $global:LASTEXITCODE = 0
+                $result = Invoke-VSBuildToolsExtract `
+                    -BinDir $global:DevbinTestVsbtExtractDir `
+                    -ScriptDir $global:DevbinTestVsbtExtractDir `
+                    -Config $global:DevbinTestVsbtExtractConfig
+                $result | Should Be $true
+            }
+
+            $global:DevbinTestVsbtExtractSkippedImport | Should Be $true
+        } finally {
+            Remove-Variable -Name DevbinTestVsbtExtractSkippedImport -Scope Global -ErrorAction SilentlyContinue
+            Remove-Variable -Name DevbinTestVsbtExtractDir -Scope Global -ErrorAction SilentlyContinue
+            Remove-Variable -Name DevbinTestVsbtExtractConfig -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $dir
+        }
+    }
+
+    It "単独実行では従来どおり Devbin を Force インポートする" {
+        $vsbtPath = Join-Path (Get-DevbinSubscriptsDir) "Setup-VSBT.ps1"
+        $source = Get-Content -LiteralPath $vsbtPath -Raw
+
+        ($source -match '\[Parameter\(DontShow\s*=\s*\$true\)\]\s*\[switch\]\$SkipDevbinModuleImport') | Should Be $true
+        ($source -match 'if\s*\(\$SkipDevbinModuleImport\)') | Should Be $true
+        ($source -match 'Import-Module\s+\(Join-Path\s+\$ScriptDir\s+"Devbin"\)\s+-Force') | Should Be $true
+        ($source -match 'StringComparison\]::OrdinalIgnoreCase') | Should Be $true
+    }
+}
+
 Describe "取得処理の一本化" {
 
     $subscriptsDir = Get-DevbinSubscriptsDir

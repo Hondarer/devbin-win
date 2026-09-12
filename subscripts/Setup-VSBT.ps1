@@ -63,7 +63,9 @@ param(
     [switch]$AcceptLicense,
     [switch]$Preview,
     [switch]$OfflineMode,
-    [switch]$DownloadOnly
+    [switch]$DownloadOnly,
+    [Parameter(DontShow = $true)]
+    [switch]$SkipDevbinModuleImport
 )
 
 $ErrorActionPreference = "Stop"
@@ -72,12 +74,25 @@ $ProgressPreference = 'SilentlyContinue' # Disable progress bar for performance
 # スクリプトのディレクトリを取得
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Devbin モジュールをインポートする
-try {
-    Import-Module (Join-Path $ScriptDir "Devbin") -Force -ErrorAction Stop
-} catch {
-    Write-Host "Error importing Devbin: $($_.Exception.Message)" -ForegroundColor Red
-    exit 1
+# Devbin モジュールをインポートする。
+# モジュール内部から呼ばれた場合は、実行中のモジュールを -Force で置き換えない。
+if ($SkipDevbinModuleImport) {
+    $expectedDevbinModulePath = [System.IO.Path]::GetFullPath((Join-Path $ScriptDir "Devbin\Devbin.psm1"))
+    $loadedDevbinModule = Get-Module -Name Devbin | Where-Object {
+        $_.Path -and
+        [System.IO.Path]::GetFullPath($_.Path).Equals($expectedDevbinModulePath, [System.StringComparison]::OrdinalIgnoreCase)
+    } | Select-Object -First 1
+
+    if (-not $loadedDevbinModule) {
+        throw "SkipDevbinModuleImport requires the repository Devbin module to be loaded: $expectedDevbinModulePath"
+    }
+} else {
+    try {
+        Import-Module (Join-Path $ScriptDir "Devbin") -Force -ErrorAction Stop
+    } catch {
+        Write-Host "Error importing Devbin: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # 一時領域は実行ごとに分ける

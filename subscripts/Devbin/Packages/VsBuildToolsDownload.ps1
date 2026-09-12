@@ -55,6 +55,7 @@ function Invoke-VsBuildToolsDownload {
 
     $parameters.DownloadOnly = $true
     $parameters.AcceptLicense = $true
+    $parameters.SkipDevbinModuleImport = $true
 
     Write-Host "Executing Setup-VSBT.ps1 with parameters:"
     Write-Host "  MSVCVersion: $($parameters.MSVCVersion)"

@@ -142,6 +142,7 @@ function Invoke-VSBuildToolsExtract {
         HostArch = $vsbtConfig.HostArch
         OutputPath = $outputPath
         AcceptLicense = $true
+        SkipDevbinModuleImport = $true
     }
 
     Write-Host "  Executing Setup-VSBT.ps1..."
