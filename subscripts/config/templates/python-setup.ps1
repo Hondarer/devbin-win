@@ -171,11 +171,12 @@ with tarfile.open(archive_path, 'r:gz') as archive:
 
         # pip-packages フォルダが存在する場合はオフラインインストール
         $pipPackagesDir = $devbinContext.PipPackagesDir
+        $corePackages = @(Get-PipWheelPackageNames -IncludeCorePackages)
         $offlineMode = Test-Path $pipPackagesDir
         $missingWheels = @()
 
         if ($offlineMode) {
-            $missingWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames (Get-PipWheelPackageNames -IncludeCorePackages))
+            $missingWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $corePackages)
             if ($missingWheels.Count -gt 0) {
                 Write-Host "Warning: Offline wheel cache is incomplete: $($missingWheels -join ', ')"
                 Write-Host "Falling back to online installation."
@@ -184,19 +185,27 @@ with tarfile.open(archive_path, 'r:gz') as archive:
         }
 
         if ($offlineMode) {
-            Write-Host "Using offline installation with local wheel files..."
+            Write-Host "Using offline installation with local wheel files (including pytest)..."
             $pipPackagesAbsPath = $pipPackagesDir
-            & $pythonExe -m pip install --no-warn-script-location `
-                --no-index --find-links=$pipPackagesAbsPath pip setuptools wheel
+            $pipInstallArgs = @("-m", "pip", "install", "--no-warn-script-location", "--no-index", "--find-links=$pipPackagesAbsPath")
+            $pipInstallArgs += $corePackages
+            & $pythonExe @pipInstallArgs
+            $installExitCode = $LASTEXITCODE
         } else {
-            Write-Host "Using online installation (downloading from PyPI)..."
-            & $pythonExe -m pip install --no-warn-script-location pip setuptools wheel
+            Write-Host "Using online installation (downloading core packages including pytest from PyPI)..."
+            $pipInstallArgs = @("-m", "pip", "install", "--no-warn-script-location")
+            $pipInstallArgs += $corePackages
+            & $pythonExe @pipInstallArgs
+            $installExitCode = $LASTEXITCODE
 
             # インストール後に wheel を取得して次回オフライン用に保存
             $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
             New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
-            & $pythonExe -m pip download --only-binary=:all: pip setuptools wheel --dest $tempDir 2>$null
+            $pipDownloadArgs = @("-m", "pip", "download", "--only-binary=:all:")
+            $pipDownloadArgs += $corePackages
+            $pipDownloadArgs += @("--dest", $tempDir)
+            & $pythonExe @pipDownloadArgs 2>$null
 
             if (Test-Path $tempDir) {
                 New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
@@ -206,10 +215,10 @@ with tarfile.open(archive_path, 'r:gz') as archive:
             }
         }
 
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "pip installed successfully"
+        if ($installExitCode -eq 0) {
+            Write-Host "Python core packages including pytest installed successfully"
         } else {
-            Write-Host "Warning: pip installation may have issues (exit code: $LASTEXITCODE)"
+            Write-Host "Warning: Python core package installation may have issues (exit code: $installExitCode)"
         }
     } catch {
         Write-Host "Warning: Failed to install pip: $($_.Exception.Message)"

@@ -112,7 +112,7 @@ Devbin/Extract に実装された抽出パターンです。呼び分けは `Inv
 - `Resolve-DependencyOrder`: 導入順を解決する。循環依存と未定義の依存先は順序ではなく失敗として返す
 - `Get-UninstallOrder`: 削除順 (依存元から依存先) を求める
 - `Get-PackageDownloadFileName`: 保存アーカイブ名を決める。版表記の判定は区切り文字と大文字小文字の違いを吸収するため、取得側と導入側で同じ名前になる
-- `Get-PipWheelPackageNames` / `Test-PipWheelPackages`: pip パッケージ名の正規化 (PEP 503) と wheel の検証。Python 初期設定用のコアパッケージは `-IncludeCorePackages` で表す
+- `Get-PipWheelPackageNames` / `Test-PipWheelPackages`: pip パッケージ名の正規化 (PEP 503) と wheel の検証。Python 初期設定用のコアパッケージ (`pip`、`setuptools`、`wheel`、`packaging`、`pytest`) は `-IncludeCorePackages` で表し、取得・検証・インストールで同じ一覧を使う
 - `Get-PythonDirectory`: Python の配置先をパッケージ定義の `TargetDirectory` から引く
 
 ## 実行コンテキスト (Devbin/Context)

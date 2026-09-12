@@ -255,8 +255,8 @@ HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ル
 
 #### Python がインストール済みの環境
 
-1. `Get-Packages.ps1` を実行すると、pip、setuptools、wheel の wheel ファイルが `packages\pip-packages` に自動ダウンロードされます
-2. その後、オフライン環境に移行しても `Manage-Bin.cmd` で pip が正常にインストールされます
+1. `Get-Packages.ps1` を実行すると、pip、setuptools、wheel、packaging、pytest とその依存パッケージの wheel ファイルが `packages\pip-packages` に自動ダウンロードされます
+2. その後、オフライン環境に移行しても `Manage-Bin.cmd` で pip と pytest が正常にインストールされます
 
 #### Python が未インストールの環境
 
@@ -273,7 +273,7 @@ HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ル
 2. リポジトリ全体 (特に `packages` フォルダ) をオフライン環境にコピー
 3. オフライン環境で `Manage-Bin.cmd` を実行
 
-これにより、完全オフライン環境でも pip を含む全ツールがインストールされます。
+これにより、完全オフライン環境でも pip とプリインストール対象の pytest を含む全ツールがインストールされます。Python 導入後は `python -m pytest` でテストを起動できます。
 
 詳細な設計や内部動作については、[offline-pip-design.md](./offline-pip-design.md) を参照してください。
 

@@ -17,7 +17,16 @@ Describe "Get-PipWheelPackageNames" {
 
     It "IncludeCorePackages で Python 初期設定用のコアパッケージを返す" {
         $names = @(Get-PipWheelPackageNames -IncludeCorePackages)
-        ($names -join ",") | Should Be "pip,setuptools,wheel,packaging"
+        ($names -join ",") | Should Be "pip,setuptools,wheel,packaging,pytest"
+    }
+
+    It "Python 初期設定スクリプトがコアパッケージ一覧をインストールに使う" {
+        $setupScriptPath = Join-Path (Get-DevbinSubscriptsDir) "config\templates\python-setup.ps1"
+        $content = Get-Content -Path $setupScriptPath -Raw
+
+        $content | Should Match '\$corePackages\s*=\s*@\(Get-PipWheelPackageNames -IncludeCorePackages\)'
+        $content | Should Match '\$pipInstallArgs\s*\+=\s*\$corePackages'
+        $content | Should Match '\$pipDownloadArgs\s*\+=\s*\$corePackages'
     }
 
     It "指定がなければ空を返す" {

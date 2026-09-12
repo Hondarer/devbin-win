@@ -1,11 +1,11 @@
 ﻿# PipPackage.ps1
 # pip パッケージ名の正規化と wheel の検証
 #
-# Python の初期設定に必要な wheel (pip / setuptools / wheel / packaging) と、
+# Python の初期設定に必要な wheel (pip / setuptools / wheel / packaging / pytest) と、
 # 追加パッケージに必要な wheel の違いは -IncludeCorePackages で表す。
 
 # Python 初期設定に必要なコアパッケージ
-$script:DevbinPipCorePackages = @("pip", "setuptools", "wheel", "packaging")
+$script:DevbinPipCorePackages = @("pip", "setuptools", "wheel", "packaging", "pytest")
 
 # PEP 503 に従って pip パッケージ名を正規化する
 function Get-NormalizedPipPackageName {

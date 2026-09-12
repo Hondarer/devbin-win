@@ -4,7 +4,7 @@
 
 本文書では、完全オフライン環境での pip インストールを実現するための実装方針を説明します。
 
-pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得します。`python-setup.ps1` はこの tarball を一時展開し、埋め込み Python の `._pth` に `src` を一時追加した状態で `python -m pip` を実行します。`packages/pip-packages` には `pip`、`setuptools`、`wheel`、`yamllint` と、それぞれの依存 wheel を保存し、オフラインインストールに利用します。
+pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得します。`python-setup.ps1` はこの tarball を一時展開し、埋め込み Python の `._pth` に `src` を一時追加した状態で `python -m pip` を実行します。`packages/pip-packages` には Python 初期設定用の `pip`、`setuptools`、`wheel`、`packaging`、`pytest`、追加ツールの `yamllint`、およびそれぞれの依存 wheel を保存し、オフラインインストールに利用します。pytest は埋め込み Python にプリインストールされるため、システム Python の環境には依存しません。
 
 ## 採用理由
 
@@ -25,6 +25,7 @@ package "packages フォルダ" {
     [setuptools-*.whl]
     [wheel-*.whl]
     [packaging-*.whl]
+    [pytest-*.whl]
     [yamllint-*.whl]
     [pathspec-*.whl]
     [PyYAML-*.whl]
@@ -40,7 +41,7 @@ package "処理層" {
 }
 
 getpkg --> [pip-26.1.1.tar.gz] : ダウンロード
-getpkg --> [pip-packages] : pip/setuptools/wheel/yamllint wheel をダウンロード
+getpkg --> [pip-packages] : コアパッケージと追加ツールの wheel をダウンロード
 pysetup --> [pip-26.1.1.tar.gz] : 一時展開
 pysetup --> [pip-26.1.1/src] : `._pth` に一時追加
 pysetup --> [pip-packages] : find-links 指定
@@ -70,7 +71,7 @@ pysetup --> [pip-packages] : find-links 指定
 `Get-Packages.ps1` は以下を行います。
 
 1. `pip-26.1.1.tar.gz` を `packages` にダウンロード
-2. Python が利用可能なら `pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel yamllint pyyaml --dest packages/pip-packages` を実行し、依存 wheel も保存。`<ver>` は packages.psd1 の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従する
+2. Python が利用可能なら `pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml --dest packages/pip-packages` を実行し、依存 wheel も保存。`<ver>` は packages.psd1 の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従する
 
 ### python-setup.ps1
 
@@ -80,7 +81,7 @@ pysetup --> [pip-packages] : find-links 指定
 2. `packages\pip-*.tar.gz` を検出
 3. tarball を一時ディレクトリへ展開
 4. 展開先の `pip-26.1.1\src` を埋め込み Python の `._pth` に一時追加
-5. `python -m pip install ...` を実行
+5. 共通のコアパッケージ一覧を使って `pip`、`setuptools`、`wheel`、`packaging`、`pytest` をインストール
 6. オンライン時は追加で依存込み wheel を `packages/pip-packages` に保存
 7. `._pth` と一時展開ディレクトリを cleanup
 
@@ -88,10 +89,10 @@ pysetup --> [pip-packages] : find-links 指定
 
 ```bash
 # オフライン
-python -m pip install --no-index --find-links=packages/pip-packages pip setuptools wheel
+python -m pip install --no-index --find-links=packages/pip-packages pip setuptools wheel packaging pytest
 
 # オンライン
-python -m pip install pip setuptools wheel
+python -m pip install pip setuptools wheel packaging pytest
 ```
 
 ## 動作フロー
@@ -160,7 +161,7 @@ Setup -> PySetup: PostSetupScript 実行
 PySetup -> PipSrc: 一時展開
 PySetup -> PySetup: `._pth` に pip source を一時追加
 PySetup -> PipModule: python -m pip install
-PipModule -> PyPI: pip, setuptools, wheel を\nダウンロード・インストール
+PipModule -> PyPI: コアパッケージ (pytestを含む) を\nダウンロード・インストール
 PipModule --> PySetup: 完了
 PySetup -> PyPI: pip download で依存込み wheel を取得
 PySetup -> PySetup: wheel を packages/pip-packages/ に保存
@@ -180,7 +181,7 @@ Python が利用可能な環境では、`Get-Packages.ps1` 実行時点で wheel
 ### 手動での wheel 取得
 
 ```bash
-pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel yamllint pyyaml --dest packages/pip-packages
+pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml --dest packages/pip-packages
 ```
 
 `<ver>` には packages.psd1 の Python バージョン (例: `3.13`) を指定してください。`Get-Packages.ps1` はこの値を自動取得して渡します。`--python-version` を省略すると実行環境の Python バージョン向け wheel が取得され、devbin Python でのオフラインインストールが失敗する場合があります。すでに不適切なバージョンの wheel を取得済みの場合は `packages/pip-packages/` を削除してから再実行してください。
@@ -192,6 +193,11 @@ packages/
 │  ├─ setuptools-*.whl
 │  ├─ wheel-*.whl
 │  ├─ packaging-*.whl
+│  ├─ pytest-*.whl
+│  ├─ iniconfig-*.whl
+│  ├─ pluggy-*.whl
+│  ├─ Pygments-*.whl
+│  ├─ colorama-*.whl
 │  ├─ yamllint-*.whl
 │  ├─ pathspec-*.whl
 │  └─ PyYAML-*.whl
@@ -204,8 +210,8 @@ pip 経由でインストールする新しいツールを追加する際は、`
 
 `PipPackage` に本体パッケージ名、`PipDependencies` にオフライン用に一緒に取得・確認する依存パッケージ名を指定します。`Get-Packages.ps1` はこれらの定義から `pip download` 対象を組み立てます。
 
-`python-setup.ps1` は pip 本体と setuptools/wheel のインストールのみを担うため、変更不要です。
+`python-setup.ps1` は `Get-PipWheelPackageNames -IncludeCorePackages` が返すコアパッケージをプリインストールします。pytest のようにすべての devbin Python 環境へ導入するパッケージは、この一覧へ追加します。個別選択するツールは従来どおり `PipInstall` のエントリとして追加します。
 
 ## まとめ
 
-本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して `python -m pip` を実行します。pip パッケージ型のツール (yamllint 等) は `Devbin/Extract` の `PipInstall` 戦略が `packages/pip-packages` の wheel からインストールします。これにより、完全オフライン pip 導入を実現します。
+本設計では、`Get-Packages.ps1` が source tarball と依存込み wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して、pip と pytest を含むコアパッケージをインストールします。pip パッケージ型の追加ツール (yamllint 等) は `Devbin/Extract` の `PipInstall` 戦略が `packages/pip-packages` の wheel からインストールします。これにより、完全オフラインで Python のテスト実行環境を導入できます。
