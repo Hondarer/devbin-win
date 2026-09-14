@@ -203,6 +203,28 @@ Describe "旧モジュールの整理" {
         ($hits -join ", ") | Should Be ""
     }
 
+    It "cmd と cmd.template に UTF-8 BOM を付けない" {
+        $bomFiles = @()
+        $repoRoot = Get-DevbinRepoRoot
+        $files = @(Get-ChildItem -Path $repoRoot -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.FullName -notmatch '\\(packages|dist|\.git)\\' -and
+                ($_.Extension -eq ".cmd" -or $_.Name -like "*.cmd.template")
+            })
+        foreach ($file in $files) {
+            $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+            if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+                $bomFiles += $file.Name
+            }
+        }
+
+        ($bomFiles -join ", ") | Should Be ""
+
+        $vsbt = Get-Content (Join-Path $subscriptsDir "Setup-VSBT.ps1") -Raw
+        $vsbt | Should Match 'New-Object System\.Text\.UTF8Encoding \$false'
+        $vsbt | Should Match 'WriteAllText\(\$cmdPath, \$cmdContent, \$utf8\)'
+    }
+
     It "Make-Dist.ps1 がカレントディレクトリを変更しない" {
         $source = Get-Content (Join-Path $subscriptsDir "Make-Dist.ps1") -Raw
         ($source -match 'Set-Location') | Should Be $false

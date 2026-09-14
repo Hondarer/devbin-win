@@ -1,4 +1,4 @@
-# VSBT PATH 動的追加スクリプト (PowerShell)
+﻿# VSBT PATH 動的追加スクリプト (PowerShell)
 # MSVC と Windows SDK を現在のセッションの環境変数に追加します
 # vswhere を使用してインスタンスを自動検出します
 
