@@ -81,34 +81,46 @@ if ($currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administ
 if ($Manage) {
     # 導入先は実行コンテキストで解決済みの絶対パスを使用する
     $absoluteInstallDir = $DevbinContext.InstallDir
+    $operationExitCode = 0
+    Start-DevbinOperationLog -InstallDir $absoluteInstallDir
+    try {
+        # 環境変数をレジストリから同期
+        Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
 
-    # 環境変数をレジストリから同期
-    Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
-
-    Invoke-MenuLoop -Packages $Packages -InstallDir $absoluteInstallDir -ScriptDir $ScriptDir
-    exit 0
+        Invoke-MenuLoop -Packages $Packages -InstallDir $absoluteInstallDir -ScriptDir $ScriptDir
+    } finally {
+        Stop-DevbinOperationLog
+    }
+    exit $operationExitCode
 }
 
 # アンインストール処理 (状態に依存しない機械的な完全削除)
 if ($Uninstall) {
     $absoluteInstallDir = $DevbinContext.InstallDir
-    $result = Invoke-ProductUninstall -InstallDir $absoluteInstallDir -Force:$Force
-    switch ($result.Status) {
-        "Success" {
-            exit 0
+    $operationExitCode = 1
+    Start-DevbinOperationLog -InstallDir $absoluteInstallDir
+    try {
+        $result = Invoke-ProductUninstall -InstallDir $absoluteInstallDir -Force:$Force
+        switch ($result.Status) {
+            "Success" {
+                $operationExitCode = 0
+            }
+            "Cancelled" {
+                # キャンセルは失敗と区別する (呼び出し元が完了メッセージを出力しないようにする)
+                $operationExitCode = 2
+            }
+            "Refused" {
+                $operationExitCode = 1
+            }
+            default {
+                Write-Host ""
+                Write-Host "Error: Complete uninstallation failed." -ForegroundColor Red
+                $operationExitCode = 1
+            }
         }
-        "Cancelled" {
-            # キャンセルは失敗と区別する (呼び出し元が完了メッセージを出力しないようにする)
-            exit 2
-        }
-        "Refused" {
-            exit 1
-        }
-        default {
-            Write-Host ""
-            Write-Host "Error: Complete uninstallation failed." -ForegroundColor Red
-            exit 1
-        }
+    } finally {
+        Stop-DevbinOperationLog
     }
+    exit $operationExitCode
 }
 

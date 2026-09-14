@@ -190,6 +190,7 @@ Describe "旧モジュールの整理" {
         ($files -contains "UserPath.ps1") | Should Be $true
         ($files -contains "WindowsTerminal.ps1") | Should Be $true
         ($files -contains "ProductUninstall.ps1") | Should Be $true
+        ($files -contains "OperationLog.ps1") | Should Be $true
         ($files -contains "TempDirectory.ps1") | Should Be $true
     }
 
@@ -258,5 +259,91 @@ Describe "旧モジュールの整理" {
             ($defined -contains "Get-TerminalSettings") | Should Be $false
             ($defined -contains "Save-TerminalSettings") | Should Be $false
         }
+    }
+}
+
+Describe "操作ログ" {
+
+    It "標準の導入先では製品ルートの親を返す" {
+        $directory = Get-DevbinOperationLogDirectory -InstallDir "C:\nonexistent-devbin-test\user\devbin-win\bin"
+        $directory | Should Be "C:\nonexistent-devbin-test\user"
+    }
+
+    It "カスタム導入先ではその親を返す" {
+        $directory = Get-DevbinOperationLogDirectory -InstallDir "C:\nonexistent-devbin-test\tools"
+        $directory | Should Be "C:\nonexistent-devbin-test"
+    }
+
+    It "ファイル名は devbin-win の操作ログと日時が分かる" {
+        $info = New-DevbinOperationLogPath -InstallDir "C:\nonexistent-devbin-test\user\devbin-win\bin" -Timestamp ([datetime]"2026-09-15 22:15:13")
+        $info.FileName | Should Be "devbin-win-operation-20260915-221513.log"
+        $info.Path | Should Be "C:\nonexistent-devbin-test\user\devbin-win-operation-20260915-221513.log"
+        $info.UsedFallback | Should Be $false
+    }
+
+    It "同名ファイルがある場合は上書きせず PID を付ける" {
+        $root = New-TestDirectory
+        try {
+            $installDir = Join-Path $root "user\devbin-win\bin"
+            New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+            $stamp = [datetime]"2026-09-15 22:15:13"
+            $first = New-DevbinOperationLogPath -InstallDir $installDir -Timestamp $stamp
+            New-Item -ItemType File -Path $first.Path -Force | Out-Null
+
+            $second = New-DevbinOperationLogPath -InstallDir $installDir -Timestamp $stamp
+            $second.Path | Should Not Be $first.Path
+            $second.FileName | Should Match "^devbin-win-operation-20260915-221513-$PID\.log$"
+            (Test-Path -LiteralPath $first.Path) | Should Be $true
+        } finally {
+            Remove-TestDirectory -Path $root
+        }
+    }
+
+    It "ボリューム直下へは置かず一時フォルダーへ退避する" {
+        $info = New-DevbinOperationLogPath -InstallDir "C:\MyTools"
+        $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\')
+        $info.UsedFallback | Should Be $true
+        ([System.IO.Path]::GetFullPath($info.Directory).TrimEnd('\')) | Should Be $tempRoot
+        $info.FileName | Should Match '^devbin-win-operation-\d{8}-\d{6}'
+    }
+
+    It "Transcript を開始すると Write-Host が残り、終了後も消さない" {
+        $root = New-TestDirectory
+        $logPath = $null
+        try {
+            $installDir = Join-Path $root "user\devbin-win\bin"
+            New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+
+            $logPath = Start-DevbinOperationLog -InstallDir $installDir
+            [string]::IsNullOrWhiteSpace($logPath) | Should Be $false
+            $logPath | Should Match 'devbin-win-operation-\d{8}-\d{6}.*\.log$'
+            $parent = Split-Path -Path (Split-Path -Path $installDir -Parent) -Parent
+            $logDir = Split-Path -Path $logPath -Parent
+            ([string]::Equals($logDir, $parent, [StringComparison]::OrdinalIgnoreCase)) | Should Be $true
+
+            Write-Host "DEVBIN_OPERATION_LOG_MARKER"
+            Stop-DevbinOperationLog
+
+            (Test-Path -LiteralPath $logPath) | Should Be $true
+            $content = Get-Content -LiteralPath $logPath -Encoding UTF8 -Raw
+            $content | Should Match "DEVBIN_OPERATION_LOG_MARKER"
+
+            $bytes = [System.IO.File]::ReadAllBytes($logPath)
+            ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should Be $true
+        } finally {
+            Stop-DevbinOperationLog
+            Remove-TestDirectory -Path $root
+        }
+    }
+
+    It "操作ログを削除する処理を持たない" {
+        $source = Get-Content (Join-Path (Get-DevbinSubscriptsDir) "Devbin\Platform\OperationLog.ps1") -Raw
+        $source | Should Not Match 'Remove-Item'
+    }
+
+    It "Setup-Bin.ps1 の Manage と Uninstall で操作ログを開始する" {
+        $source = Get-Content (Join-Path (Get-DevbinSubscriptsDir) "Setup-Bin.ps1") -Raw
+        $source | Should Match 'Start-DevbinOperationLog -InstallDir \$absoluteInstallDir'
+        $source | Should Match 'Stop-DevbinOperationLog'
     }
 }

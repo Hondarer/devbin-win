@@ -25,6 +25,7 @@ $script:DevbinSourceFiles = @(
     "Platform\VSCodeData.ps1"
     "Platform\Vswhere.ps1"
     "Platform\ProductRoot.ps1"
+    "Platform\OperationLog.ps1"
     "Platform\FontRegistration.ps1"
     "Platform\WindowsTerminal.ps1"
     "Platform\WindowsTerminalProfile.ps1"
@@ -101,6 +102,10 @@ Export-ModuleMember -Function @(
     'Register-VswhereInstance',
     'Unregister-VswhereInstance',
     'Get-DevbinProductRoot',
+    'Get-DevbinOperationLogDirectory',
+    'New-DevbinOperationLogPath',
+    'Start-DevbinOperationLog',
+    'Stop-DevbinOperationLog',
     'Get-DevbinExpectedProductRoot',
     'Test-DevbinProductRootAllowed',
     'Test-PathUnderRoot',

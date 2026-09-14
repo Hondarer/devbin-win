@@ -135,6 +135,7 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 | VSCodeData.ps1 | VS Code data フォルダーの退避と復元 |
 | Vswhere.ps1 | vswhere インスタンスの登録と削除 |
 | ProductRoot.ps1 | 対象ルートの決定と、削除してよい場所かの判定 |
+| OperationLog.ps1 | 操作ログの配置と Transcript の開始・終了 |
 | FontRegistration.ps1 | フォント登録の削除 |
 | WindowsTerminal.ps1 | settings.json の読み書きとバックアップ |
 | WindowsTerminalProfile.ps1 | Git Bash / MinGW プロファイルの更新 |
@@ -178,6 +179,9 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 
 - `Invoke-CompleteUninstall`: 再インストール用の事前クリーンアップ (bin ディレクトリ削除。VS Code data を残す指定可)
 - `Get-DevbinProductRoot`: InstallDir から対象ルート (`...\devbin-win`) を決定する
+- `Get-DevbinOperationLogDirectory`: 操作ログの配置先 (製品ルートの親) を返す
+- `New-DevbinOperationLogPath`: `devbin-win-operation-yyyyMMdd-HHmmss.log` のパスを組み立てる。既存ファイルは上書きしない
+- `Start-DevbinOperationLog` / `Stop-DevbinOperationLog`: 操作結果を Transcript で残す。完全アンインストールでも消えないよう製品ルートの外へ書き、ログ自体は削除しない
 - `Test-DevbinProductRootAllowed`: 対象ルートが `%ProgramData%\%USERNAME%\devbin-win` かどうかを判定する。一致しない場合は削除を行わない
 - `Test-PathUnderRoot`: 値が対象ルート配下のパスかを判定する
 - `Split-RootEntriesFromValue`: `;` 区切りの値を対象ルート配下のエントリとそれ以外に分ける

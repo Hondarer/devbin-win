@@ -58,6 +58,12 @@ glab --version
 
 PowerShell では `ni` が標準 alias (`New-Item`) と衝突します。PowerShell で `@antfu/ni` の `ni` コマンドを使う場合は、セッション内で `Remove-Item Alias:ni -Force` を実行してください。`cmd /c ni` や Git Bash ではこの衝突は発生しません。
 
+## 操作ログ
+
+`Manage-Bin.cmd` と `Setup-Bin.ps1` の Manage / Uninstall は、外部で Transcript を取らなくても操作結果をファイルへ残します。保存先は製品ルート (`...\devbin-win`) の一つ上です。既定の導入先では `C:\ProgramData\<ユーザー名>\devbin-win-operation-yyyyMMdd-HHmmss.log` になります。
+
+製品フォルダーを完全削除しても、このログは残ります。古いログは削除しません。開始時に保存先を画面へ表示します。
+
 ## オフライン環境での npm インストール
 
 Node.js/npm パッケージは ShortName ごとに依存木を保存します。オンライン環境で Node.js/npm が使用できる状態で、次を実行してください。
