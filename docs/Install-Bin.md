@@ -171,7 +171,7 @@ glab は GitLab の Issue・Merge Request・CI/CD パイプライン等をコマ
 
 1. `Manage-Bin.cmd` をダブルクリックして実行
 2. コンポーネントマネージャーで `U` を押す
-3. 確認プロンプトで `y` を入力
+3. 確認プロンプトで `Y` を押す (Enter は不要。既定はキャンセル)
 
 PowerShell から直接実行する場合は、対象を明示します。
 

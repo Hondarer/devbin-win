@@ -36,8 +36,7 @@ function Uninstall-Component {
             foreach ($dn in $depNames) {
                 Write-Host "  - $dn" -ForegroundColor Yellow
             }
-            $confirm = Read-Host "アンインストールを続行しますか? [y/N]"
-            if ($confirm -notmatch "^[yY]") {
+            if (-not (Read-ConfirmationKey -Prompt "アンインストールを続行しますか? [y/N/Esc] ")) {
                 Write-Host "キャンセルしました"
                 return $false
             }

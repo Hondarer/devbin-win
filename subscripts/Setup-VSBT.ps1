@@ -421,8 +421,7 @@ try {
         $licenseUrl = $resource.license
 
         Write-Host "`nLicense: $licenseUrl"
-        $response = Read-Host "Do you accept the license? [Y/N]"
-        if ($response -notmatch '^[Yy]') {
+        if (-not (Read-ConfirmationKey -Prompt "Do you accept the license? [y/N/Esc] ")) {
             Write-Host "Aborted"
             return
         }

@@ -43,8 +43,7 @@ foreach ($action in $plan.Actions) {
 Write-Host ""
 
 if (-not $Force) {
-    $confirmation = Read-Host "Do you want to proceed? (Y/n)"
-    if ($confirmation -eq "n" -or $confirmation -eq "N") {
+    if (-not (Read-ConfirmationKey -Prompt "Do you want to proceed? [Y/n/Esc] " -DefaultYes)) {
         Write-Host "Setup cancelled by user."
         exit 0
     }

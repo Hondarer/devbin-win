@@ -112,6 +112,7 @@ Export-ModuleMember -Function @(
     'Save-TerminalSettings',
     'Invoke-CompleteUninstall',
     'Invoke-ProductUninstall',
+    'Read-ConfirmationKey',
     'Get-DevbinHomeLayout',
     'Get-DevbinHomePlan',
     'Invoke-DevbinHomePlan',

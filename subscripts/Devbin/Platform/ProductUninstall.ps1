@@ -1,6 +1,37 @@
 ﻿# ProductUninstall.ps1
 # 再インストール前の掃除と、製品の完全アンインストール
 
+# Y/N/Esc を 1 キーで決める。Enter は既定の可否に従う。
+function Read-ConfirmationKey {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Prompt,
+
+        [switch]$DefaultYes
+    )
+
+    Write-Host $Prompt -NoNewline
+    while ($true) {
+        $key = [Console]::ReadKey($true)
+        if ($key.Key -eq "Escape" -or $key.KeyChar -eq 'n' -or $key.KeyChar -eq 'N') {
+            Write-Host "n"
+            return $false
+        }
+        if ($key.KeyChar -eq 'y' -or $key.KeyChar -eq 'Y') {
+            Write-Host "y"
+            return $true
+        }
+        if ($key.Key -eq "Enter") {
+            if ($DefaultYes) {
+                Write-Host "y"
+                return $true
+            }
+            Write-Host "n"
+            return $false
+        }
+    }
+}
+
 # 完全アンインストール処理を実行する関数
 function Invoke-CompleteUninstall {
     param(
@@ -212,8 +243,7 @@ function Invoke-ProductUninstall {
     Write-Host ""
 
     if (-not $Force) {
-        $confirmation = Read-Host "Continue? [y/N]"
-        if ($confirmation -notmatch '^[yY]$') {
+        if (-not (Read-ConfirmationKey -Prompt "Continue? [y/N/Esc] ")) {
             Write-Host "Cancelled."
             return [PSCustomObject]@{ Status = "Cancelled" }
         }

@@ -124,18 +124,7 @@ function Show-ChangePlan {
 
 # 続行するかを確認する
 function Confirm-ChangePlan {
-    Write-Host " 続行しますか? [Y/n/Esc] " -NoNewline
-    while ($true) {
-        $key = [Console]::ReadKey($true)
-        if ($key.Key -eq "Escape" -or $key.KeyChar -eq 'n' -or $key.KeyChar -eq 'N') {
-            Write-Host "n"
-            return $false
-        }
-        if ($key.Key -eq "Enter" -or $key.KeyChar -eq 'y' -or $key.KeyChar -eq 'Y') {
-            Write-Host "y"
-            return $true
-        }
-    }
+    return Read-ConfirmationKey -Prompt " 続行しますか? [Y/n/Esc] " -DefaultYes
 }
 
 # 適用結果を表示する

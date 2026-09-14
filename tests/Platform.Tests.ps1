@@ -208,6 +208,25 @@ Describe "旧モジュールの整理" {
         ($source -match 'Set-Location') | Should Be $false
     }
 
+    It "確認プロンプトはキー 1 回で決まり Read-Host を使わない" {
+        $productUninstall = Get-Content (Join-Path $subscriptsDir "Devbin\Platform\ProductUninstall.ps1") -Raw
+        $menuActions = Get-Content (Join-Path $subscriptsDir "Devbin\Menu\MenuActions.ps1") -Raw
+        $componentUninstall = Get-Content (Join-Path $subscriptsDir "Devbin\Install\ComponentUninstall.ps1") -Raw
+        $setupHome = Get-Content (Join-Path $subscriptsDir "Setup-Home.ps1") -Raw
+        $setupVsbt = Get-Content (Join-Path $subscriptsDir "Setup-VSBT.ps1") -Raw
+
+        $productUninstall | Should Match 'function Read-ConfirmationKey'
+        $productUninstall | Should Match 'Read-ConfirmationKey -Prompt "Continue\? \[y/N/Esc\] "'
+        $productUninstall | Should Not Match 'Read-Host'
+        $menuActions | Should Match 'Read-ConfirmationKey -Prompt " 続行しますか\? \[Y/n/Esc\] " -DefaultYes'
+        $componentUninstall | Should Match 'Read-ConfirmationKey -Prompt "アンインストールを続行しますか\? \[y/N/Esc\] "'
+        $componentUninstall | Should Not Match 'Read-Host'
+        $setupHome | Should Match 'Read-ConfirmationKey -Prompt "Do you want to proceed\? \[Y/n/Esc\] " -DefaultYes'
+        $setupHome | Should Not Match 'Read-Host'
+        $setupVsbt | Should Match 'Read-ConfirmationKey -Prompt "Do you accept the license\? \[y/N/Esc\] "'
+        $setupVsbt | Should Not Match 'Read-Host'
+    }
+
     It "Terminal プロファイル操作が共通化されている" {
         foreach ($name in @("Update-GitBash-Profile.ps1", "Update-MinGW-Profile.ps1")) {
             $filePath = Join-Path $subscriptsDir $name
