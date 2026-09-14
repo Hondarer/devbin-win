@@ -93,6 +93,98 @@ function Test-NpmOptionalLockEntryForCurrentPlatform {
     return ($osMatches -and $cpuMatches)
 }
 
+function Test-NpmLockEntryHasPlatformConstraint {
+    param([Parameter(Mandatory)][object]$Entry)
+
+    $propertyNames = @($Entry.PSObject.Properties | ForEach-Object { $_.Name })
+    return ($propertyNames -contains 'os' -or $propertyNames -contains 'cpu')
+}
+
+function Test-NpmSpecIsDistTag {
+    param([string]$Spec)
+
+    if ([string]::IsNullOrWhiteSpace($Spec)) {
+        return $false
+    }
+
+    # latest / next などの dist-tag。semver 範囲や file:/git: は対象外。
+    return [bool]($Spec -match '^[A-Za-z][A-Za-z0-9._-]*$')
+}
+
+function Get-NpmLockedDependencyVersion {
+    param(
+        [Parameter(Mandatory)][object[]]$PackageProperties,
+        [Parameter(Mandatory)][string]$ParentPath,
+        [Parameter(Mandatory)][string]$DependencyName
+    )
+
+    $candidates = @(
+        "$ParentPath/node_modules/$DependencyName"
+        "node_modules/$DependencyName"
+    )
+    foreach ($candidate in $candidates) {
+        $property = $PackageProperties | Where-Object { $_.Name -eq $candidate } | Select-Object -First 1
+        if ($null -eq $property) {
+            continue
+        }
+        $names = @($property.Value.PSObject.Properties | ForEach-Object { $_.Name })
+        if ($names -contains 'version' -and -not [string]::IsNullOrWhiteSpace([string]$property.Value.version)) {
+            return [string]$property.Value.version
+        }
+    }
+
+    return $null
+}
+
+function Set-NpmDistTagSpecsToLockedVersions {
+    param(
+        [Parameter(Mandatory)][object]$Entry,
+        [Parameter(Mandatory)][string]$ParentPath,
+        [Parameter(Mandatory)][object[]]$PackageProperties
+    )
+
+    $entryPropertyNames = @($Entry.PSObject.Properties | ForEach-Object { $_.Name })
+    foreach ($dependencyKind in @('dependencies', 'optionalDependencies')) {
+        if ($entryPropertyNames -notcontains $dependencyKind) {
+            continue
+        }
+
+        $dependencies = $Entry.$dependencyKind
+        if ($null -eq $dependencies) {
+            continue
+        }
+
+        foreach ($dependencyProperty in @($dependencies.PSObject.Properties)) {
+            if (-not (Test-NpmSpecIsDistTag -Spec ([string]$dependencyProperty.Value))) {
+                continue
+            }
+
+            $lockedVersion = Get-NpmLockedDependencyVersion `
+                -PackageProperties $PackageProperties `
+                -ParentPath $ParentPath `
+                -DependencyName ([string]$dependencyProperty.Name)
+            if ([string]::IsNullOrWhiteSpace($lockedVersion)) {
+                continue
+            }
+
+            Set-NpmJsonProperty -Object $dependencies -Name ([string]$dependencyProperty.Name) -Value $lockedVersion
+        }
+    }
+}
+
+function Write-NpmNativeOutput {
+    param([object[]]$Output)
+
+    foreach ($item in @($Output)) {
+        if ($null -eq $item) {
+            continue
+        }
+
+        # 2>&1 の ErrorRecord をそのまま流すと赤字になる。文言だけ出す。
+        Write-Host ([string]$item)
+    }
+}
+
 function Get-NpmOfflineFileSpec {
     param([Parameter(Mandatory)][string]$Path)
 
@@ -154,6 +246,7 @@ function New-NpmOfflineInstallProject {
         $projectDependencies[$dependencyName] = $dependencySpec
     }
 
+    $optionalEntriesToRemove = @()
     foreach ($packageProperty in $packageProperties) {
         if ($packageProperty.Name -eq '__devbin_npm_root__') {
             continue
@@ -177,12 +270,26 @@ function New-NpmOfflineInstallProject {
                 # lockfile, although npm did not install or pack them here.
                 continue
             }
+            if ($isOptional -and -not (Test-NpmLockEntryHasPlatformConstraint -Entry $entry)) {
+                # Transitive optional of a skipped platform package, e.g. @emnapi/runtime
+                # for wasm32. It was not packed because npm did not install it here.
+                $optionalEntriesToRemove += [string]$packageProperty.Name
+                continue
+            }
             throw "npm archive is missing for lockfile package: $identity"
         }
 
         $archivePath = Join-Path $CacheStatus.CacheDirectory $manifestRecords[$identity].relativePath
         Set-NpmJsonProperty -Object $entry -Name 'resolved' -Value (Get-NpmOfflineFileSpec -Path $archivePath)
         Set-NpmJsonProperty -Object $entry -Name 'integrity' -Value ([string]$manifestRecords[$identity].integrity)
+        Set-NpmDistTagSpecsToLockedVersions `
+            -Entry $entry `
+            -ParentPath ([string]$packageProperty.Name) `
+            -PackageProperties $packageProperties
+    }
+
+    foreach ($packagePath in $optionalEntriesToRemove) {
+        $lock.packages.PSObject.Properties.Remove($packagePath)
     }
 
     $projectName = "devbin-offline-$([string]$PackageConfig.ShortName)"
@@ -269,8 +376,10 @@ function Invoke-NpmInstallFromCache {
     try {
         $env:PUPPETEER_SKIP_DOWNLOAD = "1"
         foreach ($archivePath in @($status.ArchivePaths)) {
-            & $NpmCommandPath cache add $archivePath --cache $tempCacheDirectory --offline | Out-Host
-            if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+            $cacheAddOutput = @(& $NpmCommandPath cache add $archivePath --cache $tempCacheDirectory --offline 2>&1)
+            $cacheAddExitCode = $LASTEXITCODE
+            Write-NpmNativeOutput -Output $cacheAddOutput
+            if ($cacheAddExitCode -ne 0 -and $null -ne $cacheAddExitCode) {
                 Write-Host "Error: npm cache add failed for $archivePath" -ForegroundColor Red
                 return $false
             }
@@ -288,9 +397,11 @@ function Invoke-NpmInstallFromCache {
         }
 
         Write-Host "  Installing $($PackageConfig.ShortName) from the offline npm cache..."
-        & $NpmCommandPath @args | Out-Host
-        if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
-            Write-Host "Error: npm install failed for '$($PackageConfig.ShortName)' (exit code: $LASTEXITCODE)" -ForegroundColor Red
+        $installOutput = @(& $NpmCommandPath @args 2>&1)
+        $installExitCode = $LASTEXITCODE
+        Write-NpmNativeOutput -Output $installOutput
+        if ($installExitCode -ne 0 -and $null -ne $installExitCode) {
+            Write-Host "Error: npm install failed for '$($PackageConfig.ShortName)' (exit code: $installExitCode)" -ForegroundColor Red
             return $false
         }
 

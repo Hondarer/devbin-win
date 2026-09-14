@@ -169,6 +169,65 @@ Describe "Invoke-ExtractStrategy" {
         $result | Should Be $false
     }
 
+    It "PostSetupScript の .ps1 は別プロセスで実行する" {
+        $source = Get-Content (Join-Path (Get-DevbinSubscriptsDir) "Devbin\Extract\ExtractStrategy.ps1") -Raw
+
+        $source | Should Match 'powershell\.exe -ExecutionPolicy Bypass -File \$scriptPath'
+        $source | Should Match 'if \(\$extension -ieq "\.ps1"\)'
+    }
+
+    It "PostSetupScript の Import-Module -Force で実行中の未公開関数を失わない" {
+        $workDir = New-TestDirectory
+        try {
+            $scriptDir = Join-Path $workDir "subscripts"
+            $templatesDir = Join-Path $scriptDir "config\templates"
+            New-Item -ItemType Directory -Path $templatesDir -Force | Out-Null
+
+            $devbinPath = Join-Path (Get-DevbinSubscriptsDir) "Devbin"
+            $reloadScript = Join-Path $templatesDir "reload-devbin.ps1"
+            $reloadBody = @"
+param([string]`$TargetPath)
+Import-Module '$devbinPath' -Force -ErrorAction Stop
+Set-Content -Path (Join-Path `$TargetPath 'post-setup.txt') -Value 'ok'
+"@
+            $utf8Bom = New-Object System.Text.UTF8Encoding $true
+            [System.IO.File]::WriteAllText($reloadScript, $reloadBody, $utf8Bom)
+
+            $archive = Join-Path $workDir "tool.zip"
+            New-TestArchive -Path $archive -Entries @("tool-1.0.0\tool.exe")
+            $binDir = Join-Path $workDir "bin"
+            New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+            $pkg = New-TestPackage -ShortName "tool" -Extra @{ PostSetupScript = "reload-devbin.ps1" }
+            $global:DevbinReloadExtractParams = @{
+                PackageConfig = $pkg
+                ArchiveFile   = $archive
+                BinDir        = $binDir
+                ScriptDir     = $scriptDir
+            }
+
+            InModuleScope Devbin {
+                $threw = $false
+                $extractResult = $false
+                $changeStatus = ""
+                try {
+                    $extractResult = Invoke-ExtractStrategy @global:DevbinReloadExtractParams
+                    $changeStatus = (New-ComponentChangeResult -Status "Installed" -ShortName "tool").Status
+                } catch {
+                    $threw = $true
+                }
+
+                $threw | Should Be $false
+                $extractResult | Should Be $true
+                $changeStatus | Should Be "Installed"
+            }
+
+            (Test-Path (Join-Path $binDir "post-setup.txt")) | Should Be $true
+        } finally {
+            Remove-Variable -Name DevbinReloadExtractParams -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $workDir
+        }
+    }
+
     It "戦略の失敗を握りつぶさずに false を返す" {
         $workDir = New-TestDirectory
         try {

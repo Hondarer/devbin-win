@@ -128,11 +128,7 @@ function Get-ValidCommandCandidates {
         [string]$CommandName
     )
 
-    try {
-        return @(Get-Command $CommandName -All -ErrorAction Stop)
-    } catch {
-        return @()
-    }
+    return @(Get-Command $CommandName -All -ErrorAction SilentlyContinue)
 }
 
 # コマンドが PATH で既に利用可能かどうかをチェックする

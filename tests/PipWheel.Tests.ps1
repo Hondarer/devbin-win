@@ -29,6 +29,15 @@ Describe "Get-PipWheelPackageNames" {
         $content | Should Match '\$pipDownloadArgs\s*\+=\s*\$corePackages'
     }
 
+    It "既に読み込み済みの Devbin を Force で置き換えない" {
+        $setupScriptPath = Join-Path (Get-DevbinSubscriptsDir) "config\templates\python-setup.ps1"
+        $content = Get-Content -Path $setupScriptPath -Raw
+
+        $content | Should Match 'Get-Module -Name Devbin'
+        $content | Should Match 'if \(-not \$loadedDevbinModule\)'
+        $content | Should Match 'Import-Module \$devbinModulePath -Force'
+    }
+
     It "指定がなければ空を返す" {
         $names = @(Get-PipWheelPackageNames)
         $names.Count | Should Be 0

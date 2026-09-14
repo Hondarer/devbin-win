@@ -87,12 +87,21 @@ function Invoke-ExtractStrategy {
         }
 
         # PostSetupScript 実行
+        # .ps1 は別プロセスで実行する。同一セッションだと Import-Module -Force や exit が導入処理ごと終わる。
         if ($PackageConfig.PostSetupScript) {
             $scriptTargetPath = if ($targetPath) { $targetPath } else { $BinDir }
             $scriptPath = Join-Path $ScriptDir "config\templates\$($PackageConfig.PostSetupScript)"
             if (Test-Path $scriptPath) {
                 Write-Host "Running post-setup script: $($PackageConfig.PostSetupScript)"
-                & $scriptPath -TargetPath $scriptTargetPath
+                $extension = [System.IO.Path]::GetExtension($scriptPath)
+                if ($extension -ieq ".ps1") {
+                    & powershell.exe -ExecutionPolicy Bypass -File $scriptPath -TargetPath $scriptTargetPath
+                } else {
+                    & $scriptPath -TargetPath $scriptTargetPath
+                }
+                if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+                    throw "Post-setup script failed with exit code ${LASTEXITCODE}: $($PackageConfig.PostSetupScript)"
+                }
             } else {
                 Write-Host "Warning: Post-setup script not found: $scriptPath" -ForegroundColor Yellow
             }

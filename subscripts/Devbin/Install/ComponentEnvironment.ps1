@@ -25,14 +25,13 @@ function Resolve-EdgeExecutable {
         "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe"
     )
     foreach ($registryPath in $registryPaths) {
-        try {
-            $registryKey = Get-Item -LiteralPath $registryPath -ErrorAction Stop
-            $registeredPath = [string]$registryKey.GetValue("")
-            if (-not [string]::IsNullOrWhiteSpace($registeredPath)) {
-                $candidates += $registeredPath
-            }
-        } catch {
-            # Registry access or key absence is not fatal; continue with other candidates.
+        $registryKey = Get-Item -LiteralPath $registryPath -ErrorAction SilentlyContinue
+        if (-not $registryKey) {
+            continue
+        }
+        $registeredPath = [string]$registryKey.GetValue("")
+        if (-not [string]::IsNullOrWhiteSpace($registeredPath)) {
+            $candidates += $registeredPath
         }
     }
 

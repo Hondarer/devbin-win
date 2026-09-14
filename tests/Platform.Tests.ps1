@@ -5,6 +5,20 @@
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
 
+Describe "Get-ValidCommandCandidates" {
+
+    It "無いコマンドは空を返し、見つからないことをエラーにしない" {
+        InModuleScope Devbin {
+            $candidates = @(Get-ValidCommandCandidates -CommandName "devbin-missing-command-xyz")
+            $candidates.Count | Should Be 0
+        }
+
+        $source = Get-Content (Join-Path (Get-DevbinSubscriptsDir) "Devbin\Platform\CommandLookup.ps1") -Raw
+        $source | Should Match 'Get-Command \$CommandName -All -ErrorAction SilentlyContinue'
+        $source | Should Not Match 'Get-Command \$CommandName -All -ErrorAction Stop'
+    }
+}
+
 Describe "New-DevbinTempDirectory / Remove-DevbinTempDirectory" {
 
     It "呼び出しごとに別の一時ディレクトリを作る" {

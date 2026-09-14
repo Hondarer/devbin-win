@@ -181,4 +181,10 @@ Describe "導入処理の分割" {
         }
         ($hits -join ", ") | Should Be ""
     }
+
+    It "Edge の App Paths が無くてもエラーにしない" {
+        $source = Get-Content (Join-Path $subscriptsDir "Devbin\Install\ComponentEnvironment.ps1") -Raw
+        $source | Should Match 'Get-Item -LiteralPath \$registryPath -ErrorAction SilentlyContinue'
+        $source | Should Not Match 'Get-Item -LiteralPath \$registryPath -ErrorAction Stop'
+    }
 }

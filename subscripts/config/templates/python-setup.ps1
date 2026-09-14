@@ -9,9 +9,18 @@ param(
 
 Write-Host "Running Python post-setup..."
 
-# 共通処理は Devbin モジュールに置く。パスはカレントディレクトリに依存させない
+# 共通処理は Devbin モジュールに置く。パスはカレントディレクトリに依存させない。
+# 導入中に -Force で置き換えると、呼び出し元の未公開関数が見えなくなる。
 $devbinModulePath = Join-Path $PSScriptRoot "..\..\Devbin"
-Import-Module $devbinModulePath -Force -ErrorAction Stop
+$expectedDevbinModulePath = [System.IO.Path]::GetFullPath((Join-Path $devbinModulePath "Devbin.psm1"))
+$loadedDevbinModule = Get-Module -Name Devbin | Where-Object {
+    $_.Path -and
+    [System.IO.Path]::GetFullPath($_.Path).Equals($expectedDevbinModulePath, [System.StringComparison]::OrdinalIgnoreCase)
+} | Select-Object -First 1
+
+if (-not $loadedDevbinModule) {
+    Import-Module $devbinModulePath -Force -ErrorAction Stop
+}
 $devbinContext = New-DevbinContext -SubscriptsDir (Join-Path $PSScriptRoot "..\..")
 
 function Set-PthFileContent {
