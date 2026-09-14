@@ -54,7 +54,7 @@ New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
 
 try {
     # 収録対象 (リポジトリルートからの相対パス)
-    # subscripts はフォルダごと収録するため、Devbin 配下の新モジュールと
+    # subscripts はフォルダーごと収録するため、Devbin 配下の新モジュールと
     # config/templates のテンプレートも自動的に含まれる
     $itemsToInclude = @(
         "packages",
@@ -102,7 +102,7 @@ try {
 
     Write-Host "Compressing files..."
 
-    # ステージングしたルートフォルダごと圧縮し、zip のルート直下に親フォルダ名の階層を作る
+    # ステージングしたルートフォルダーごと圧縮し、zip のルート直下に親フォルダー名の階層を作成する
     Compress-Archive -Path $archiveRoot -DestinationPath $zipPath -Force
 } finally {
     Remove-DevbinTempDirectory -Path $stagingRoot

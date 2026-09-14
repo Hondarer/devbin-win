@@ -1,5 +1,5 @@
 ﻿# InstallerStrategy.ps1
-# インストーラ形式 (自己解凍、Inno Setup、VS Build Tools) を扱う戦略
+# インストーラー形式 (自己解凍、Inno Setup、VS Build Tools) を扱う戦略
 
 # SelfExtractingArchive 戦略: 自己解凍アーカイブ
 function Invoke-SelfExtractingArchiveExtract {
@@ -60,7 +60,7 @@ function Invoke-SelfExtractingArchiveExtract {
     }
 }
 
-# InnoSetup 戦略: innoextract を使用して Inno Setup インストーラを解凍
+# InnoSetup 戦略: innoextract を使用して Inno Setup インストーラーを展開
 function Invoke-InnoSetupExtract {
     param(
         [string]$ArchiveFile,
@@ -81,7 +81,7 @@ function Invoke-InnoSetupExtract {
     }
     New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
 
-    # innoextract で解凍
+    # innoextract で展開
     Write-Host "  Extracting with innoextract..."
     $innoextractArgs = @("-d", "`"$TempDir`"", "`"$ArchiveFile`"")
     $process = Start-Process -FilePath $innoextractPath -ArgumentList $innoextractArgs -Wait -PassThru -NoNewWindow

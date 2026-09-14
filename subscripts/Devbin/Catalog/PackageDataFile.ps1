@@ -2,7 +2,7 @@
 # .psd1 データファイルの読み込み
 #
 # Import-PowerShellDataFile は Windows PowerShell 5.1 に存在しないため、
-# 同コマンドレットと同じ仕組みである AST の SafeGetValue() を使う。
+# 同コマンドレットと同じ仕組みである AST の SafeGetValue() を使用する。
 # 構文解析してハッシュテーブルのノードを取り出すだけなので、
 # Invoke-Expression と違いファイル内のコードは実行されない。
 

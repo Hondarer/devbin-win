@@ -32,10 +32,10 @@ subscripts/Devbin/Extract/
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
-| InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
+| InnoSetup | innoextract で Inno Setup インストーラーを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 | PipInstall | python -m pip install でパッケージをインストール | yamllint |
-| NpmInstall | 検証済み依存木を npm のオフライン一時 prefix へ展開 | pnpm, @antfu/ni |
+| NpmInstall | 検証済み依存ツリーを npm のオフライン一時 prefix へ展開 | pnpm, @antfu/ni |
 
 ## 共通関数
 
@@ -68,7 +68,7 @@ function Expand-ArchiveToTemp {
 
 ### Get-ExtractedSourcePath
 
-展開されたアーカイブの実際のソースパスを取得します。単一フォルダの場合はそのフォルダを、複数フォルダまたはファイルのみの場合は TempDir を返します。
+展開されたアーカイブの実際のソースパスを取得します。単一フォルダーの場合はそのフォルダーを、複数フォルダーまたはファイルのみの場合は TempDir を返します。
 
 ```powershell
 function Get-ExtractedSourcePath {
@@ -83,7 +83,7 @@ function Get-ExtractedSourcePath {
 
 ZIP を展開し、すべてのファイルを bin ディレクトリに配置します。
 
-#### パラメータ
+#### パラメーター
 
 なし (共通プロパティのみ)
 
@@ -114,9 +114,9 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 
 アーカイブを展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) や tar.xz 形式にも対応しています。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | ExtractPath | 抽出するサブディレクトリのパス | string | ✅ |
 | FilePattern | 抽出するファイル名のパターン (正規表現) | string | ❌ |
@@ -194,7 +194,7 @@ RenameFiles を使用してファイル名を変更する例:
 
 この例では、`mingw32-make.exe` が `make.exe` にリネームされて bin ディレクトリに配置されます。
 
-MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。`Get-ExtractedSourcePath` が `mingw64` を単一フォルダとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
+MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。`Get-ExtractedSourcePath` が `mingw64` を単一フォルダーとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
 
 tar.xz アーカイブと PostSetupScript を使用した例:
 
@@ -221,9 +221,9 @@ nkf, CMake, GNU Make, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, 
 
 ZIP を展開後、指定されたサブディレクトリの内容を指定のターゲットディレクトリに配置します。Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin 内の特定のサブディレクトリになる点です。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | ExtractPath | 抽出するサブディレクトリのパス | string | ✅ |
 | TargetDirectory | 配置先のディレクトリ名 (bin からの相対パス) | string | ✅ |
@@ -251,7 +251,7 @@ ZIP を展開後、指定されたサブディレクトリの内容を指定の�
 }
 ```
 
-この例では、アーカイブ内の `bin` フォルダが `bin/graphviz` に配置されます。FFmpeg も同じ戦略で、アーカイブ内の `bin` フォルダを `bin/ffmpeg` に配置します。
+この例では、アーカイブ内の `bin` フォルダーが `bin/graphviz` に配置されます。FFmpeg も同じ戦略で、アーカイブ内の `bin` フォルダーを `bin/ffmpeg` に配置します。
 
 #### 適用パッケージ
 
@@ -261,9 +261,9 @@ Graphviz, FFmpeg
 
 ZIP を展開後、バージョン番号を含むディレクトリ名を正規化します。パッケージのバージョンが変わっても、一貫したディレクトリ名を維持できます。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | VersionPattern | バージョン番号を抽出する正規表現 | string | ✅ |
 | TargetDirectory | ターゲットディレクトリ名 (プレースホルダー `{0}` にバージョンが埋め込まれる) | string | ✅ |
@@ -301,9 +301,9 @@ Microsoft JDK
 
 ZIP を展開後、指定されたディレクトリ名で配置します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | TargetDirectory | ターゲットディレクトリ名 | string | ✅ |
 | UseLongPathSupport | 長いパス対応を有効化 | bool | ❌ |
@@ -322,7 +322,7 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
 
 #### PostExtract サポート
 
-PostExtract では以下の後処理がサポートされています。
+PostExtract では次の後処理をサポートしています。
 
 - `CreateDirectories`: ディレクトリ作成
   ```powershell
@@ -392,9 +392,9 @@ PostSetupScript を使用した例:
 
 JAR ファイルをコピーし、実行用の cmd ラッパースクリプトを生成します。Java アプリケーションの実行を簡素化します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | JarName | JAR ファイル名 | string | ✅ |
 | WrapperName | ラッパースクリプト名 | string | ✅ |
@@ -438,9 +438,9 @@ PlantUML
 
 実行ファイルを直接 bin ディレクトリにコピーします。アーカイブではなく、単一の実行ファイルをダウンロードする場合に使用します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | TargetName | コピー先のファイル名 | string | ❌ |
 
@@ -470,9 +470,9 @@ NuGet, cloc, vswhere
 
 自己解凍実行ファイルを実行して展開します。7z.exe や Setup.exe などの自己解凍アーカイブに対応します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | TargetDirectory | 展開先ディレクトリ名 | string | ✅ |
 | ExtractArgs | 実行時の引数 | string | ✅ |
@@ -516,18 +516,18 @@ Portable Git
 
 ### InnoSetup 戦略
 
-innoextract を使用して Inno Setup インストーラを解凍します。Inno Setup で作成されたインストーラからファイルを抽出します。
+innoextract を使用して Inno Setup インストーラーを展開します。Inno Setup で作成されたインストーラーからファイルを抽出します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
-| ExtractPath | 解凍後に抽出するサブディレクトリのパス | string | ✅ |
+| ExtractPath | 展開後に抽出するサブディレクトリのパス | string | ✅ |
 | TargetDirectory | 配置先のディレクトリ名 (bin からの相対パス) | string | ✅ |
 
 #### 処理フロー
 
-1. bin ディレクトリ内の innoextract.exe を使用してインストーラを一時ディレクトリに解凍
+1. bin ディレクトリ内の innoextract.exe を使用してインストーラーを一時ディレクトリに展開
 2. ExtractPath で指定されたサブディレクトリを特定
 3. TargetDirectory で指定された名前のディレクトリとして bin に配置
 
@@ -549,7 +549,7 @@ innoextract パッケージが先にインストールされている必要が�
 }
 ```
 
-この例では、Inno Setup インストーラから `app` フォルダが抽出され、`bin/OpenCppCoverage` に配置されます。
+この例では、Inno Setup インストーラーから `app` フォルダーが抽出され、`bin/OpenCppCoverage` に配置されます。
 
 #### 適用パッケージ
 
@@ -559,9 +559,9 @@ OpenCppCoverage
 
 Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアップします。MSVC と Windows SDK をポータブル形式でダウンロード・展開します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | DisplayName | 表示名 | string | ✅ |
 | ExtractedName | 展開先ディレクトリ名 | string | ✅ |
@@ -611,9 +611,9 @@ Visual Studio Build Tools
 
 `python -m pip install` を実行して Python パッケージをインストールします。アーカイブファイルを使わず、`packages/pip-packages/` の wheel を正本として読み込みます。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | PipPackage | pip パッケージ名 | string | ✅ |
 | PipDependencies | オフライン用に一緒に取得・確認する pip 依存パッケージ名 | string[] | ❌ |
@@ -652,15 +652,15 @@ yamllint
 
 ### NpmInstall 戦略
 
-検証済み依存木を一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim を devbin-win のインストール先へマージします。npm パッケージは ShortName ごとの dependency tree cache から、常にオフラインで導入します。
+検証済み依存ツリーを一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim を devbin-win のインストール先へマージします。npm パッケージは ShortName ごとの dependency tree cache から、常にオフラインで導入します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | NpmPackage | npm パッケージ名 | string | ✅ |
 | Version | インストールするバージョン (指定時は `@Version` として渡す) | string | ❌ |
-| NpmDependencies | 本体の依存木とは別に一緒に取得・導入する npm package spec | string[] | ❌ |
+| NpmDependencies | 本体の依存ツリーとは別に一緒に取得・導入する npm package spec | string[] | ❌ |
 | NpmIgnoreScripts | npm lifecycle scripts を無効化するか。未指定時は `$true` | bool | ❌ |
 | Browser | `Edge` の場合、既存 Microsoft Edge を検出してブラウザ関連環境変数を設定 | string | ❌ |
 
@@ -675,7 +675,7 @@ yamllint
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージの依存木、`package-lock.json`、`npm-cache-manifest.json` が `packages\npm-packages\<ShortName>\` に保存されます。キャッシュ不足時は `Get-Packages.ps1 -PackageShortNames <ShortName>` の自動実行を試み、取得後も不足する場合はエラーで停止します。`NpmInstall` 自体は npm registry へ直接 fallback しません。
+`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージの依存ツリー、`package-lock.json`、`npm-cache-manifest.json` が `packages\npm-packages\<ShortName>\` に保存されます。キャッシュ不足時は `Get-Packages.ps1 -PackageShortNames <ShortName>` の自動実行を試み、取得後も不足する場合はエラーで停止します。`NpmInstall` 自体は npm registry へ直接 フォールバックしません。
 
 #### 使用例
 
@@ -705,7 +705,7 @@ PowerShell の `ni` は `New-Item` alias と衝突します。devbin-win は pro
 
 ## 新しい戦略の追加
 
-新しい抽出パターンが必要な場合、以下の手順で新しい戦略を追加できます。
+新しい抽出パターンが必要な場合、次の手順で新しい戦略を追加できます。
 
 ### 1. Devbin/Extract に戦略関数を追加
 
@@ -763,7 +763,7 @@ function Invoke-ExtractStrategy {
     ShortName = "newtool"
     ArchivePattern = "newtool-.*\.zip$"
     ExtractStrategy = "NewStrategy"
-    # 新しい戦略のパラメータ
+    # 新しい戦略のパラメーター
     CustomParam = "value"
     DownloadUrl = "https://example.com/newtool.zip"
 }

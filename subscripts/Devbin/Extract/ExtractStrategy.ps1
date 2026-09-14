@@ -24,7 +24,7 @@ function Invoke-ExtractStrategy {
         [string]$TempDir = ""
     )
 
-    # 一時領域は実行ごとに分ける。呼び出し元が指定した場合はそれを使う
+    # 一時領域は実行ごとに分離する。呼び出し元が指定した場合はそれを使用する
     $ownsTempDir = [string]::IsNullOrWhiteSpace($TempDir)
     if ($ownsTempDir) {
         $TempDir = New-DevbinTempDirectory -Prefix "devbin-extract"
@@ -116,7 +116,7 @@ function Invoke-ExtractStrategy {
         return $false
     }
     finally {
-        # 自分で作った一時領域は、成否によらず必ず片付ける
+        # 自身で作成した一時領域は、成否によらず必ずクリーンアップする
         if ($ownsTempDir) {
             Remove-DevbinTempDirectory -Path $TempDir
         }

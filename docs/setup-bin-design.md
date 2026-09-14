@@ -95,7 +95,7 @@ Devbin/Extract に実装された抽出パターンです。呼び分けは `Inv
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
-| InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
+| InnoSetup | innoextract で Inno Setup インストーラーを展開 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 
 ## パッケージ定義の読み込み (Devbin/Catalog)
@@ -106,14 +106,14 @@ Devbin/Extract に実装された抽出パターンです。呼び分けは `Inv
 
 ### 主要関数
 
-- `Import-DevbinDataFile`: `.psd1` をハッシュテーブルとして読み込む。`Import-PowerShellDataFile` は Windows PowerShell 5.1 に存在しないため、同等の仕組みである AST の `SafeGetValue()` を使う。ファイル内のコードは実行されない
+- `Import-DevbinDataFile`: `.psd1` をハッシュテーブルとして読み込む。`Import-PowerShellDataFile` は Windows PowerShell 5.1 に存在しないため、同等の仕組みである AST の `SafeGetValue()` を使用する。ファイル内のコードは実行されない
 - `Import-PackageCatalog`: 定義を読み込み、整合性検査の結果 (`Success` / `Packages` / `Errors`) とあわせて返す
 - `Test-PackageCatalog`: 必須プロパティ、`ShortName` の重複、未定義の依存先、循環依存を変更開始前に検出する
 - `Resolve-DependencyOrder`: 導入順を解決する。循環依存と未定義の依存先は順序ではなく失敗として返す
 - `Get-UninstallOrder`: 削除順 (依存元から依存先) を求める
-- `Get-PackageDownloadFileName`: 保存アーカイブ名を決める。版表記の判定は区切り文字と大文字小文字の違いを吸収するため、取得側と導入側で同じ名前になる
-- `Get-PipWheelPackageNames` / `Test-PipWheelPackages`: pip パッケージ名の正規化 (PEP 503) と wheel の検証。Python 初期設定用のコアパッケージ (`pip`、`setuptools`、`wheel`、`packaging`、`pytest`) は `-IncludeCorePackages` で表し、取得・検証・インストールで同じ一覧を使う
-- `Get-PythonDirectory`: Python の配置先をパッケージ定義の `TargetDirectory` から引く
+- `Get-PackageDownloadFileName`: 保存アーカイブ名を決定する。版表記の判定は区切り文字と大文字小文字の違いを吸収するため、取得側と導入側で同じ名前になる
+- `Get-PipWheelPackageNames` / `Test-PipWheelPackages`: pip パッケージ名の正規化 (PEP 503) と wheel の検証。Python 初期設定用のコアパッケージ (`pip`、`setuptools`、`wheel`、`packaging`、`pytest`) は `-IncludeCorePackages` で表し、取得・検証・インストールで同じ一覧を使用する
+- `Get-PythonDirectory`: Python の配置先をパッケージ定義の `TargetDirectory` から取得する
 
 ## 実行コンテキスト (Devbin/Context)
 
@@ -123,7 +123,7 @@ Devbin/Extract に実装された抽出パターンです。呼び分けは `Inv
 
 ### 概要
 
-PATH、環境変数、ファイル、一時領域、アンインストールなど、OS を触る処理をまとめています。以前の `Setup-Common.psm1` を責務ごとのファイルに分け、`Devbin.psm1` から読み込みます。
+PATH、環境変数、ファイル、一時領域、アンインストールなど、OS を操作する処理をまとめています。以前の `Setup-Common.psm1` を責務ごとのファイルに分け、`Devbin.psm1` から読み込みます。
 
 | ファイル | 担当 |
 |----------|------|
@@ -132,13 +132,13 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 | FileSystem.ps1 | 長いパス対応のファイル操作、ディレクトリツリー削除 |
 | EnvironmentVariable.ps1 | 環境変数の同期 |
 | UserPath.ps1 | ユーザー PATH の追加、削除、再構成 |
-| VSCodeData.ps1 | VS Code data フォルダの退避と復元 |
+| VSCodeData.ps1 | VS Code data フォルダーの退避と復元 |
 | Vswhere.ps1 | vswhere インスタンスの登録と削除 |
 | ProductRoot.ps1 | 対象ルートの決定と、削除してよい場所かの判定 |
 | FontRegistration.ps1 | フォント登録の削除 |
 | WindowsTerminal.ps1 | settings.json の読み書きとバックアップ |
 | WindowsTerminalProfile.ps1 | Git Bash / MinGW プロファイルの更新 |
-| ProductUninstall.ps1 | 事前掃除と完全アンインストール |
+| ProductUninstall.ps1 | 事前クリーンアップと完全アンインストール |
 | HomeDirectory.ps1 | HOME と XDG ディレクトリの計画と適用 |
 | BusySignal.ps1 | 実行中表示 |
 
@@ -165,8 +165,8 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 
 #### VS Code データ管理
 
-- `Backup-VSCodeData`: VS Code data フォルダのバックアップ
-- `Restore-VSCodeData`: VS Code data フォルダの復元
+- `Backup-VSCodeData`: VS Code data フォルダーのバックアップ
+- `Restore-VSCodeData`: VS Code data フォルダーの復元
 
 #### 一時領域と HOME
 
@@ -176,8 +176,8 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 
 #### アンインストール
 
-- `Invoke-CompleteUninstall`: 再インストール用の事前掃除 (bin ディレクトリ削除。VS Code data を残す指定可)
-- `Get-DevbinProductRoot`: InstallDir から対象ルート (`...\devbin-win`) を決める
+- `Invoke-CompleteUninstall`: 再インストール用の事前クリーンアップ (bin ディレクトリ削除。VS Code data を残す指定可)
+- `Get-DevbinProductRoot`: InstallDir から対象ルート (`...\devbin-win`) を決定する
 - `Test-DevbinProductRootAllowed`: 対象ルートが `%ProgramData%\%USERNAME%\devbin-win` かどうかを判定する。一致しない場合は削除を行わない
 - `Test-PathUnderRoot`: 値が対象ルート配下のパスかを判定する
 - `Split-RootEntriesFromValue`: `;` 区切りの値を対象ルート配下のエントリとそれ以外に分ける
@@ -359,7 +359,7 @@ SourceForge の URL は自動的に実際のダウンロード URL に変換さ�
 
 Get-Packages.ps1 は、ダウンロード対象になったパッケージについて、packages 直下の同一 ArchivePattern に一致する古いファイルを削除します。古いファイルを削除する場合は、現在の保存ファイル名、削除対象件数、削除対象ファイル名を表示します。Version 付き保存名と URL 由来の元ファイル名が異なる場合は、成功後に元ファイル名も削除します。現在の保存ファイル名と一致するファイルは残し、ダウンロードに失敗した場合は旧ファイルも元ファイルも残します。packages/vsbt や packages/pip-packages などのサブディレクトリは対象外です。
 
-Version が定義されているパッケージは、`DownloadFileName` が未指定でも packages フォルダ上では版付きファイル名に正規化して保存します（版比較では `.` / `_` / `-` の区切り揺れを同一扱い）。`ArchivePattern` はこの正規化後の保存名に一致するように定義する前提です。Install-Component は互換性のため、ArchivePattern に一致するファイルがない場合のみ、packages 直下の URL 由来ファイル名へフォールバックできます。
+Version が定義されているパッケージは、`DownloadFileName` が未指定でも packages フォルダー上では版付きファイル名に正規化して保存します（版比較では `.` / `_` / `-` の区切り揺れを同一扱い）。`ArchivePattern` はこの正規化後の保存名に一致するように定義する前提です。Install-Component は互換性のため、ArchivePattern に一致するファイルがない場合のみ、packages 直下の URL 由来ファイル名へフォールバックできます。
 
 ## 新規パッケージの追加手順
 

@@ -1,19 +1,19 @@
 # Setup-Home
 
-HOME 環境変数とホームディレクトリのセットアップを行う PowerShell スクリプトです。
+HOME 環境変数とホーム ディレクトリのセットアップを行う PowerShell スクリプトです。
 
 ## 概要
 
-このスクリプトは、Windows 環境でのホームディレクトリセットアップを自動化します。HOME 環境変数が設定されていない場合に、適切なディレクトリ構造を作成し、必要な環境変数を設定します。
+このスクリプトは、Windows 環境でのホーム ディレクトリセットアップを自動化します。HOME 環境変数が設定されていない場合に、適切なディレクトリ構造を作成し、必要な環境変数を設定します。
 
 ## 主な機能
 
 - HOME 環境変数の設定状況を確認
-- ホームディレクトリの自動作成 (`C:\ProgramData\home\{ユーザー名}`)
+- ホーム ディレクトリの自動作成 (`C:\ProgramData\home\{ユーザー名}`)
 - Continue ディレクトリの作成
 - XDG Base Directory Specification ディレクトリの作成
 - 環境変数の設定:
-  - `HOME`: ユーザーのホームディレクトリパス
+  - `HOME`: ユーザーのホーム ディレクトリパス
   - `CONTINUE_GLOBAL_DIR`: Continue 設定ディレクトリパス (`.continue`)
   - `XDG_CONFIG_HOME`: XDG 設定ディレクトリパス (`.config`)
   - `XDG_CACHE_HOME`: XDG キャッシュディレクトリパス (`.cache`)
@@ -22,7 +22,7 @@ HOME 環境変数とホームディレクトリのセットアップを行う Po
 
 ## 実行方法
 
-リポジトリのルートから次を実行します。
+リポジトリのルートから次のコマンドを実行します。
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File .\subscripts\Setup-Home.ps1
@@ -36,7 +36,7 @@ powershell.exe -ExecutionPolicy Bypass -File .\subscripts\Setup-Home.ps1
 
 2. **必要なディレクトリの作成**
    - ベースディレクトリ (`C:\ProgramData\home`) の作成
-   - ユーザーホームディレクトリの作成
+   - ユーザーホーム ディレクトリの作成
    - Continue ディレクトリ (`.continue`) の作成
    - XDG Base Directory Specification 準拠のディレクトリ作成:
      - `.config` (設定ファイル用)
@@ -68,9 +68,9 @@ C:\ProgramData\home\
 
 ## 注意事項
 
-- すでに HOME 環境変数が設定されている場合、不足している環境変数とディレクトリのみをチェック・作成します。
-- 複数回実行しても安全で、既存の設定を破壊しません (冪等性を保証)。
-- 環境変数の変更を反映するには新しいターミナルセッションを開始する必要があります。
+- 既に HOME 環境変数が設定されている場合、不足している環境変数およびディレクトリのみを検証・作成します。
+- 複数回実行しても安全であり、既存の設定を損なうことはありません (冪等性を保証)。
+- 環境変数の変更を反映するには新しいターミナル セッションを開始する必要があります。
 - XDG Base Directory Specification は、設定・キャッシュ・データファイルの適切な配置を支援する仕様です。
 - `Manage-Bin.cmd` の `U` (または `Setup-Bin.ps1 -Uninstall`) による完全アンインストールは `C:\ProgramData\{ユーザー名}\devbin-win` を対象にするため、HOME (`C:\ProgramData\home\{ユーザー名}`) と XDG 系環境変数は削除しません。
 
@@ -83,4 +83,4 @@ XDG Base Directory Specification は、アプリケーションが設定ファ�
 - **XDG_DATA_HOME** (`.local\share`): アプリケーションデータファイル
 - **XDG_STATE_HOME** (`.local\state`): ログやヒストリーなどの状態ファイル
 
-この仕様に対応したアプリケーションは、適切なディレクトリにファイルを配置するため、ホームディレクトリが整理されます。
+この仕様に対応したアプリケーションは、適切なディレクトリにファイルを配置するため、ホーム ディレクトリが整理されます。

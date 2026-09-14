@@ -25,7 +25,7 @@
 ### 2.1 対象
 
 - `subscripts/config/packages.psd1` の40パッケージ定義
-- `packages/npm-packages` の10件の `NpmInstall` 定義と、各依存木から生成される archive 群
+- `packages/npm-packages` の10件の `NpmInstall` 定義と、各依存ツリーから生成される archive 群
 - `packages/pip-packages` の9成果物
 - `packages/vsbt` の65ファイル
 - `Make-Dist.ps1` が `packages` とともに配布する devbin-win 固有ファイル
@@ -94,7 +94,7 @@
 
 ### 4.1 npm
 
-現行の内部用途では、10件の `NpmInstall` 定義ごとに `package-lock.json`、`npm-cache-manifest.json`、依存木全体の archive を生成する。以下の表は本調査時点の旧 flat cache snapshot に対する記録であり、現在の依存 archive 全体の公開可否を保証する inventory ではない。不特定多数への公開配布を行う場合は、各 cache manifest の全 archive を再監査すること。
+現行の内部用途では、10件の `NpmInstall` 定義ごとに `package-lock.json`、`npm-cache-manifest.json`、依存ツリー全体の archive を生成する。以下の表は本調査時点の旧 flat cache snapshot に対する記録であり、現在の依存 archive 全体の公開可否を保証する inventory ではない。不特定多数への公開配布を行う場合は、各 cache manifest の全 archive を再監査すること。
 
 | ファイル | パッケージ | ライセンス | 公開時の判定 |
 |---|---|---|---|
@@ -139,7 +139,7 @@ Visual C++ Runtime等について別途再配布可能とされるファイル�
 
 ### P0: 公開版を作成する前に対応
 
-1. 現行の個人用・組織内用 ZIP とは別に公開用の生成方式を設け、以下の要件を満たさない構成では公開版を生成しない。
+1. 現行の個人用・組織内用 ZIP とは別に公開用の生成方式を設け、次の要件を満たさない構成では公開版を生成しない。
 2. `dotnet-sdk-10.0.202-win-x64.zip`、`VSCode-win32-x64-1.128.0.zip`、`PSTools-2.43.zip`、`packages/vsbt` を公開版から除外する。
 3. FFmpegとGraphvizは、完全なソース/第三者ライセンスを確定できるまで公開版から除外する。
 4. 公開版から除外した製品は、利用者が各公式サイトから取得する方式にする。自動取得を行う場合も、利用者の環境で公式URLから取得し、必要なEULA受諾を省略しない。
@@ -149,10 +149,10 @@ Visual C++ Runtime等について別途再配布可能とされるファイル�
 
 1. `sources/<ShortName>/<Version>/` または継続管理できる公開サーバーに、配布バイナリと正確に対応するソース、パッチ、ビルドスクリプトを配置する。
 2. 公開ダウンロードページで、バイナリと対応ソースを同じ粒度・同等のアクセス条件で案内する。単に上流のトップページへリンクするだけにしない。
-3. GPL/LGPL/EPL対象ごとに、提供期間、担当者、上流削除時のミラー継続方法を決める。
+3. GPL/LGPL/EPL対象ごとに、提供期間、担当者、上流削除時のミラー継続方法を決定する。
 4. FFmpeg、PortableGit、Inkscapeのような集合物は、本体リポジトリだけでなく、静的リンクまたは同梱された対象依存物まで対応ソースの範囲を確認する。
 
-GPLのバイナリ配布時のソース提供については、[GNU GPL FAQ: UnchangedJustBinary](https://www.gnu.org/licenses/gpl-faq.html#UnchangedJustBinary) およびGPL本文を基準とする。EPL-2.0は、オブジェクトコードの受領者へソースの取得方法を合理的に知らせる必要がある。
+GPLのバイナリ配布時のソース提供については、[GNU GPL FAQ: UnchangedJustBinary](https://www.gnu.org/licenses/gpl-faq.html#UnchangedJustBinary) およびGPL本文を基準とする。EPL-2.0は、オブジェクトコードの受領者へソースの取得方法を合理的に通知する必要がある。
 
 ### P2: 公開版の生成工程を分離・自動検査
 

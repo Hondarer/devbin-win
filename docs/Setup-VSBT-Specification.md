@@ -2,28 +2,28 @@
 
 ## プロジェクト概要
 
-このリポジトリは、MSVC (Microsoft Visual C++) と Windows SDK をポータブル形式でダウンロードして展開する PowerShell スクリプト (Setup-VSBT) です。Visual Studio Build Tools のコンポーネントを、公式マニフェストから必要なパッケージを取得し、インストーラーを使わずに直接ファイルを展開します。
+このリポジトリは、MSVC (Microsoft Visual C++) と Windows SDK をポータブル形式でダウンロードして展開する PowerShell スクリプト (Setup-VSBT) の仕様書です。公式マニフェストから必要なパッケージを取得し、インストーラーを使用せずに直接ファイルを展開します。
 
 ## アーキテクチャ
 
 ### メインスクリプト: subscripts/Setup-VSBT.ps1
 
-単一の PowerShell スクリプトとして実装されており、以下の処理フローで動作します。
+単一の PowerShell スクリプトとして実装されており、次の処理フローで動作します。
 
 1. **vswhere 登録の解除** (再インストール時のクリーンアップ)
-2. 一時ダウンロードフォルダ (`temp_extract`) と既存の出力フォルダ (`OutputPath`) をクリーンアップ (常に実行)
+2. 一時ダウンロードフォルダー (`temp_extract`) と既存の出力フォルダー (`OutputPath`) をクリーンアップ (常に実行)
 3. Visual Studio のマニフェストをダウンロード (`https://aka.ms/vs/17/release/channel` または preview、`packages\vsbt` にキャッシュ)
 4. 利用可能な MSVC と Windows SDK のバージョンを解析
-5. 指定されたバージョン (またはデフォルトで最新) のパッケージ一覧を構築
+5. 指定されたバージョン (または既定で最新) のパッケージ一覧を構築
 6. 各パッケージを SHA256 検証付きでダウンロード
    - キャッシュ (`packages\vsbt`) を確認し、存在すれば再利用
    - 存在しなければ `temp_extract` にダウンロードし、検証後に `packages\vsbt` に移動
 7. ZIP および MSI 形式のパッケージを `packages\vsbt` から読み込み、最終出力先 (`bin\vsbt`) に展開
 8. 不要なファイルを削除してサイズを最適化
-9. DIA SDK のフォルダ名を正規化 (`DIA%20SDK` → `DIA SDK`)
+9. DIA SDK のフォルダー名を正規化 (`DIA%20SDK` → `DIA SDK`)
 10. 環境設定用のスクリプト (`Add-VSBT-Env-x64.cmd` と `Add-VSBT-Env-x64.ps1` など) を bin ディレクトリに生成
 11. **vswhere への登録** (`%ProgramData%\Microsoft\VisualStudio\Packages\_Instances\devbin-win\state.json` を作成)
-12. `temp_extract` フォルダを削除 (キャッシュは `packages\vsbt` に保持)
+12. `temp_extract` フォルダーを削除 (キャッシュは `packages\vsbt` に保持)
 
 ### ディレクトリ構造
 
@@ -35,10 +35,10 @@
 - `temp_extract/`: ダウンロード中の一時ファイル置き場 (処理完了後に自動削除)
 - `bin/`: 環境設定用スクリプトと最終出力先
   - `Add-VSBT-Env-x64.cmd`, `Add-VSBT-Env-x64.ps1` など (CMD と PowerShell 両対応)
-  - `vsbt/`: MSVC と Windows SDK の展開先 (デフォルト、変更可能)
+  - `vsbt/`: MSVC と Windows SDK の展開先 (既定、変更可能)
 
-複数のターゲット (例: x64, arm64) を指定した場合、パッケージが各ターゲットフォルダに重複してキャッシュされます。
-`temp_extract` フォルダは処理の成功・失敗に関わらず、スクリプト終了時に自動的に削除されます。
+複数のターゲット (例: x64, arm64) を指定した場合、パッケージが各ターゲットフォルダーに重複してキャッシュされます。
+`temp_extract` フォルダーは処理の成功・失敗に関わらず、スクリプト終了時に自動的に削除されます。
 `packages/vsbt` のキャッシュにより、2 回目以降の実行ではダウンロードがスキップされます。
 
 ## コマンド
@@ -49,7 +49,7 @@
 .\subscripts\Setup-VSBT.ps1 -ShowVersions
 ```
 
-```{.powershell caption="デフォルト設定でダウンロード (最新版の MSVC と SDK、x64 ターゲット)"}
+```{.powershell caption="既定設定でダウンロード (最新版の MSVC と SDK、x64 ターゲット)"}
 .\subscripts\Setup-VSBT.ps1 -AcceptLicense
 ```
 
@@ -84,12 +84,12 @@ v144 は Visual Studio Installer や Build Tools で「MSVC v144 - VS 2022 C++ t
 
 ### パラメーター一覧
 
-- `-OutputPath`: 展開先のパス (デフォルト: `.\bin\vsbt`)
-- `-DownloadsPath`: ダウンロードキャッシュのパス (デフォルト: `.\packages\vsbt`)
+- `-OutputPath`: 展開先のパス (既定: `.\bin\vsbt`)
+- `-DownloadsPath`: ダウンロードキャッシュのパス (既定: `.\packages\vsbt`)
 - `-MSVCVersion`: MSVC のバージョン (省略時は最新)
 - `-SDKVersion`: Windows SDK のバージョン (省略時は最新)
-- `-HostArch`: ホストアーキテクチャ (x64, x86, arm64、デフォルト: x64)
-- `-Target`: ターゲットアーキテクチャ (カンマ区切り: x64, x86, arm, arm64、デフォルト: x64)
+- `-HostArch`: ホストアーキテクチャ (x64, x86, arm64、既定: x64)
+- `-Target`: ターゲットアーキテクチャ (カンマ区切り: x64, x86, arm, arm64、既定: x64)
 - `-ShowVersions`: 利用可能なバージョンを表示して終了
 - `-AcceptLicense`: ライセンスを自動承認
 - `-Preview`: プレビュー版を使用
@@ -98,7 +98,7 @@ v144 は Visual Studio Installer や Build Tools で「MSVC v144 - VS 2022 C++ t
 
 ### テスト
 
-このプロジェクトには自動テストフレームワークはありません。動作確認は以下のコマンドで行います。
+このプロジェクトには自動テストフレームワークはありません。動作確認は次のコマンドで行います。
 
 ```{.powershell caption="構文チェック"}
 powershell -ExecutionPolicy Bypass -File .\subscripts\Setup-VSBT.ps1 -ShowVersions
@@ -108,7 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\subscripts\Setup-VSBT.ps1 -ShowVersio
 
 ### キャッシュ機能
 
-スクリプトは以下のデータを `packages\vsbt` に永続的にキャッシュします。
+スクリプトは次のデータを `packages\vsbt` に永続的にキャッシュします。
 
 - **マニフェスト JSON**: `channel_release.json` および `manifest_release.json` (プレビュー版の場合は `_preview`)
 - **パッケージファイル**: SHA256 ハッシュ検証済みの ZIP および MSI ファイル
@@ -137,7 +137,7 @@ powershell -ExecutionPolicy Bypass -File .\subscripts\Setup-VSBT.ps1 -ShowVersio
 .\subscripts\Setup-VSBT.ps1 -MSVCVersion "14.44" -SDKVersion "26100" -Target "x64" -AcceptLicense -OfflineMode
 ```
 
-オフラインモードでは、インターネット接続なしで以下が可能です。
+オフラインモードでは、インターネット接続なしで次の操作が可能です。
 
 - キャッシュされたマニフェストからバージョン情報を取得
 - キャッシュされたパッケージファイルを使用して展開
@@ -156,13 +156,13 @@ Setup-VSBT.ps1 は、インストール完了時に自動的に vswhere に登�
 - **製品情報**: `Microsoft.VisualStudio.Product.BuildTools`
 - **コンポーネント**: `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` など
 
-vswhere インスタンスの登録と削除は、`Devbin/Platform/Vswhere.ps1` の `Register-VswhereInstance` および `Unregister-VswhereInstance` 関数で管理されます。`Setup-Bin.ps1 -Uninstall` (完全アンインストール) では、`installationPath` が対象ルート配下である場合に削除します。再インストール用の事前掃除では `Invoke-CompleteUninstall` が固定 ID を削除します。
+vswhere インスタンスの登録と削除は、`Devbin/Platform/Vswhere.ps1` の `Register-VswhereInstance` および `Unregister-VswhereInstance` 関数で管理されます。`Setup-Bin.ps1 -Uninstall` (完全アンインストール) では、`installationPath` が対象ルート配下である場合に削除します。再インストール用の事前クリーンアップでは `Invoke-CompleteUninstall` が固定 ID を削除します。
 
 #### 管理者権限の要件
 
 vswhere への登録と削除には、`%ProgramData%\Microsoft\VisualStudio\Packages\_Instances` への書き込み権限が必要です。
 
-Windows のデフォルト設定では、`%ProgramData%\Microsoft` フォルダにおいて Users や Everyone の書き込み権限が削除されているため、通常のユーザー権限ではインスタンス情報 (`state.json`) を作成できません。
+Windows の既定設定では、`%ProgramData%\Microsoft` フォルダーにおいて Users や Everyone の書き込み権限が削除されているため、通常のユーザー権限ではインスタンス情報 (`state.json`) を作成できません。
 
 - **推奨**: PowerShell を管理者として実行
 - **権限がない場合**: vswhere 登録は失敗しますが、フォールバック機能により環境スクリプト (`Add-VSBT-Env-*.ps1`) は正常に動作します
@@ -195,15 +195,15 @@ devbin-win では vswhere.exe を `bin` ディレクトリにインストール�
    - MSVC と Windows SDK は別々のインスタンスから検出可能であり、異なる場所にインストールされている場合でも対応
 
 3. **フォールバック**:
-   - vswhere が見つからない場合、または検出に失敗した場合、スクリプトと同じディレクトリの `vsbt` フォルダを使用
-   - MSVC と Windows SDK は個別にフォールバック処理が実行される
+   - vswhere が見つからない場合、または検出に失敗した場合、スクリプトと同じディレクトリの `vsbt` フォルダーを使用
+   - MSVC と Windows SDK は個別にフォールバック処理が実行されます
 
 ## 注意事項
 
-1. **出力フォルダのクリーンアップ**: スクリプト実行時に既存の出力フォルダ (`OutputPath`) と一時ダウンロードフォルダ (`temp_extract`) は常に削除されます。前回の実行結果を保持したい場合は、別のフォルダにコピーしてください
-2. **一時ダウンロードフォルダ**: パッケージは `temp_extract` にダウンロードされ、最終出力先 (`bin\vsbt`) に直接展開されます。`temp_extract` はスクリプト終了時に必ず削除されます
+1. **出力フォルダーのクリーンアップ**: スクリプト実行時に既存の出力フォルダー (`OutputPath`) と一時ダウンロードフォルダー (`temp_extract`) は常に削除されます。前回の実行結果を保持したい場合は、別のフォルダーにコピーしてください
+2. **一時ダウンロードフォルダー**: パッケージは `temp_extract` にダウンロードされ、最終出力先 (`bin\vsbt`) に直接展開されます。`temp_extract` はスクリプト終了時に必ず削除されます
 3. **キャッシュの自動クリーンアップ**: 現在のパッケージ構成で参照されなくなったファイルは、実行時に `packages\vsbt` から自動的に削除されます。バージョンやターゲットを変更した場合、古いファイルが削除されます
 4. パッケージ ID やパスの処理では、大文字小文字を区別しない比較 (`.ToLower()`) を使用しています
 5. マニフェストは `packages\vsbt\` にキャッシュされ、オフライン動作が可能です
-6. マニフェストキャッシュファイル (`channel_*.json`, `manifest_*.json`) は自動削除されないため、完全にクリーンアップしたい場合は `packages\vsbt` フォルダごと手動で削除してください
+6. マニフェストキャッシュファイル (`channel_*.json`, `manifest_*.json`) は自動削除されないため、完全にクリーンアップしたい場合は `packages\vsbt` フォルダーごと手動で削除してください
 7. **vswhere 登録**: vswhere への登録には管理者権限が必要です。権限がない場合は警告が表示されますが、フォールバック機能により環境スクリプトは正常に動作します

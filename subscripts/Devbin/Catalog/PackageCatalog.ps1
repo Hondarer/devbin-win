@@ -38,7 +38,7 @@ function Test-PackageCatalog {
 
         foreach ($key in $script:DevbinRequiredPackageKeys) {
             if (-not $package.ContainsKey($key)) {
-                $errors += "必須プロパティがありません: $shortName の $key"
+                $errors += "必須プロパティが存在しません: $shortName の $key"
             }
         }
 
@@ -79,7 +79,7 @@ function Import-PackageCatalog {
         return [PSCustomObject]@{
             Success  = $false
             Packages = @()
-            Errors   = @("パッケージ定義に Packages がありません: $Path")
+            Errors   = @("パッケージ定義に Packages が存在しません: $Path")
         }
     }
 
@@ -104,7 +104,7 @@ function Get-PackageTargetDirectory {
 }
 
 # Python の展開先を InstallDir 配下の絶対パスで返す
-# 版が上がったときに packages.psd1 の TargetDirectory だけを直せばよいようにする
+# バージョン更新時に packages.psd1 の TargetDirectory のみを修正すればよいようにする
 function Get-PythonDirectory {
     param(
         [array]$Packages,

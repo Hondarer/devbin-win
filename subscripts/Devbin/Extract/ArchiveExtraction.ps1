@@ -61,15 +61,15 @@ function Get-ExtractedSourcePath {
     $extractedFolders = $extractedItems | Where-Object { $_.PSIsContainer }
 
     if (-not $extractedFolders -and ($extractedItems | Where-Object { -not $_.PSIsContainer })) {
-        # フォルダがなく、ファイルのみの場合は TempDir を返す
+        # フォルダーがなく、ファイルのみの場合は TempDir を返す
         return $TempDir
     }
     elseif ($extractedFolders.Count -eq 1) {
-        # フォルダが1つだけの場合はそのフォルダを返す
+        # フォルダーが1つだけの場合はそのフォルダーを返す
         return $extractedFolders[0].FullName
     }
     elseif ($extractedFolders.Count -gt 1) {
-        # フォルダが複数ある場合は TempDir を返す
+        # フォルダーが複数ある場合は TempDir を返す
         return $TempDir
     }
 

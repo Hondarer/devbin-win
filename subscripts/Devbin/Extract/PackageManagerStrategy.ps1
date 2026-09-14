@@ -24,7 +24,7 @@ function Invoke-PipInstallStrategy {
 
     Write-Host "Installing $($Config.Name) via pip ($packageSpec)..."
 
-    # Python の配置先はパッケージ定義の TargetDirectory から引く
+    # Python の配置先はパッケージ定義の TargetDirectory から取得する
     $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $BinDir
     if ([string]::IsNullOrWhiteSpace($pythonDir)) {
         $pythonDir = Join-Path $BinDir "python"

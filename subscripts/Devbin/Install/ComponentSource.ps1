@@ -1,5 +1,5 @@
 ﻿# ComponentSource.ps1
-# 導入に必要なファイルの置き場所と、不足時の取得を扱う
+# 導入に必要なファイルの配置場所と、不足時の取得を扱う
 
 function Get-PackagesDirectory {
     param([string]$ScriptDir)
@@ -26,12 +26,12 @@ function Invoke-PackageAcquisitionForShortNames {
 
     $context = New-DevbinContext -InstallDir $InstallDir -SubscriptsDir $ScriptDir
     $originalPath = $env:PATH
-    # Python の配置先はパッケージ定義の TargetDirectory から引く
+    # Python の配置先はパッケージ定義の TargetDirectory から取得する
     $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $InstallDir
     $pythonScriptsDir = if ([string]::IsNullOrWhiteSpace($pythonDir)) { "" } else { Join-Path $pythonDir "Scripts" }
 
     try {
-        # 導入済みの Python を使って wheel を取得できるよう PATH の先頭へ置く
+        # 導入済みの Python を使用して wheel を取得できるよう PATH の先頭へ配置する
         if ($WithInstalledPython -and -not [string]::IsNullOrWhiteSpace($pythonDir) -and (Test-Path (Join-Path $pythonDir "python.exe"))) {
             $pathEntries = @($pythonDir, $pythonScriptsDir) | Where-Object { Test-Path $_ }
             if ($pathEntries.Count -gt 0) {
@@ -111,7 +111,7 @@ function Resolve-ComponentSource {
         }
     }
     elseif ($PackageConfig.ExtractStrategy -ne "VSBuildTools" -and $PackageConfig.ExtractStrategy -ne "PipInstall") {
-        # 保存ファイル名の判定は取得側 (Get-Packages) と同じ実装を使う
+        # 保存ファイル名の判定は取得側 (Get-Packages) と同じ実装を使用する
         $baseFileName = Get-PackageBaseFileName -Package $PackageConfig
         $downloadFileName = ""
         if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {

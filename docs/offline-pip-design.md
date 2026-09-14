@@ -8,7 +8,7 @@ pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得しま�
 
 ## 採用理由
 
-この方式により、以下を両立できます。
+この方式により、次の事項を両立できます。
 
 - pip 本体の依存解決とインストール処理は引き続き pip 自身に委譲できる
 - インストール後も標準的な `python -m pip` ベースで利用できる
@@ -18,7 +18,7 @@ pip 本体として PyPI の source tarball `pip-26.1.1.tar.gz` を取得しま�
 ```plantuml
 @startuml オフライン pip インストールのアーキテクチャ
 caption オフライン pip インストールのアーキテクチャ
-package "packages フォルダ" {
+package "packages フォルダー" {
   [pip-26.1.1.tar.gz]
   folder "pip-packages" {
     [pip-*.whl]
@@ -52,7 +52,7 @@ pysetup --> [pip-packages] : find-links 指定
 
 ### packages.psd1
 
-`get-pip` パッケージは、以下の定義で `pip-26.1.1.tar.gz` を保持します。
+`get-pip` パッケージは、次の定義で `pip-26.1.1.tar.gz` を保持します。
 
 ```powershell
 @{
@@ -71,7 +71,7 @@ pysetup --> [pip-packages] : find-links 指定
 `Get-Packages.ps1` は以下を行います。
 
 1. `pip-26.1.1.tar.gz` を `packages` にダウンロード
-2. Python が利用可能なら `pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml --dest packages/pip-packages` を実行し、依存 wheel も保存。`<ver>` は packages.psd1 の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従する
+2. Python が利用可能なら `pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml --dest packages/pip-packages` を実行し、依存 wheel も保存。`<ver>` は packages.psd1 の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従します
 
 ### python-setup.ps1
 
@@ -83,9 +83,9 @@ pysetup --> [pip-packages] : find-links 指定
 4. 展開先の `pip-26.1.1\src` を埋め込み Python の `._pth` に一時追加
 5. 共通のコアパッケージ一覧を使って `pip`、`setuptools`、`wheel`、`packaging`、`pytest` をインストール
 6. オンライン時は追加で依存込み wheel を `packages/pip-packages` に保存
-7. `._pth` と一時展開ディレクトリを cleanup
+7. `._pth` と一時展開ディレクトリをクリーンアップ
 
-実行コマンドは以下の 2 系統です。
+実行コマンドは次の 2 系統です。
 
 ```bash
 # オフライン
@@ -173,7 +173,7 @@ PySetup -> PySetup: wheel を packages/pip-packages/ に保存
 ### オフラインパッケージの準備
 
 1. インターネット接続のある環境で `Get-Packages.ps1` を実行
-2. `packages` フォルダごとオフライン環境へコピー
+2. `packages` フォルダーごとオフライン環境へコピー
 3. オフライン環境で `Manage-Bin.cmd` を実行
 
 Python が利用可能な環境では、`Get-Packages.ps1` 実行時点で wheel まで揃うため、そのまま完全オフライン導入に使えます。
@@ -184,7 +184,7 @@ Python が利用可能な環境では、`Get-Packages.ps1` 実行時点で wheel
 pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml --dest packages/pip-packages
 ```
 
-`<ver>` には packages.psd1 の Python バージョン (例: `3.13`) を指定してください。`Get-Packages.ps1` はこの値を自動取得して渡します。`--python-version` を省略すると実行環境の Python バージョン向け wheel が取得され、devbin Python でのオフラインインストールが失敗する場合があります。すでに不適切なバージョンの wheel を取得済みの場合は `packages/pip-packages/` を削除してから再実行してください。
+`<ver>` には packages.psd1 の Python バージョン (例: `3.13`) を指定してください。`Get-Packages.ps1` はこの値を自動取得して渡します。`--python-version` を省略すると実行環境の Python バージョン向け wheel が取得され、devbin Python でのオフラインインストールが失敗する場合があります。既に不適切なバージョンの wheel を取得済みの場合は `packages/pip-packages/` を削除してから再実行してください。
 
 ```text
 packages/

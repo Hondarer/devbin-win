@@ -3,7 +3,7 @@
 ## 概要
 
 この文書では、Windows 環境で管理者権限を使わずに Visual Studio Code (以下 VS Code) をポータブル版として設置する方法と、その際の制限事項を説明します。  
-ポータブル版は、システムへの変更を最小限にして、VS Code を任意のフォルダで動かせる配布形式です。  
+ポータブル版は、システムへの変更を最小限にして、VS Code を任意のフォルダーで動作させることができる配布形式です。  
 公式の説明は [Portable Mode](https://code.visualstudio.com/docs/editor/portable) を参照してください。
 
 本書のコマンドは、特に記載がない限り PowerShell での実行を想定しています。
@@ -30,7 +30,7 @@ New-Item -ItemType Directory -Force -Path "C:\ProgramData\vscode\data" | Out-Nul
 
 #### ユーザー環境変数の設定
 
-コマンドラインから `code` を使えるように、VS Code の bin フォルダを Path (ユーザー環境変数) に追加します。
+コマンドラインから `code` を使えるように、VS Code の bin フォルダーを Path (ユーザー環境変数) に追加します。
 
 ```powershell
 # 既存のユーザー Path に vscode\bin を追加
@@ -40,7 +40,7 @@ if (-not $userPath.Split(';') -contains $bin) {
   [Environment]::SetEnvironmentVariable('Path', ($userPath.TrimEnd(';') + ';' + $bin), 'User')
   Write-Host "Path に追加しました。新しいターミナルを開いて反映してください。"
 } else {
-  Write-Host "すでに Path に含まれています。"
+  Write-Host "既に Path に含まれています。"
 }
 ```
 
@@ -72,7 +72,7 @@ Write-Host "スタートメニューにショートカットを作成しまし�
 
 ### 動作原理
 
-VS Code の実行ファイルと同じ場所に `data` フォルダを置くとポータブルモードになります。次の情報がすべて `data` 配下に保存されます。
+VS Code の実行ファイルと同じ場所に `data` フォルダーを配置するとポータブルモードになります。次の情報がすべて `data` 配下に保存されます。
 
 - ユーザー設定
 - インストール済み拡張機能
@@ -87,7 +87,7 @@ VS Code の実行ファイルと同じ場所に `data` フォルダを置くと�
 vscode/
 ├─ Code.exe            # 実行ファイル
 ├─ resources/          # リソース
-└─ data/               # このフォルダの存在でポータブルモード有効
+└─ data/               # このフォルダーの存在によりポータブルモード有効
    ├─ user-data/       # 設定など
    └─ extensions/      # 拡張機能
 ```
@@ -98,12 +98,12 @@ vscode/
 
 ポータブルモードでは自動更新が無効です (公式仕様) [参考: [Portable Mode](https://code.visualstudio.com/docs/editor/portable)]。
 
-- セキュリティ修正が自動適用されない
-- 新機能が自動更新されない
-- 手動で更新する必要がある
+- セキュリティ修正が自動適用されないこと
+- 新機能が自動更新されないこと
+- 手動で更新する必要があること
 
 定期的な更新チェックの一例です (GitHub API を使用)。  
-ネットワーク制限がある環境では動かない場合があります。
+ネットワーク制限がある環境では動作しない場合があります。
 
 ```powershell
 $codeExe = "C:\ProgramData\vscode\Code.exe"
@@ -125,7 +125,7 @@ if ($currentVersion -ne $latestInfo.tag_name) {
 - レジストリ登録を行わない
 - エクスプローラーの右クリックメニューを自動追加しない
 
-このため、ファイルのダブルクリックで VS Code が開かなかったり、コンテキストメニューに「VS Code で開く」が出ないことがあります。必要に応じて手動で設定してください (管理者権限が必要になる場合があります)。
+このため、ファイルのダブルクリックで VS Code が開かなかったり、コンテキストメニューに「VS Code で開く」が表示されないことがあります。必要に応じて手動で設定してください (管理者権限が必要になる場合があります)。
 
 ### 依存関係の制限
 
@@ -158,7 +158,7 @@ robocopy "$env:TEMP\VS Code_backup\data" "C:\ProgramData\vscode\data" /MIR
 
 - 企業環境などで管理者権限がない場合
 - 複数 PC で同じ設定を持ち運びたい場合
-- USB メモリで持ち運んで使いたい場合
+- USB メモリーで持ち運んで使いたい場合
 
 ### 適していない場面
 

@@ -25,7 +25,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
             ArchivePattern = "アーカイブファイル名のパターン (正規表現)"
             ExtractStrategy = "抽出戦略名"
             DownloadUrl = "ダウンロード URL"
-            # その他、戦略固有のパラメータ
+            # その他、戦略固有のパラメーター
         },
         @{
             # 次のパッケージ定義...
@@ -48,12 +48,12 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | ArchivePattern | アーカイブファイルのパターン (正規表現) | string | ✅ |
 | ExtractStrategy | 抽出戦略名 | string | ✅ |
 | DownloadUrl | パッケージのダウンロード URL | string | ✅ |
-| DownloadFileName | packages フォルダへ保存するファイル名を明示指定する。未指定時は URL から算出後、必要に応じて Version を付与して正規化する | string | ❌ |
+| DownloadFileName | packages フォルダーへ保存するファイル名を明示指定する。未指定時は URL から算出後、必要に応じて Version を付与して正規化する | string | ❌ |
 | DownloadHeaders | ダウンロード時に `Invoke-WebRequest` へ渡す HTTP ヘッダー。配布元が `User-Agent` や `Referer` を要求する場合に指定する | hashtable | ❌ |
 
 ## コンポーネント管理プロパティ
 
-コンポーネントマネージャー (`Manage-Bin.cmd`) が使用するプロパティです。`PathDirs` / `PathPosition` / `SkipIfCommand` は PATH の再構成に使用されます。
+コンポーネント マネージャー (`Manage-Bin.cmd`) が使用するプロパティです。`PathDirs` / `PathPosition` / `SkipIfCommand` は PATH の再構成に使用されます。
 
 | プロパティ | 説明 | 型 | 省略時の動作 |
 |-----------|------|-----|------------|
@@ -72,7 +72,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 
 ### DependsOn
 
-依存するパッケージの ShortName を配列で指定します。コンポーネントマネージャーが依存を自動解決し、依存先を先にインストールします。
+依存するパッケージの ShortName を配列で指定します。コンポーネント マネージャーが依存を自動解決し、依存先を先にインストールします。
 
 ```powershell
 DependsOn = @("jdk")                  # JDK が必要
@@ -102,11 +102,11 @@ PathPosition = "Append"              # 既存 PATH の後段に配置
 ```
 
 - `Prepend` (既定): devbin-win 管理の高優先度 PATH ブロックへ追加
-- `Append`: 既存 PATH の後段へ追加。Inkscape 同梱 `python.exe` のような副作用を避けたい場合に使う
+- `Append`: 既存 PATH の後段へ追加。Inkscape 同梱 `python.exe` のような副作用を回避したい場合に使用します
 
 ### EnvVars と EnvVarIsLiteral
 
-設定する環境変数を `名前 = 値` のハッシュテーブルで指定します。値の意味は以下の通りです。
+設定する環境変数を `名前 = 値` のハッシュテーブルで指定します。値の意味は次のとおりです。
 
 - 空文字列 `""`: `$InstallDir` そのものを値として使用
 - それ以外: `$InstallDir\<値>` に展開
@@ -170,7 +170,7 @@ DisableIfFont = "UDEV Gothic HSRFJPDOCEM"
 
 #### ArchivePattern
 
-packages フォルダ内でアーカイブファイルを検索する際に使用する正規表現パターンです。バージョン番号を含む柔軟なマッチングが可能です。
+packages フォルダー内でアーカイブファイルを検索する際に使用する正規表現パターンです。バージョン番号を含む柔軟なマッチングが可能です。
 
 例:
 - `"node-v.*-win-x64\.zip$"` - Node.js の ZIP ファイル
@@ -210,9 +210,9 @@ DownloadHeaders = @{
 }
 ```
 
-`DownloadFileName` を省略した場合、Get-Packages.ps1 は URL から保存ファイル名を決定します。`Version` が空でない場合は、保存ファイル名に同じバージョンが含まれていなければ、拡張子の直前に `-<Version>` を付与して packages フォルダ内の保存名を正規化します。バージョン比較では `.` / `_` / `-` の区切り揺れを同一として扱います（例: `2.1.5` と `2_1_5`）。
+`DownloadFileName` を省略した場合、Get-Packages.ps1 は URL から保存ファイル名を決定します。`Version` が空でない場合は、保存ファイル名に同じバージョンが含まれていなければ、拡張子の直前に `-<Version>` を付与して packages フォルダー内の保存名を正規化します。バージョン比較では `.` / `_` / `-` の区切り揺れを同一として扱います（例: `2.1.5` と `2_1_5`）。
 
-`ArchivePattern` は、配布元の元ファイル名ではなく、packages フォルダへ保存される最終ファイル名に一致するように定義してください。`Install-Component` には互換フォールバックがあり、ArchivePattern に一致するファイルがない場合のみ、URL 由来の元ファイル名が packages にあればそれを使用できます。
+`ArchivePattern` は、配布元の元ファイル名ではなく、packages フォルダーへ保存される最終ファイル名に一致するように定義してください。`Install-Component` には互換フォールバックがあり、ArchivePattern に一致するファイルがない場合のみ、URL 由来の元ファイル名が packages にあればそれを使用できます。
 
 #### DownloadVersion と VersionSource
 
@@ -256,7 +256,7 @@ ZIP を展開し、すべてのファイルを bin ディレクトリに配置�
 }
 ```
 
-**追加パラメータ**: なし
+**追加パラメーター**: なし
 
 ### Subdirectory 戦略
 
@@ -289,9 +289,9 @@ MSYS2 MinGW パッケージの例 (RenameFiles 使用):
 }
 ```
 
-MSYS2 パッケージは展開するとルートフォルダが1つだけ含まれる構造になります。mingw パッケージは `mingw64/`、msys パッケージは `usr/` がルートです。`Get-ExtractedSourcePath` がこれらを自動認識するため、`ExtractPath` にはルートフォルダを含めず配下のパスを指定してください。
+MSYS2 パッケージは展開するとルートフォルダーが1つだけ含まれる構造になります。mingw パッケージは `mingw64/`、msys パッケージは `usr/` がルートです。`Get-ExtractedSourcePath` がこれらを自動認識するため、`ExtractPath` にはルートフォルダーを含めず配下のパスを指定してください。
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `ExtractPath` (必須): 抽出するサブディレクトリのパス
 - `FilePattern` (オプション): 抽出するファイル名のパターン (正規表現)
 - `RenameFiles` (オプション): コピー時にファイル名を変更するハッシュテーブル (キー: 元のファイル名、値: 変更後のファイル名)
@@ -312,7 +312,7 @@ ZIP を展開後、指定されたサブディレクトリの内容を指定の�
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `ExtractPath` (必須): 抽出するサブディレクトリのパス
 - `TargetDirectory` (必須): 配置先のディレクトリ名 (bin からの相対パス)
 
@@ -332,7 +332,7 @@ ZIP を展開後、バージョン番号を含むディレクトリ名を正規�
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `VersionPattern` (必須): バージョン番号を抽出する正規表現
 - `TargetDirectory` (必須): ターゲットディレクトリ名 (プレースホルダー `{0}` にバージョンが埋め込まれる)
 
@@ -352,7 +352,7 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `TargetDirectory` (必須): ターゲットディレクトリ名
 - `UseLongPathSupport` (オプション): 長いパス対応を有効化 (ブール値)
 - `PostSetupScript` (オプション): 後処理スクリプトのファイル名 (subscripts/config/templates 内)
@@ -360,7 +360,7 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
 
 ### PostInstallScripts / PostUninstallScripts
 
-コンポーネントマネージャーの install / uninstall 完了後に追加で実行するスクリプトを定義します。
+コンポーネント マネージャーの install / uninstall 完了後に追加で実行するスクリプトを定義します。
 
 ```powershell
 @{
@@ -411,7 +411,7 @@ endlocal
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `JarName` (必須): JAR ファイル名
 - `WrapperName` (必須): ラッパースクリプト名
 - `WrapperContent` (必須): ラッパースクリプトの内容
@@ -431,7 +431,7 @@ endlocal
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `TargetName` (オプション): コピー先のファイル名
 
 NuGet、cloc、vswhere のように、配布物が単体の `.exe` で完結するツールに適しています。
@@ -465,7 +465,7 @@ NuGet、cloc、vswhere のように、配布物が単体の `.exe` で完結す�
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `TargetDirectory` (必須): 展開先ディレクトリ名
 - `ExtractArgs` (必須): 実行時の引数
 - `PostExtract` (オプション): 後処理の定義
@@ -486,7 +486,7 @@ innoextract を使用して Inno Setup インストーラを解凍します。
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `ExtractPath` (必須): 解凍後に抽出するサブディレクトリのパス
 - `TargetDirectory` (必須): 配置先のディレクトリ名 (bin からの相対パス)
 
@@ -514,7 +514,7 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `DisplayName` (必須): 表示名
 - `ExtractedName` (必須): 展開先ディレクトリ名
 - `VSBTConfig` (必須): VSBT の設定
@@ -544,7 +544,7 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `PipPackage` (必須): pip パッケージ名
 - `PipDependencies` (任意): オフライン用に一緒に取得・確認する pip 依存パッケージ名
 - `Version` (共通プロパティ): 指定時は `pip install <PipPackage>==<Version>` として渡す
@@ -571,7 +571,7 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 }
 ```
 
-**追加パラメータ**:
+**追加パラメーター**:
 - `NpmPackage` (必須): npm パッケージ名
 - `Version` (共通プロパティ): 指定時は `npm install <NpmPackage>@<Version>` として渡す
 - `NpmDependencies` (任意): 本体の依存木とは別に、一緒に取得・導入する npm package spec
@@ -629,7 +629,7 @@ packages.psd1 の `Packages` 配列に新しいパッケージ定義を追加す
 
 ## パッケージ定義の順序
 
-packages.psd1 内のパッケージ定義の順序は、コンポーネントマネージャーの表示順と PATH の並び順を決めます。
+packages.psd1 内のパッケージ定義の順序は、コンポーネント マネージャーの表示順と PATH の並び順を決めます。
 
 導入順は `DependsOn` から自動で解決するため、定義の順序には依存しません。ただし読みやすさのため、依存先を先に記述することを推奨します。
 

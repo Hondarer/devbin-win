@@ -24,7 +24,7 @@ $currentPath = $env:PATH
 $pathChanged = $false
 
 foreach ($pathToAdd in $pathsToAdd) {
-    # 既存の PATH にパスが含まれているかチェック
+    # 既存の PATH にパスが含まれているか確認
     $pathExists = $currentPath -split ';' | Where-Object { $_ -eq $pathToAdd }
     
     if ($pathExists) {

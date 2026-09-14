@@ -1,7 +1,7 @@
 ﻿# ProductUninstall.ps1
-# 再インストール前の掃除と、製品の完全アンインストール
+# 再インストール前のクリーンアップと、製品の完全アンインストール
 
-# Y/N/Esc を 1 キーで決める。Enter は既定の可否に従う。
+# Y/N/Esc を 1 キーで決定する。Enter は既定の可否に従う。
 function Read-ConfirmationKey {
     param(
         [Parameter(Mandatory)]

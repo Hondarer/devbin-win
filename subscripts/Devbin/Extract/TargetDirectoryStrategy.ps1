@@ -1,5 +1,5 @@
 ﻿# TargetDirectoryStrategy.ps1
-# VersionNormalized / TargetDirectory 戦略: 決めたディレクトリへ展開する
+# VersionNormalized / TargetDirectory 戦略: 指定ディレクトリへ展開する
 
 # VersionNormalized 戦略: バージョン番号を正規化
 function Invoke-VersionNormalizedExtract {

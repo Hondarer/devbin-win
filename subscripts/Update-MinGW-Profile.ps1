@@ -62,7 +62,7 @@ function Install-MinGWProfile {
         # 設定を読み込み
         $settings = Get-TerminalSettings -SettingsPath $SettingsPath
         
-        # 既存プロファイルをチェック
+        # 既存プロファイルを確認
         $existingProfile = $settings.profiles.list | Where-Object { 
             $_.guid -eq $newProfile.guid -or $_.name -eq $newProfile.name 
         }
@@ -209,7 +209,7 @@ function Uninstall-MinGWProfile {
 
 # メイン処理
 function Main {
-    # パラメータの検証
+    # パラメーターの検証
     if (-not $Install -and -not $Uninstall) {
         Show-Usage
         exit 0

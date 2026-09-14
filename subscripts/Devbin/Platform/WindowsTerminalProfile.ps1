@@ -4,7 +4,7 @@
 # Git Bash 用と MinGW 用のプロファイル更新スクリプトが共有する。
 
 # settings.json の場所を特定する
-# 見つからない場合は警告を出して $null を返す
+# 見つからない場合は警告を出力して $null を返す
 function Get-WindowsTerminalSettingsPath {
     param([string]$ProfileLabel = "profile")
 
@@ -24,7 +24,7 @@ function Get-WindowsTerminalSettingsPath {
     return $null
 }
 
-# 変更前の settings.json を控えておく
+# 変更前の settings.json をバックアップする
 function New-SettingsBackup {
     param([string]$SettingsPath)
 
@@ -34,7 +34,7 @@ function New-SettingsBackup {
 }
 
 # settings.json を読み込む
-# profiles.list が無ければ作ってから返す
+# profiles.list が存在しない場合は作成してから返す
 function Get-TerminalSettings {
     param([string]$SettingsPath)
 

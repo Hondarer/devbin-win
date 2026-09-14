@@ -29,8 +29,8 @@ function Apply-CheckedState {
             Write-Host "   $message" -ForegroundColor Yellow
         }
         Write-Host ""
-        Write-Host " 依存先をチェックしてから再度 Enter を押してください。" -ForegroundColor DarkGray
-        Write-Host " 何かキーを押してメニューに戻ります..." -ForegroundColor DarkGray
+        Write-Host " 依存先を確認してから再度 Enter キーを押してください。" -ForegroundColor DarkGray
+        Write-Host " 任意のキーを押すとメニューに戻ります..." -ForegroundColor DarkGray
         [Console]::ReadKey($true) | Out-Null
         Resume-MenuConsole -State $State -InputModeState $InputModeState
         return
@@ -83,7 +83,7 @@ function Apply-CheckedState {
     }
 
     Write-Host ""
-    Write-Host " 何かキーを押してメニューに戻ります..."
+    Write-Host " 任意のキーを押すとメニューに戻ります..."
     [Console]::ReadKey($true) | Out-Null
 
     Resume-MenuConsole -State $State -InputModeState $InputModeState
@@ -155,7 +155,7 @@ function Show-ChangeOutcome {
 
     Write-Host ""
     if ($Outcome.Aborted) {
-        Write-Host " 適用を中止しました。完了済みの操作は上記のとおりです。" -ForegroundColor Red
+        Write-Host " 適用を中止しました。完了済みの操作は次のとおりです。" -ForegroundColor Red
     } elseif ($Outcome.Success) {
         Write-Host " 完了しました。" -ForegroundColor Green
     } else {
@@ -195,7 +195,7 @@ function Invoke-MenuProductUninstall {
     $result = Invoke-ProductUninstall -InstallDir $State.InstallDir
     if ($result.Status -eq "Success") {
         Write-Host ""
-        Write-Host " 何かキーを押して終了します..."
+        Write-Host " 任意のキーを押すと終了します..."
         [Console]::ReadKey($true) | Out-Null
         return "quit"
     }
@@ -203,13 +203,13 @@ function Invoke-MenuProductUninstall {
     Write-Host ""
     switch ($result.Status) {
         "Failed" {
-            Write-Host " 完全アンインストールに失敗しました。何かキーを押してメニューに戻ります..." -ForegroundColor Yellow
+            Write-Host " 完全アンインストールに失敗しました。任意のキーを押すとメニューに戻ります..." -ForegroundColor Yellow
         }
         "Refused" {
-            Write-Host " 標準のインストール先ではないため実行しませんでした。何かキーを押してメニューに戻ります..." -ForegroundColor Yellow
+            Write-Host " 標準のインストール先ではないため実行しませんでした。任意のキーを押すとメニューに戻ります..." -ForegroundColor Yellow
         }
         default {
-            Write-Host " キャンセルしました。何かキーを押してメニューに戻ります..."
+            Write-Host " キャンセルしました。任意のキーを押すとメニューに戻ります..."
         }
     }
     [Console]::ReadKey($true) | Out-Null

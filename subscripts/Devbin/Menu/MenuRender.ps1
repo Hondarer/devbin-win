@@ -85,7 +85,7 @@ function Render-Footer {
     # キーバインド + 選択数
     [Console]::SetCursorPosition(0, $footerStart + 2)
     $checkedCount = ($State.Checked.Values | Where-Object { $_ }).Count
-    [Console]::Write((" ↑↓/Wheel 移動 | Space 選択切替 | A 全選択 | N 全解除 | Enter 適用 | U 完全アンインストール | Q 終了 | 選択: $checkedCount / $($State.Items.Count)").PadRight($width))
+    [Console]::Write((" ↑↓/Wheel 移動 | Space 選択切り替え | A 全選択 | N 全解除 | Enter 適用 | U 完全アンインストール | Q 終了 | 選択: $checkedCount / $($State.Items.Count)").PadRight($width))
 
     [Console]::ResetColor()
 }
@@ -106,7 +106,7 @@ function Render-Menu {
 
     # 行 1: タイトル
     [Console]::SetCursorPosition(0, 1)
-    [Console]::Write(("=== devbin-win コンポーネントマネージャー ===").PadRight($width))
+    [Console]::Write(("=== devbin-win コンポーネント マネージャー ===").PadRight($width))
 
     # 行 2: 空行
     [Console]::SetCursorPosition(0, 2)

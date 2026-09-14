@@ -75,7 +75,7 @@ function Resolve-PackageVersionFromZipEntry {
 }
 
 # パッケージの版を解決する
-# VersionSource.Type = ZipEntry のときだけアーカイブから読み取り、それ以外は定義の Version を使う
+# VersionSource.Type = ZipEntry のときだけアーカイブから読み取り、それ以外は定義の Version を使用する
 function Resolve-PackageVersion {
     param(
         [hashtable]$PackageConfig,

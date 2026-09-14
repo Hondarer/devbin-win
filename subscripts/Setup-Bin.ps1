@@ -1,5 +1,5 @@
 ﻿# 開発ツール セットアップ スクリプト
-# コンポーネントマネージャーの起動と、製品の完全アンインストールを行う
+# コンポーネント マネージャーの起動と、製品の完全アンインストールを行う
 
 param(
     [string]$InstallDir = ".\bin",
@@ -59,7 +59,7 @@ if (-not ($Uninstall -or $Manage)) {
     Write-Host "Note: -Uninstall only targets %ProgramData%\%USERNAME%\devbin-win."
     Write-Host "      Other locations are refused without removing anything."
     Write-Host ""
-    Write-Host "Note: 一括導入はコンポーネントマネージャーの全選択に集約しました。"
+    Write-Host "Note: 一括導入はコンポーネント マネージャーの全選択に集約しました。"
     Write-Host ""
     Write-Host "Examples:"
     Write-Host "  .\Setup-Bin.ps1 -Manage                          # Open component manager"
@@ -77,9 +77,9 @@ if ($currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administ
     exit 1
 }
 
-# Manage モード: 対話型コンポーネントマネージャー
+# Manage モード: 対話型コンポーネント マネージャー
 if ($Manage) {
-    # 導入先は実行コンテキストで解決済みの絶対パスを使う
+    # 導入先は実行コンテキストで解決済みの絶対パスを使用する
     $absoluteInstallDir = $DevbinContext.InstallDir
 
     # 環境変数をレジストリから同期
@@ -98,7 +98,7 @@ if ($Uninstall) {
             exit 0
         }
         "Cancelled" {
-            # キャンセルは失敗と区別する (呼び出し元が完了メッセージを出さないようにする)
+            # キャンセルは失敗と区別する (呼び出し元が完了メッセージを出力しないようにする)
             exit 2
         }
         "Refused" {

@@ -30,7 +30,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 .\Update-GitBash-Profile.ps1 -Uninstall
 ```
 
-## パラメータ
+## パラメーター
 
 - `-Install`: Git Bash プロファイルを Windows Terminal に追加
 - `-Uninstall`: Git Bash プロファイルを Windows Terminal から削除
@@ -39,7 +39,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ## Git Bash プロファイル設定
 
-追加されるプロファイルの設定内容:
+追加されるプロファイルの設定内容は次のとおりです。
 
 - **GUID**: `{b2e42366-5d93-4fb7-be22-177d0a5850d1}`
 - **名前**: Git Bash
@@ -51,7 +51,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ### 設定ファイルの検索
 
-以下の場所から Windows Terminal の設定ファイルを自動検索します。
+次の場所から Windows Terminal の設定ファイルを自動検索します。
 
 - `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json`
 - `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json`
@@ -65,12 +65,12 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 ### 重複チェック
 
 - GUID または名前が重複するプロファイルの存在を確認します。
-- `-Force` オプションなしでは既存プロファイルが存在した場合は処理を中断します。
+- `-Force` オプションを指定しない場合、既存プロファイルが存在するときは処理を中断します。
 
 ### ファイル存在確認
 
 - Git Bash 実行ファイルとアイコンファイルの存在を確認します。
-- 存在しない場合は警告を表示 (処理は継続) します。
+- 存在しない場合は警告を表示します (処理は継続)。
 
 ## 注意事項
 

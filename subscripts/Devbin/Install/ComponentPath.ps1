@@ -94,7 +94,7 @@ function Remove-BasePathDir {
     Remove-FromUserPath -Directories @($InstallDir)
 }
 
-# コンポーネントマネージャーの現在状態から PATH を再構成する
+# コンポーネント マネージャーの現在状態から PATH を再構成する
 function Sync-ComponentManagerPath {
     param(
         [string]$InstallDir,

@@ -1,5 +1,5 @@
 ﻿# ComponentUninstall.ps1
-# コンポーネントの削除と、孤立した依存の後始末
+# コンポーネントの削除と、孤立した依存のクリーンアップ
 
 # コンポーネントをアンインストールする
 function Uninstall-Component {
@@ -32,7 +32,7 @@ function Uninstall-Component {
                 if ($d) { $d.Name } else { $_ }
             }
             Write-Host ""
-            Write-Host "警告: 以下のコンポーネントが '$($pkg.Name)' に依存しています:" -ForegroundColor Yellow
+            Write-Host "警告: 次のコンポーネントが '$($pkg.Name)' に依存しています:" -ForegroundColor Yellow
             foreach ($dn in $depNames) {
                 Write-Host "  - $dn" -ForegroundColor Yellow
             }
@@ -61,7 +61,7 @@ function Uninstall-Component {
         }
     }
 
-    # VS Code: data フォルダをバックアップ
+    # VS Code: data フォルダーをバックアップ
     $isVSCode = $ShortName -eq "vscode"
     $vscodeBackup = $null
     if ($isVSCode) {
@@ -82,7 +82,7 @@ function Uninstall-Component {
         -Manifest $Manifest `
         -Files $files
 
-    # VS Code: data フォルダを復元
+    # VS Code: data フォルダーを復元
     if ($isVSCode -and $vscodeBackup) {
         $vscodeDir = Join-Path $InstallDir "vscode"
         if (-not (Test-Path $vscodeDir)) {
