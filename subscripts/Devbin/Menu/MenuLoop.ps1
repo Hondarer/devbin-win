@@ -21,13 +21,19 @@ function Handle-KeyInput {
         "Spacebar" {
             Toggle-CheckedItem -State $State -Index $State.CursorIndex
             # 依存伝播があるためビューポート内のアイテム行を全て再描画
-            $viewEnd = $State.ViewportTop + $State.ViewportSize
+            $items = @(Get-MenuItemList -State $State)
+            $viewEnd = [Math]::Min($items.Count, $State.ViewportTop + $State.ViewportSize)
             for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
-                $item = $State.Items[$i]
+                $item = $items[$i]
+                if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.ShortName)) {
+                    continue
+                }
                 Render-MenuLine -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) -Number ($i + 1) `
-                    -Item $item -IsChecked $State.Checked[$item.ShortName] -IsReinstall $State.Reinstall[$item.ShortName] `
-                    -IsDisabled $State.Disabled[$item.ShortName] `
-                    -Status $State.Statuses[$item.ShortName] -IsCursor ($i -eq $State.CursorIndex) `
+                    -Item $item -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $item) `
+                    -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $item) `
+                    -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `
+                    -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") `
+                    -IsCursor ($i -eq $State.CursorIndex) `
                     -Packages $State.Packages
             }
             Render-Footer -State $State
@@ -112,22 +118,35 @@ function Invoke-MenuLoop {
 
     try {
         while ($true) {
-            if ($state.NeedRedraw) {
-                Render-Menu -State $state
+            try {
+                if ($state.NeedRedraw) {
+                    Render-Menu -State $state
+                }
+            } catch {
+                Write-Host ""
+                Write-Host " メニューの再描画に失敗しました: $($_.Exception.Message)" -ForegroundColor Yellow
+                Write-Host " Q で終了できます。"
+                $state.NeedRedraw = $false
             }
 
             $inputEvent = Read-MenuInput -InputModeState $inputModeState
-            switch ($inputEvent.Kind) {
-                "Mouse" {
-                    $result = Handle-MouseInput -State $state -MouseEvent $inputEvent.MouseEvent
+            try {
+                switch ($inputEvent.Kind) {
+                    "Mouse" {
+                        $result = Handle-MouseInput -State $state -MouseEvent $inputEvent.MouseEvent
+                    }
+                    "Resize" {
+                        $state.NeedRedraw = $true
+                        $result = "continue"
+                    }
+                    default {
+                        $result = Handle-KeyInput -State $state -KeyInfo $inputEvent.KeyInfo -InputModeState $inputModeState
+                    }
                 }
-                "Resize" {
-                    $state.NeedRedraw = $true
-                    $result = "continue"
-                }
-                default {
-                    $result = Handle-KeyInput -State $state -KeyInfo $inputEvent.KeyInfo -InputModeState $inputModeState
-                }
+            } catch {
+                Write-Host " メニュー操作でエラーが発生しました: $($_.Exception.Message)" -ForegroundColor Yellow
+                $state.NeedRedraw = $true
+                $result = "continue"
             }
 
             if ($result -eq "quit") {

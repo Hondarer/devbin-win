@@ -24,6 +24,38 @@ Describe "Get-MenuItems" {
     }
 }
 
+Describe "Get-MenuItemList / Get-MenuFlag" {
+
+    It "単一の hashtable でも 1 件の配列として扱える" {
+        InModuleScope Devbin {
+            $pkg = @{ ShortName = "only"; Name = "Only" }
+            $state = @{ Items = $pkg }
+            $items = @(Get-MenuItemList -State $state)
+
+            $items.Count | Should Be 1
+            ($null -eq $items[0]) | Should Be $false
+            $items[0].ShortName | Should Be "only"
+        }
+    }
+
+    It "Items が無ければ空の配列を返す" {
+        InModuleScope Devbin {
+            @(Get-MenuItemList -State @{}).Count | Should Be 0
+            @(Get-MenuItemList -State $null).Count | Should Be 0
+        }
+    }
+
+    It "null キーでは終了エラーにしない" {
+        InModuleScope Devbin {
+            $map = @{ a = $true }
+            { Get-MenuFlag -Map $map -ItemOrName $null } | Should Not Throw
+            Get-MenuFlag -Map $map -ItemOrName $null | Should Be $false
+            Get-MenuFlag -Map $map -ItemOrName @{ Name = "x" } | Should Be $false
+            Get-MenuFlag -Map $map -ItemOrName "a" | Should Be $true
+        }
+    }
+}
+
 Describe "Get-DependencyDisplay" {
 
     It "見える依存は名前で並べる" {
@@ -128,6 +160,20 @@ Describe "Update-Viewport" {
             $state.ViewportTop | Should Be 2
         }
     }
+
+    It "一覧より下にはみ出さない" {
+        InModuleScope Devbin {
+            $state = @{
+                Items = @(@{ ShortName = "a" }, @{ ShortName = "b" }, @{ ShortName = "c" })
+                CursorIndex = 1
+                ViewportTop = 2
+                ViewportSize = 3
+            }
+            Update-Viewport -State $state
+
+            $state.ViewportTop | Should Be 0
+        }
+    }
 }
 
 Describe "Set-AllMenuItemsChecked / Clear-AllMenuItemsChecked" {
@@ -173,6 +219,27 @@ Describe "Get-StatusDisplay" {
         InModuleScope Devbin {
             (Get-StatusDisplay -Status "Installed").Label | Should Be "Installed"
             (Get-StatusDisplay -Status "NoSuchStatus").Label | Should Be "Not Installed"
+        }
+    }
+}
+
+Describe "Initialize-MenuState" {
+
+    It "表示項目が 1 件でも Items は配列になり、0 番目が読める" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $pkg = New-TestPackage -ShortName "only"
+            $state = Initialize-MenuState `
+                -Packages @($pkg) `
+                -Manifest @{ version = 1; components = @{} } `
+                -InstallDir "C:\nonexistent-devbin-test" `
+                -ScriptDir "C:\nonexistent-devbin-test"
+
+            $state.Items -is [System.Array] | Should Be $true
+            $state.Items.Count | Should Be 1
+            ($null -eq $state.Items[0]) | Should Be $false
+            $state.Items[0].ShortName | Should Be "only"
+            { Get-MenuFlag -Map $state.Checked -ItemOrName $state.Items[0] } | Should Not Throw
         }
     }
 }

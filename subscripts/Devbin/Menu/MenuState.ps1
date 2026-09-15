@@ -15,6 +15,46 @@ function Get-MenuItems {
     return $items
 }
 
+# メニュー項目をパイプラインへ出す。呼び出し側は @(Get-MenuItemList) で配列にする
+function Get-MenuItemList {
+    param([hashtable]$State)
+
+    if ($null -eq $State -or -not $State.ContainsKey("Items") -or $null -eq $State.Items) {
+        return
+    }
+
+    $value = $State.Items
+    if ($value -is [System.Collections.IDictionary]) {
+        $value
+        return
+    }
+
+    foreach ($item in @($value)) {
+        $item
+    }
+}
+
+# hashtable[$null] はモジュール内で終了エラーになるため、キーを確かめてから読む
+function Get-MenuFlag {
+    param(
+        [hashtable]$Map,
+        $ItemOrName,
+        $Default = $false
+    )
+
+    $shortName = $null
+    if ($ItemOrName -is [string]) {
+        $shortName = $ItemOrName
+    } elseif ($null -ne $ItemOrName) {
+        $shortName = [string]$ItemOrName.ShortName
+    }
+
+    if ($null -eq $Map -or [string]::IsNullOrWhiteSpace($shortName) -or -not $Map.ContainsKey($shortName)) {
+        return $Default
+    }
+    return $Map[$shortName]
+}
+
 # 依存表示文字列を生成する
 function Get-DependencyDisplay {
     param(
@@ -147,7 +187,7 @@ function Initialize-MenuState {
         [string]$ScriptDir
     )
 
-    $items = Get-MenuItems -Packages $Packages
+    $items = @(Get-MenuItems -Packages $Packages)
     $statuses = @{}
     $checked = @{}
     $anyInstalled = $false
@@ -245,28 +285,34 @@ function Update-MenuStatuses {
         [PSCustomObject]$Plan
     )
 
-    foreach ($item in $State.Items) {
-        $State.Statuses[$item.ShortName] = Get-ComponentStatus `
+    foreach ($item in @(Get-MenuItemList -State $State)) {
+        $shortName = [string]$item.ShortName
+        if ([string]::IsNullOrWhiteSpace($shortName)) { continue }
+        $State.Statuses[$shortName] = Get-ComponentStatus `
             -Manifest $State.Manifest `
             -InstallDir $State.InstallDir `
             -PackageConfig $item `
             -PackagesDir $State.PackagesDir
     }
 
-    foreach ($item in $State.Items) {
+    foreach ($item in @(Get-MenuItemList -State $State)) {
+        $shortName = [string]$item.ShortName
+        if ([string]::IsNullOrWhiteSpace($shortName)) { continue }
         Set-MenuSelectionState `
             -Checked $State.Checked `
             -Reinstall $State.Reinstall `
-            -ShortName $item.ShortName `
-            -Status $State.Statuses[$item.ShortName] `
-            -IsDisabled $State.Disabled[$item.ShortName] `
+            -ShortName $shortName `
+            -Status $State.Statuses[$shortName] `
+            -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $shortName) `
             -HasAnyInstalled $true `
             -IsDefaultChecked $false
     }
 
     # アンインストール対象だったアイテムは、操作結果にかかわらず強制 OFF
     # (Legacy 状態でファイルが残っていても、ユーザーの意図は「外す」なので再チェックしない)
-    foreach ($entry in $Plan.Uninstall) {
-        $State.Checked[$entry.ShortName] = $false
+    foreach ($entry in @($Plan.Uninstall)) {
+        $shortName = [string]$entry.ShortName
+        if ([string]::IsNullOrWhiteSpace($shortName)) { continue }
+        $State.Checked[$shortName] = $false
     }
 }

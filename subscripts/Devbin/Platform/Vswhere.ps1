@@ -15,8 +15,14 @@ function Register-VswhereInstance {
         $instancePath = Join-Path $instancesPath $script:VSBT_INSTANCE_ID
 
         # インスタンスディレクトリを作成
+        # 一般ユーザーでは Packages 配下が書けない。Stop だと Transcript に終了エラーが残る
         if (-not (Test-Path $instancePath)) {
-            New-Item -ItemType Directory -Path $instancePath -Force -ErrorAction Stop | Out-Null
+            New-Item -ItemType Directory -Path $instancePath -Force -ErrorAction SilentlyContinue | Out-Null
+        }
+        if (-not (Test-Path $instancePath)) {
+            Write-Host "Skip to register vswhere instance: You are normal user."
+            Write-Host "Continuing without vswhere registration..."
+            return
         }
 
         # 絶対パスを取得

@@ -85,7 +85,7 @@ function Render-Footer {
     # キーバインド + 選択数
     [Console]::SetCursorPosition(0, $footerStart + 2)
     $checkedCount = ($State.Checked.Values | Where-Object { $_ }).Count
-    [Console]::Write((" ↑↓/Wheel 移動 | Space 選択切り替え | A 全選択 | N 全解除 | Enter 適用 | U 完全アンインストール | Q 終了 | 選択: $checkedCount / $($State.Items.Count)").PadRight($width))
+    [Console]::Write((" ↑↓/Wheel 移動 | Space 選択切り替え | A 全選択 | N 全解除 | Enter 適用 | U 完全アンインストール | Q 終了 | 選択: $checkedCount / $(@(Get-MenuItemList -State $State).Count)").PadRight($width))
 
     [Console]::ResetColor()
 }
@@ -123,22 +123,27 @@ function Render-Menu {
 
     # ビューポートサイズを計算 (ウィンドウリサイズにも対応)
     # WindowHeight の最終行に書き込むとバッファーがスクロールするため 1 行余裕を持たせる
+    $items = @(Get-MenuItemList -State $State)
+    $itemCount = $items.Count
     $maxViewport = [Console]::WindowHeight - 1 - $script:HEADER_ROWS - $script:FOOTER_ROWS
-    $State.ViewportSize = [Math]::Min($State.Items.Count, [Math]::Max(1, $maxViewport))
+    $State.ViewportSize = [Math]::Min($itemCount, [Math]::Max(1, $maxViewport))
     Update-Viewport -State $State
 
-    # アイテム行 (ビューポート内のみ)
-    $viewEnd = $State.ViewportTop + $State.ViewportSize
+    # アイテム行 (ビューポート内のみ)。範囲外や ShortName 欠落は終了エラーになるため読まない
+    $viewEnd = [Math]::Min($itemCount, $State.ViewportTop + $State.ViewportSize)
     for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
-        $item = $State.Items[$i]
+        $item = $items[$i]
+        if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.ShortName)) {
+            continue
+        }
         Render-MenuLine `
             -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) `
             -Number ($i + 1) `
             -Item $item `
-            -IsChecked $State.Checked[$item.ShortName] `
-            -IsReinstall $State.Reinstall[$item.ShortName] `
-            -IsDisabled $State.Disabled[$item.ShortName] `
-            -Status $State.Statuses[$item.ShortName] `
+            -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $item) `
+            -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $item) `
+            -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `
+            -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") `
             -IsCursor ($i -eq $State.CursorIndex) `
             -Packages $State.Packages
     }
@@ -147,7 +152,7 @@ function Render-Menu {
     $scrollRow = $script:HEADER_ROWS + $State.ViewportSize
     [Console]::SetCursorPosition(0, $scrollRow)
     $aboveCount = $State.ViewportTop
-    $belowCount = $State.Items.Count - $viewEnd
+    $belowCount = $itemCount - $viewEnd
     if ($aboveCount -gt 0 -or $belowCount -gt 0) {
         $parts = @()
         if ($aboveCount -gt 0) { $parts += "^ $aboveCount" }

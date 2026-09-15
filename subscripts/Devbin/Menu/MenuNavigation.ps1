@@ -11,6 +11,18 @@ function Update-Viewport {
     } elseif ($cursor -ge $State.ViewportTop + $State.ViewportSize) {
         $State.ViewportTop = $cursor - $State.ViewportSize + 1
     }
+
+    if ($State.ContainsKey("Items") -and $null -ne $State.Items) {
+        $count = @($State.Items).Count
+        $size = [Math]::Max(1, [int]$State.ViewportSize)
+        $maxTop = [Math]::Max(0, $count - $size)
+        if ($State.ViewportTop -gt $maxTop) {
+            $State.ViewportTop = $maxTop
+        }
+        if ($State.ViewportTop -lt 0) {
+            $State.ViewportTop = 0
+        }
+    }
 }
 
 function Move-MenuCursor {
@@ -19,12 +31,13 @@ function Move-MenuCursor {
         [int]$Delta
     )
 
-    if ($Delta -eq 0 -or $State.Items.Count -eq 0) {
+    $items = @(Get-MenuItemList -State $State)
+    if ($Delta -eq 0 -or $items.Count -eq 0) {
         return "continue"
     }
 
     $oldIdx = $State.CursorIndex
-    $newIdx = [Math]::Max(0, [Math]::Min($State.Items.Count - 1, $oldIdx + $Delta))
+    $newIdx = [Math]::Max(0, [Math]::Min($items.Count - 1, $oldIdx + $Delta))
     if ($newIdx -eq $oldIdx) {
         return "continue"
     }
@@ -37,17 +50,25 @@ function Move-MenuCursor {
         $State.NeedRedraw = $true
     } else {
         # ビューポート内: 2行だけ更新
-        $old = $State.Items[$oldIdx]
-        Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
-            -Item $old -IsChecked $State.Checked[$old.ShortName] -IsReinstall $State.Reinstall[$old.ShortName] `
-            -IsDisabled $State.Disabled[$old.ShortName] `
-            -Status $State.Statuses[$old.ShortName] -IsCursor $false -Packages $State.Packages
+        $old = $items[$oldIdx]
+        if ($null -ne $old) {
+            Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
+                -Item $old -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $old) `
+                -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $old) `
+                -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $old) `
+                -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $old -Default "NotInstalled") `
+                -IsCursor $false -Packages $State.Packages
+        }
 
-        $new = $State.Items[$newIdx]
-        Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
-            -Item $new -IsChecked $State.Checked[$new.ShortName] -IsReinstall $State.Reinstall[$new.ShortName] `
-            -IsDisabled $State.Disabled[$new.ShortName] `
-            -Status $State.Statuses[$new.ShortName] -IsCursor $true -Packages $State.Packages
+        $new = $items[$newIdx]
+        if ($null -ne $new) {
+            Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
+                -Item $new -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $new) `
+                -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $new) `
+                -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $new) `
+                -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $new -Default "NotInstalled") `
+                -IsCursor $true -Packages $State.Packages
+        }
     }
 
     return "continue"
@@ -56,13 +77,15 @@ function Move-MenuCursor {
 function Set-AllMenuItemsChecked {
     param([hashtable]$State)
 
-    foreach ($item in $State.Items) {
+    foreach ($item in @(Get-MenuItemList -State $State)) {
         # Disabled かつ NotInstalled はチェック ON を禁止
-        if ($State.Disabled[$item.ShortName] -and $State.Statuses[$item.ShortName] -eq "NotInstalled") {
+        if ((Get-MenuFlag -Map $State.Disabled -ItemOrName $item) -and ((Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") -eq "NotInstalled")) {
             continue
         }
-        $State.Checked[$item.ShortName] = $true
-        $State.Reinstall[$item.ShortName] = $false
+        $shortName = [string]$item.ShortName
+        if ([string]::IsNullOrWhiteSpace($shortName)) { continue }
+        $State.Checked[$shortName] = $true
+        $State.Reinstall[$shortName] = $false
     }
 
     $State.NeedRedraw = $true
@@ -71,9 +94,11 @@ function Set-AllMenuItemsChecked {
 function Clear-AllMenuItemsChecked {
     param([hashtable]$State)
 
-    foreach ($item in $State.Items) {
-        $State.Checked[$item.ShortName] = $false
-        $State.Reinstall[$item.ShortName] = $false
+    foreach ($item in @(Get-MenuItemList -State $State)) {
+        $shortName = [string]$item.ShortName
+        if ([string]::IsNullOrWhiteSpace($shortName)) { continue }
+        $State.Checked[$shortName] = $false
+        $State.Reinstall[$shortName] = $false
     }
 
     $State.NeedRedraw = $true
@@ -83,8 +108,14 @@ function Clear-AllMenuItemsChecked {
 function Toggle-CheckedItem {
     param([hashtable]$State, [int]$Index)
 
-    $item = $State.Items[$Index]
-    $shortName = $item.ShortName
+    $item = @(Get-MenuItemList -State $State)[$Index]
+    if ($null -eq $item) {
+        return
+    }
+    $shortName = [string]$item.ShortName
+    if ([string]::IsNullOrWhiteSpace($shortName)) {
+        return
+    }
     $status = $State.Statuses[$shortName]
     $isDisabled = $State.Disabled[$shortName]
     $propagateCheck = $false
@@ -129,13 +160,14 @@ function Toggle-CheckedItem {
 
         while ($queue.Count -gt 0) {
             $current = $queue.Dequeue()
-            foreach ($child in $State.Items) {
-                if ($visited[$child.ShortName]) { continue }
+            foreach ($child in @(Get-MenuItemList -State $State)) {
+                $childName = [string]$child.ShortName
+                if ([string]::IsNullOrWhiteSpace($childName) -or $visited.ContainsKey($childName)) { continue }
                 $deps = if ($child.ContainsKey("DependsOn")) { @($child.DependsOn) } else { @() }
                 if ($deps -contains $current) {
-                    $State.Checked[$child.ShortName] = $true
-                    $visited[$child.ShortName] = $true
-                    $queue.Enqueue($child.ShortName)
+                    $State.Checked[$childName] = $true
+                    $visited[$childName] = $true
+                    $queue.Enqueue($childName)
                 }
             }
         }

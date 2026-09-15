@@ -262,6 +262,24 @@ Describe "旧モジュールの整理" {
     }
 }
 
+Describe "Register-VswhereInstance" {
+
+    It "ディレクトリ作成に ErrorAction Stop を使わない" {
+        $source = Get-Content (Join-Path (Get-DevbinSubscriptsDir) "Devbin\Platform\Vswhere.ps1") -Raw
+        $source | Should Match 'New-Item -ItemType Directory -Path \$instancePath -Force -ErrorAction SilentlyContinue'
+        $source | Should Not Match 'New-Item -ItemType Directory -Path \$instancePath -Force -ErrorAction Stop'
+    }
+
+    It "作成できなくても終了エラーにしない" {
+        InModuleScope Devbin {
+            Mock Test-Path { $false }
+            Mock New-Item { $null }
+            Mock Write-Host {}
+            { Register-VswhereInstance -InstallPath "C:\nonexistent-devbin-test" -MsvcVersion "14.44" -SdkVersion "26100" -Targets @("x64") } | Should Not Throw
+        }
+    }
+}
+
 Describe "操作ログ" {
 
     It "標準の導入先では製品ルートの親を返す" {
