@@ -1,7 +1,7 @@
 ﻿# VsBuildToolsDownload.ps1
-# Visual Studio Build Tools の定義解析と取得の入口
+# Visual Studio Build Tools の定義解析およびダウンロード実行
 
-# VSBuildTools 戦略のパッケージ定義から Setup-VSBT.ps1 へ渡す引数を組み立てる
+# VSBuildTools 戦略のパッケージ定義から Setup-VSBT.ps1 実行用のパラメーターハッシュテーブルを構築
 function Get-VsBuildToolsParameters {
     param([hashtable]$PackageConfig)
 
@@ -18,8 +18,8 @@ function Get-VsBuildToolsParameters {
     }
 }
 
-# Setup-VSBT.ps1 を取得のみのモードで実行する
-# 戻り値: Success / Skipped / Message
+# Setup-VSBT.ps1 をダウンロード専用モード (-DownloadOnly) で実行
+# 戻り値: Success / Skipped / Message を持つ結果オブジェクト
 function Invoke-VsBuildToolsDownload {
     param(
         [hashtable]$PackageConfig,
@@ -65,7 +65,7 @@ function Invoke-VsBuildToolsDownload {
     Write-Host ""
 
     & $vsbtScript @parameters
-    # 外部スクリプトの終了コードは実行直後に確認する
+    # 外部プロセスの終了コード ($LASTEXITCODE) を直ちに退避
     $exitCode = $LASTEXITCODE
 
     if ($null -ne $exitCode -and $exitCode -ne 0) {

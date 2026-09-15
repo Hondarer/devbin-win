@@ -1,12 +1,12 @@
 ﻿# PackageVersion.ps1
-# パッケージの版の解決 (定義値、およびアーカイブ内のファイルからの読み取り)
+# パッケージのバージョン解決 (静的定義値およびアーカイブ内エントリからの動的取得)
 
-# packages ディレクトリの既定値をリポジトリ基準の絶対パスで返す
+# packages ディレクトリの既定パス (リポジトリルート基準の絶対パス) を取得
 function Get-DevbinDefaultPackagesDir {
     return (Join-Path $script:DevbinRepositoryRoot "packages")
 }
 
-# ZIP 内の特定エントリから版文字列を読み取る
+# ZIP アーカイブ内の指定エントリからバージョン文字列を抽出
 function Resolve-PackageVersionFromZipEntry {
     param(
         [string]$ArchiveFile,
@@ -74,8 +74,8 @@ function Resolve-PackageVersionFromZipEntry {
     }
 }
 
-# パッケージの版を解決する
-# VersionSource.Type = ZipEntry のときだけアーカイブから読み取り、それ以外は定義の Version を使用する
+# パッケージの有効バージョンを解決
+# VersionSource.Type が "ZipEntry" の場合はアーカイブ内から取得し、それ以外は定義の Version プロパティを使用
 function Resolve-PackageVersion {
     param(
         [hashtable]$PackageConfig,

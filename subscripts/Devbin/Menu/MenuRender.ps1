@@ -1,12 +1,12 @@
 ﻿# MenuRender.ps1
-# メニューの描画
+# コンポーネントマネージャー TUI 画面の描画処理
 
-# ヘッダー行数 (行0〜4: 空行, タイトル, 空行, ヘッダー行, 区切り線)
+# ヘッダー行数 (行 0〜4: 空行、タイトル、空行、ヘッダー項目行、区切り線)
 $script:HEADER_ROWS = 5
-# フッター行数 (スクロール情報 + 凡例 + 空行 + キーバインド+選択数)
+# フッター行数 (スクロール情報、凡例、空行、キーバインドおよび選択件数)
 $script:FOOTER_ROWS = 4
 
-# ステータスに対応する表示文字列と色を返す
+# コンポーネントの状態に対応する表示文字列および前景色を取得します。
 function Get-StatusDisplay {
     param([string]$Status)
     switch ($Status) {
@@ -18,7 +18,7 @@ function Get-StatusDisplay {
     }
 }
 
-# 1行を描画する
+# コンポーネント行を 1 行描画します。
 function Render-MenuLine {
     param(
         [int]$Row,
@@ -66,7 +66,7 @@ function Render-MenuLine {
     [Console]::ResetColor()
 }
 
-# フッターを描画する
+# フッター領域 (凡例および操作ガイド) を描画します。
 function Render-Footer {
     param([hashtable]$State)
 
@@ -90,11 +90,11 @@ function Render-Footer {
     [Console]::ResetColor()
 }
 
-# メニュー全体を描画する (フルリドロー)
+# メニュー画面全体を描画します (フルリドロー)。
 function Render-Menu {
     param([hashtable]$State)
 
-    # 描画前に色をリセットして Clear する
+    # 描画前に前景色・背景色をリセットし、画面をクリアします。
     [Console]::ResetColor()
     [Console]::Clear()
     [Console]::CursorVisible = $false
@@ -121,15 +121,15 @@ function Render-Menu {
     [Console]::Write((" " + "-" * ($width - 1)).PadRight($width))
     [Console]::ResetColor()
 
-    # ビューポートサイズを計算 (ウィンドウリサイズにも対応)
-    # WindowHeight の最終行に書き込むとバッファーがスクロールするため 1 行余裕を持たせる
+    # ビューポートサイズを算出します (コンソールウィンドウのリサイズにも対応)。
+    # WindowHeight の最終行への書き込みによる不要なバッファースクロールを防ぐため、1 行の余白を確保します。
     $items = @(Get-MenuItemList -State $State)
     $itemCount = $items.Count
     $maxViewport = [Console]::WindowHeight - 1 - $script:HEADER_ROWS - $script:FOOTER_ROWS
     $State.ViewportSize = [Math]::Min($itemCount, [Math]::Max(1, $maxViewport))
     Update-Viewport -State $State
 
-    # アイテム行 (ビューポート内のみ)。範囲外や ShortName 欠落は終了エラーになるため読まない
+    # ビューポート内のアイテム行を描画します (範囲外または ShortName 未定義項目はスキップ)。
     $viewEnd = [Math]::Min($itemCount, $State.ViewportTop + $State.ViewportSize)
     for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
         $item = $items[$i]
@@ -148,7 +148,7 @@ function Render-Menu {
             -Packages $State.Packages
     }
 
-    # スクロール情報行 (ビューポート直下)
+    # スクロール情報行 (ビューポート直下) を描画します。
     $scrollRow = $script:HEADER_ROWS + $State.ViewportSize
     [Console]::SetCursorPosition(0, $scrollRow)
     $aboveCount = $State.ViewportTop
@@ -167,7 +167,7 @@ function Render-Menu {
 
     Render-Footer -State $State
 
-    # カーソルをフッター最終行の末尾に退避 (CursorVisible = $false なので見えない)
+    # カーソル位置をフッター最終行の末尾に退避します (CursorVisible = $false のため非表示)。
     $lastRow = $script:HEADER_ROWS + $State.ViewportSize + $script:FOOTER_ROWS - 1
     [Console]::SetCursorPosition(0, $lastRow)
 

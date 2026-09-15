@@ -2,20 +2,20 @@
 
 ## 概要
 
-この文書では、Windows 環境で管理者権限を使わずに Visual Studio Code (以下 VS Code) をポータブル版として設置する方法と、その際の制限事項を説明します。  
-ポータブル版は、システムへの変更を最小限にして、VS Code を任意のフォルダーで動作させることができる配布形式です。  
-公式の説明は [Portable Mode](https://code.visualstudio.com/docs/editor/portable) を参照してください。
+本書では、Windows 環境において管理者権限を使用せずに Visual Studio Code (以下 VS Code) をポータブル版として配置・運用する手順と、その制限事項について説明します。
+ポータブル版は、OS やレジストリへの変更を最小限に抑え、任意のフォルダー配下で VS Code を実行できる配布形式です。
+公式の仕様および詳細については [Portable Mode](https://code.visualstudio.com/docs/editor/portable) を参照してください。
 
-本書のコマンドは、特に記載がない限り PowerShell での実行を想定しています。
+本書に記載のコマンドは、特段の注記がない限り PowerShell での実行を想定しています。
 
 ## セットアップ手順
 
 ### 事前準備
 
-次を用意します。
+次の資材を事前に準備します。
 
-- Windows 用 ZIP 版 VS Code
-- 必要に応じて拡張機能の .vsix ファイル
+- Windows 向け ZIP 版 VS Code
+- 必要に応じた拡張機能パッケージ (.vsix ファイル)
 
 ### 基本インストール手順
 
@@ -30,7 +30,7 @@ New-Item -ItemType Directory -Force -Path "C:\ProgramData\vscode\data" | Out-Nul
 
 #### ユーザー環境変数の設定
 
-コマンドラインから `code` を使えるように、VS Code の bin フォルダーを Path (ユーザー環境変数) に追加します。
+コマンドラインから `code` コマンドを実行できるように、VS Code の `bin` ディレクトリをユーザー環境変数 `PATH` に追加します。
 
 ```powershell
 # 既存のユーザー Path に vscode\bin を追加
@@ -44,7 +44,7 @@ if (-not $userPath.Split(';') -contains $bin) {
 }
 ```
 
-参考: コマンドラインオプションは [Command line interface](https://code.visualstudio.com/docs/editor/command-line) を参照してください。
+参考: 利用可能なコマンドラインオプションの詳細は [Command line interface](https://code.visualstudio.com/docs/editor/command-line) を参照してください。
 
 #### スタートメニューへのショートカット追加
 
@@ -60,50 +60,51 @@ Write-Host "スタートメニューにショートカットを作成しまし�
 
 ### 拡張機能のインストール
 
-事前にダウンロードした .vsix を使ってオフラインで拡張機能をインストールできます。
+事前にダウンロードした `.vsix` ファイルを指定することで、オフライン環境でも拡張機能をインストールできます。
 
 ```powershell
 "C:\ProgramData\vscode\Code.exe" --install-extension "$env:USERPROFILE\Downloads\path_to_extension.vsix"
 ```
 
-マーケットプレースからの通常インストールや .vsix の説明は [Extension Marketplace](https://code.visualstudio.com/docs/editor/extension-marketplace) を参照してください。
+VS Code Marketplace からの通常のインストール手順や `.vsix` の詳細仕様については、[Extension Marketplace](https://code.visualstudio.com/docs/editor/extension-marketplace) を参照してください。
 
 ## ポータブルモードの特徴
 
 ### 動作原理
 
-VS Code の実行ファイルと同じ場所に `data` フォルダーを配置するとポータブルモードになります。次の情報がすべて `data` 配下に保存されます。
+VS Code の実行可能ファイルと同一ディレクトリに `data` フォルダーを配置すると、ポータブルモードとして動作します。
+次の各種データがすべて `data` ディレクトリ配下に集約して保存されます。
 
 - ユーザー設定
 - インストール済み拡張機能
-- ワークスペース設定
+- ワークスペース固有設定
 - ユーザースニペット
 
-詳細は公式の [Portable Mode](https://code.visualstudio.com/docs/editor/portable) を参照してください。
+詳細な動作仕様については、公式ドキュメントの [Portable Mode](https://code.visualstudio.com/docs/editor/portable) を参照してください。
 
 ### データ保存場所
 
 ```text
 vscode/
-├─ Code.exe            # 実行ファイル
-├─ resources/          # リソース
-└─ data/               # このフォルダーの存在によりポータブルモード有効
-   ├─ user-data/       # 設定など
-   └─ extensions/      # 拡張機能
++- Code.exe            # 実行ファイル
++- resources/          # リソース
++- data/               # このフォルダーの存在によりポータブルモードが有効化
+   +- user-data/       # ユーザー設定など
+   +- extensions/      # 拡張機能
 ```
 
 ## 制限事項と注意点
 
 ### 自動更新の無効化
 
-ポータブルモードでは自動更新が無効です (公式仕様) [参考: [Portable Mode](https://code.visualstudio.com/docs/editor/portable)]。
+ポータブルモードでは、アプリケーションの自動更新機能が無効化されます (公式仕様) [参考: [Portable Mode](https://code.visualstudio.com/docs/editor/portable)]。
 
-- セキュリティ修正が自動適用されないこと
-- 新機能が自動更新されないこと
-- 手動で更新する必要があること
+- セキュリティ修正プログラムが自動適用されません。
+- 新機能を含むバージョンアップが自動実行されません。
+- 新しいバージョンへの移行は手動で実施する必要があります。
 
-定期的な更新チェックの一例です (GitHub API を使用)。  
-ネットワーク制限がある環境では動作しない場合があります。
+定期的な更新確認を行うスクリプト例です (GitHub REST API を使用)。
+外部ネットワーク接続に制限がある環境では動作しない場合があります。
 
 ```powershell
 $codeExe = "C:\ProgramData\vscode\Code.exe"
@@ -121,18 +122,21 @@ if ($currentVersion -ne $latestInfo.tag_name) {
 
 ### システム統合の制限
 
-- ファイルの関連付けを自動設定しない
-- レジストリ登録を行わない
-- エクスプローラーの右クリックメニューを自動追加しない
+ポータブルモードでは、インストーラーによる次のシステム統合処理が行われません。
 
-このため、ファイルのダブルクリックで VS Code が開かなかったり、コンテキストメニューに「VS Code で開く」が表示されないことがあります。必要に応じて手動で設定してください (管理者権限が必要になる場合があります)。
+- 拡張子やファイルの関連付けの自動登録
+- レジストリへのアプリケーション情報の登録
+- エクスプローラーのコンテキスト (右クリック) メニューへの項目追加
+
+そのため、ファイルをダブルクリックしても VS Code が起動しなかったり、コンテキストメニューに「VS Code で開く」が表示されなかったりする制約があります。
+必要に応じて手動での設定を行ってください (設定内容によっては管理者権限が必要となる場合があります)。
 
 ### 依存関係の制限
 
-一部の拡張機能やデバッガーはシステムレベルのコンポーネントを必要とします。
+一部の拡張機能やデバッガーは、OS レベルの共有コンポーネントや外部ランタイムを必要とします。
 
-- 例: .NET デバッガー、C/C++ のデバッグツール、Python の自動検出 など
-- 初回セットアップで追加のランタイムや SDK を求められることがあります
+- 該当例: .NET デバッガー、C/C++ デバッグツール、Python ランタイムの自動検出など
+- 初回セットアップ時や拡張機能の初回実行時に、追加ランタイムや SDK の導入が求められる場合があります。
 
 ## 手動更新手順
 
@@ -142,7 +146,7 @@ if ($currentVersion -ne $latestInfo.tag_name) {
 # 1. データのバックアップ
 robocopy "C:\ProgramData\vscode\data" "$env:TEMP\VS Code_backup\data" /MIR
 
-# 2. VS Code 終了
+# 2. 実行中の VS Code プロセスの終了
 Stop-Process -Name Code -ErrorAction SilentlyContinue
 
 # 3. 新バージョンの展開 (ダウンロードした ZIP のパスを指定)
@@ -156,17 +160,19 @@ robocopy "$env:TEMP\VS Code_backup\data" "C:\ProgramData\vscode\data" /MIR
 
 ### 適している場面
 
-- 企業環境などで管理者権限がない場合
-- 複数 PC で同じ設定を持ち運びたい場合
-- USB メモリーで持ち運んで使いたい場合
+- 企業の制約などにより、管理者権限が付与されていない環境
+- 複数の PC 間で同一の設定および拡張機能環境を持ち運ぶ場合
+- USB メモリー等の外部ストレージに格納してポータブルに運用する場合
 
 ### 適していない場面
 
-- 常に最新バージョンを自動で使いたい場合
-- システム統合 (関連付けやコンテキストメニュー) を重視する場合
-- 複雑なデバッグ環境を必要とする場合
+- 常に最新の安定版へ自動更新される運用を求める場合
+- ファイルの関連付けやコンテキストメニュー等の OS 統合機能を重視する場合
+- 複雑なシステムレベルの依存関係を持つデバッグ環境を必要とする場合
 
 ## まとめ
 
-ポータブル版 VS Code は、管理者権限なしで開発環境を整えたいときに有効です。一方で、自動更新が無効であることやシステム統合が弱いことは避けられません。  
-利用環境や要件に合わせて採用を判断してください。定期的な手動更新とバックアップを組み合わせれば、現実的に運用できます。
+ポータブル版 VS Code は、管理者権限を保持していない Windows 環境で開発環境を構築する際に有効な選択肢です。
+一方で、自動更新機能が無効化される点や、OS とのシステム統合が限定的である点には留意する必要があります。
+運用要件やセキュリティポリシーに応じて適切な導入形態を判断してください。
+定期的な手動更新とデータのバックアップ運用を組み合わせることで、安定した開発環境を維持できます。

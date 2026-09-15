@@ -1,9 +1,9 @@
 ﻿# Windows Terminal Git Bash プロファイル管理スクリプト
 param(
-    [switch]$Install,      # プロファイルをインストール
-    [switch]$Uninstall,    # プロファイルをアンインストール
-    [switch]$Force = $false, # 強制実行
-    [string]$InstallDir = ""  # devbin-win インストール先 (既定: %ProgramData%\%USERNAME%\devbin-win\bin)
+    [switch]$Install,      # プロファイルの登録
+    [switch]$Uninstall,    # プロファイルの削除
+    [switch]$Force = $false, # 既存プロファイルの上書き登録
+    [string]$InstallDir = ""  # devbin-win インストール先 (既定値: %ProgramData%\%USERNAME%\devbin-win\bin)
 )
 
 $ScriptDir = if ($PSScriptRoot) {
@@ -12,7 +12,7 @@ $ScriptDir = if ($PSScriptRoot) {
     Split-Path -Parent $MyInvocation.MyCommand.Path
 }
 
-# Windows Terminal の設定操作は Devbin/Platform と共通
+# Windows Terminal の設定操作処理は Devbin/Platform モジュールと共通化
 try {
     Import-Module (Join-Path $ScriptDir "Devbin") -Force -ErrorAction Stop
 } catch {
@@ -20,7 +20,7 @@ try {
     exit 1
 }
 
-# 使用方法を表示
+# コマンドラインの使用方法を表示
 function Show-Usage {
     Write-Host "`n=== Windows Terminal Git Bash Profile Manager ==="
     Write-Host "`nUsage:"
@@ -42,7 +42,7 @@ function Show-Usage {
     Write-Host "  .\Update-GitBash-Profile.ps1 -Install -Force`n"
 }
 
-# Git Bash プロファイルをインストール
+# Git Bash プロファイルの登録処理
 function Install-GitBashProfile {
     param(
         [string]$SettingsPath,
@@ -50,7 +50,7 @@ function Install-GitBashProfile {
         [bool]$ForceUpdate = $false
     )
     
-    # 追加したいプロファイル設定
+    # 登録対象のプロファイル定義
     $newProfile = @{
         guid = "{b2e42366-5d93-4fb7-be22-177d0a5850d1}"
         name = "Git Bash"
@@ -60,13 +60,13 @@ function Install-GitBashProfile {
     }
     
     try {
-        # バックアップ作成
+        # 設定ファイルのバックアップを作成
         $backupPath = New-SettingsBackup -SettingsPath $SettingsPath
         
-        # 設定を読み込み
+        # 現在の設定を読み込み
         $settings = Get-TerminalSettings -SettingsPath $SettingsPath
         
-        # 既存プロファイルを確認
+        # 既存プロファイルの存在確認
         $existingProfile = $settings.profiles.list | Where-Object { 
             $_.guid -eq $newProfile.guid -or $_.name -eq $newProfile.name 
         }
@@ -75,7 +75,7 @@ function Install-GitBashProfile {
             Write-Host "Profile '$($newProfile.name)' (GUID: $($newProfile.guid)) already exists."
             Write-Host "Use -Force parameter to force update."
             
-            # 既存プロファイルの詳細を表示
+            # 既存プロファイルの詳細情報を表示
             Write-Host "`nExisting profile information:"
             Write-Host "  Name: $($existingProfile.name)"
             Write-Host "  GUID: $($existingProfile.guid)"
@@ -86,13 +86,13 @@ function Install-GitBashProfile {
         
         if ($existingProfile -and $ForceUpdate) {
             Write-Host "Updating existing profile..."
-            # 既存プロファイルを削除
+            # 既存プロファイルを削除 (上書き更新用)
             $settings.profiles.list = @($settings.profiles.list | Where-Object { 
                 $_.guid -ne $newProfile.guid -and $_.name -ne $newProfile.name 
             })
         }
         
-        # 実行ファイルとアイコンの存在確認
+        # 実行ファイルとアイコンファイルの存在確認
         $bashPath = $newProfile.commandline -replace ' -i -l$', ''
         $iconPath = $newProfile.icon
         
@@ -112,7 +112,7 @@ function Install-GitBashProfile {
         $newProfileObject = [PSCustomObject]$newProfile
         $settings.profiles.list = @($settings.profiles.list) + @($newProfileObject)
         
-        # 設定を保存
+        # 更新後の設定を保存
         Save-TerminalSettings -Settings $settings -SettingsPath $SettingsPath
         
         #Write-Host "`nGit Bash profile installation completed successfully!"
@@ -132,7 +132,7 @@ function Install-GitBashProfile {
     } catch {
         Write-Error "Error occurred during installation: $($_.Exception.Message)"
         
-        # バックアップから復元を提案
+        # エラー発生時のバックアップ復元手順を表示
         if (Test-Path $backupPath) {
             Write-Host "`nTo restore from backup if needed:"
             Write-Host "Copy-Item -Path '$backupPath' -Destination '$SettingsPath' -Force"
@@ -142,7 +142,7 @@ function Install-GitBashProfile {
     }
 }
 
-# Git Bash プロファイルをアンインストール
+# Git Bash プロファイルの削除処理
 function Uninstall-GitBashProfile {
     param([string]$SettingsPath)
     
@@ -150,10 +150,10 @@ function Uninstall-GitBashProfile {
     $targetName = "Git Bash"
     
     try {
-        # バックアップ作成
+        # 設定ファイルのバックアップを作成
         $backupPath = New-SettingsBackup -SettingsPath $SettingsPath
         
-        # 設定を読み込み
+        # 現在の設定を読み込み
         $settings = Get-TerminalSettings -SettingsPath $SettingsPath
         
         # 削除対象プロファイルを検索
@@ -165,7 +165,7 @@ function Uninstall-GitBashProfile {
             return $false
         }
         
-        # 削除対象の詳細を表示
+        # 削除対象プロファイルの詳細情報を表示
         #Write-Host "`nProfiles to be removed:"
         #foreach ($profile in $targetProfiles) {
         #    Write-Host "  Name: $($profile.name)"
@@ -173,7 +173,7 @@ function Uninstall-GitBashProfile {
         #    Write-Host "  Command: $($profile.commandline)"
         #}
         
-        # プロファイルを削除
+        # 対象プロファイルを削除
         $originalCount = $settings.profiles.list.Count
         $settings.profiles.list = @($settings.profiles.list | Where-Object { 
             $_.guid -ne $targetGuid -and $_.name -ne $targetName 
@@ -186,7 +186,7 @@ function Uninstall-GitBashProfile {
             return $true
         }
         
-        # 設定を保存
+        # 更新後の設定を保存
         Save-TerminalSettings -Settings $settings -SettingsPath $SettingsPath
         
         #Write-Host "`nGit Bash profile uninstallation completed successfully!"
@@ -199,7 +199,7 @@ function Uninstall-GitBashProfile {
     } catch {
         Write-Error "Error occurred during uninstallation: $($_.Exception.Message)"
         
-        # バックアップから復元を提案
+        # エラー発生時のバックアップ復元手順を表示
         if (Test-Path $backupPath) {
             Write-Host "`nTo restore from backup if needed:"
             Write-Host "Copy-Item -Path '$backupPath' -Destination '$SettingsPath' -Force"
@@ -223,20 +223,20 @@ function Main {
         exit 1
     }
     
-    # InstallDir の既定値を動的に決定
+    # InstallDir の既定値を動的に解決
     $effectiveInstallDir = if ($InstallDir -and $InstallDir -ne "") {
         $InstallDir
     } else {
         "$env:ProgramData\$env:USERNAME\devbin-win\bin"
     }
     
-    # Settings.jsonのパスを取得
+    # settings.json の配置パスを取得
     $settingsPath = Get-WindowsTerminalSettingsPath -ProfileLabel "Git Bash profile"
     if (-not $settingsPath) {
         exit 0
     }
     
-    # 操作実行
+    # 指定された操作を実行
     $success = $false
     
     if ($Install) {
@@ -255,5 +255,5 @@ function Main {
     }
 }
 
-# スクリプト実行
+# エントリーポイントの呼び出し
 Main

@@ -1,18 +1,18 @@
 ﻿# ArchiveExtraction.ps1
-# 戦略が共有するアーカイブ展開の下請け
+# 各抽出戦略で共通利用されるアーカイブ展開・パス解決ヘルパー
 
-# アーカイブファイルをブロック解除する共通関数
+# アーカイブファイルのゾーン識別子 (Mark-of-the-Web) を解除
 function Unblock-ArchiveFile {
     param([string]$ArchiveFile)
 
     try {
         Unblock-File -Path $ArchiveFile -ErrorAction SilentlyContinue
     } catch {
-        # ブロック解除に失敗した場合は続行
+        # ゾーン識別子の解除に失敗した場合も処理を継続
     }
 }
 
-# アーカイブを一時ディレクトリに展開する共通関数
+# アーカイブを一時ディレクトリに展開 (拡張子に応じて Expand-Archive または tar.exe を使用)
 function Expand-ArchiveToTemp {
     param(
         [string]$ArchiveFile,
@@ -53,7 +53,7 @@ function Expand-ArchiveToTemp {
     }
 }
 
-# 展開されたソースパスを取得する共通関数
+# 展開先一時ディレクトリからソースルートパスを特定
 function Get-ExtractedSourcePath {
     param([string]$TempDir)
 
@@ -61,22 +61,22 @@ function Get-ExtractedSourcePath {
     $extractedFolders = $extractedItems | Where-Object { $_.PSIsContainer }
 
     if (-not $extractedFolders -and ($extractedItems | Where-Object { -not $_.PSIsContainer })) {
-        # フォルダーがなく、ファイルのみの場合は TempDir を返す
+        # サブディレクトリが存在せずファイルのみの場合は TempDir を返却
         return $TempDir
     }
     elseif ($extractedFolders.Count -eq 1) {
-        # フォルダーが1つだけの場合はそのフォルダーを返す
+        # 単一のルートディレクトリが存在する場合はそのフルパスを返却
         return $extractedFolders[0].FullName
     }
     elseif ($extractedFolders.Count -gt 1) {
-        # フォルダーが複数ある場合は TempDir を返す
+        # 複数のディレクトリが存在する場合は TempDir を返却
         return $TempDir
     }
 
     return $null
 }
 
-# PostExtract の追加ファイルを解決する
+# 抽出後処理 (PostExtract) でコピーする追加ファイルのパスを解決
 function Resolve-PostExtractSourcePath {
     param(
         [string]$SourcePath,

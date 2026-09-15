@@ -1,5 +1,5 @@
 ﻿# Run-Tests.ps1
-# Windows PowerShell 5.1 同梱の Pester 3.4 でテストを実行する
+# Windows PowerShell 5.1 同梱の Pester 3.4 を用いたテストの実行
 param(
     [string[]]$TestName = @()
 )

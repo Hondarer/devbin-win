@@ -1,5 +1,5 @@
 ﻿# ProductRoot.ps1
-# 製品ルートの解決と、そこを指す参照の判定・除去
+# 製品ルートパスの解決、および該当ルートを参照する環境変数・PATH エントリの判定と除去
 
 function Get-DevbinProductRoot {
     param(
@@ -37,7 +37,7 @@ function Get-DevbinProductRoot {
     return $fullPath.TrimEnd('\')
 }
 
-# 完全アンインストールが許可される唯一の対象ルートを返す
+# 完全アンインストールが許可される規定の製品ルートパスを取得
 function Get-DevbinExpectedProductRoot {
     $expected = Join-Path $env:ProgramData "$env:USERNAME\devbin-win"
     $normalized = Get-NormalizedPathString -PathValue $expected
@@ -47,7 +47,7 @@ function Get-DevbinExpectedProductRoot {
     return $expected.TrimEnd('\')
 }
 
-# 対象ルートが完全アンインストールの許可範囲かどうかを判定する
+# 指定された製品ルートが完全アンインストールの対象として妥当であるかを検証
 function Test-DevbinProductRootAllowed {
     param(
         [string]$ProductRoot
@@ -138,7 +138,7 @@ function Test-PathUnderRoot {
     return ($nextChar -eq '\' -or $nextChar -eq '/' -or $nextChar -eq '"' -or $nextChar -eq "'" -or [char]::IsWhiteSpace($nextChar))
 }
 
-# ";" 区切りの値を、対象ルート配下のエントリとそれ以外に分ける
+# セミコロン (;) 区切りの文字列を、製品ルート配下のパスとそれ以外のパスに分割
 function Split-RootEntriesFromValue {
     param(
         [string]$Value,
@@ -188,7 +188,7 @@ function Remove-UserEnvVarsPointingToRoot {
                 continue
             }
 
-            # 対象ルート配下のエントリだけを取り除き、他のエントリが残る場合は変数自体は残す
+            # 製品ルート配下のエントリのみを除去し、他の値が存在する場合は更新した文字列で保持
             if ($split.Kept.Count -eq 0) {
                 [Environment]::SetEnvironmentVariable([string]$key, $null, "User")
                 Write-Host "  Removed environment variable: $key"

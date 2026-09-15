@@ -1,5 +1,5 @@
 ﻿# PipWheel.Tests.ps1
-# pip パッケージ名の正規化と wheel 検証の回帰テスト
+# pip パッケージ名の正規化および wheel ファイル検証の回帰テスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
@@ -138,7 +138,7 @@ Describe "Test-PipWheelPackages" {
 
 Describe "pip 関連実装の一本化" {
 
-    # 旧実装が残っていないことを確認する (Devbin へ集約済み)
+    # 各スクリプトに旧実装の重複定義が残存していないことを確認します (Devbin モジュールへ集約済み)。
     $subscriptsDir = Get-DevbinSubscriptsDir
     $targets = @("Setup-Bin.ps1", "Get-Packages.ps1", "Devbin\Install\ComponentInstall.ps1", "Devbin\Install\ComponentSource.ps1", "Devbin\Extract\PackageManagerStrategy.ps1")
     $pipFunctions = @("Get-NormalizedPipPackageName", "Get-PipWheelPackageNames", "Get-PipWheelDownloadSpecs", "Test-PipWheelPackages")

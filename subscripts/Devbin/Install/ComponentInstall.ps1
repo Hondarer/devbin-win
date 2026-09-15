@@ -1,7 +1,7 @@
 ﻿# ComponentInstall.ps1
-# コンポーネントの導入と再導入
+# コンポーネントのインストールおよび再インストール (更新)
 
-# コンポーネントをインストールする
+# 単一のコンポーネントをインストールします。
 function Install-Component {
     param(
         [string]$ShortName,
@@ -19,16 +19,16 @@ function Install-Component {
         return $false
     }
 
-    # 既にインストール済みの場合はスキップ
+    # インストール済みの場合は処理をスキップします。
     if (Test-ComponentInstalled -Manifest $Manifest -ShortName $ShortName) {
         Write-Host "  '$ShortName' は既にインストール済みです" -ForegroundColor Cyan
         return $true
     }
 
-    # 依存を先にインストール
+    # 依存コンポーネントを先行してインストールします。
     if (-not $SkipDeps) {
         $deps = if ($pkg.ContainsKey("DependsOn")) { @($pkg.DependsOn) } else { @() }
-        # 自分自身を解決中として記録し、循環依存で再帰が止まらなくなるのを防ぐ
+        # 循環依存による無限再帰を防止するため、処理中のコンポーネントを追跡します。
         $InProgress[$ShortName] = $true
         foreach ($dep in $deps) {
             if ($InProgress.ContainsKey($dep)) {
@@ -62,7 +62,7 @@ function Install-Component {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     }
 
-    # CopyToPackages 戦略はスキップ (ファイルは packages/ に留まる)
+    # CopyToPackages 戦略の場合は展開をスキップします (ファイルは packages ディレクトリ内に保持)。
     if ($pkg.ExtractStrategy -eq "CopyToPackages") {
         $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
         $packagesDir = Get-PackagesDirectory -ScriptDir $ScriptDir
@@ -81,7 +81,7 @@ function Install-Component {
         return $true
     }
 
-    # 導入に必要なファイルを用意する (不足していれば取得を試みる)
+    # インストールに必要なファイルを取得・検証します。
     $packagesDir = Get-PackagesDirectory -ScriptDir $ScriptDir
     $source = Resolve-ComponentSource `
         -ShortName $ShortName `
@@ -96,10 +96,10 @@ function Install-Component {
     }
     $archiveFile = $source.ArchiveFile
 
-    # インストール前スナップショット
+    # インストール前のディレクトリスナップショットを取得します。
     $snapshotBefore = Get-DirectorySnapshot -InstallDir $InstallDir
 
-    # 抽出実行
+    # 抽出戦略を実行します。
     $result = Invoke-ExtractStrategy `
         -PackageConfig $pkg `
         -ArchiveFile $(if ($archiveFile) { $archiveFile } else { "" }) `
@@ -113,10 +113,10 @@ function Install-Component {
         return $false
     }
 
-    # インストール後スナップショット差分からファイル一覧を取得
+    # インストール前後のスナップショット差分から配置されたファイル一覧を算出します。
     $installedFiles = Get-FileSnapshotDiff -InstallDir $InstallDir -Before $snapshotBefore
 
-    # TargetDirectory 系はディレクトリ名を代表ファイルとして記録
+    # TargetDirectory 指定時はディレクトリ名を代表エントリとして記録します。
     $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }
     if ($targetDir -and (Test-Path (Join-Path $InstallDir $targetDir))) {
         $installedFiles = @($targetDir)
@@ -124,7 +124,7 @@ function Install-Component {
 
     $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
 
-    # 環境変数設定
+    # コンポーネント固有の環境変数を設定します。
     $envVarsConfig = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
     $appliedEnvVars = @{}
     $hasBrowserConfig = Test-ComponentUsesEdge -PackageConfig $pkg
@@ -139,7 +139,7 @@ function Install-Component {
         }
     }
 
-    # マニフェストに記録
+    # インストール情報をマニフェストに記録します。
     $version = if (Get-Command Resolve-PackageVersion -ErrorAction SilentlyContinue) {
         Resolve-PackageVersion -PackageConfig $pkg -PackagesDir $packagesDir -ArchiveFile $(if ($archiveFile) { $archiveFile } else { "" })
     } else {
@@ -170,7 +170,7 @@ function Install-Component {
     return $true
 }
 
-# コンポーネントを再インストール(更新)する
+# コンポーネントの再インストール (更新) を実行します。
 function Update-Component {
     param(
         [string]$ShortName,
@@ -189,17 +189,17 @@ function Update-Component {
     Write-Host ""
     Write-Host "=== $($pkg.Name) を再インストール中 ==="
 
-    # アンインストール (依存元への影響を無視して強制実行)
+    # マニフェストから登録を解除し、PATH を更新します。
     Remove-ComponentFromManifest -Manifest $Manifest -ShortName $ShortName
     Write-Host "  PATH を更新中..."
     Sync-ComponentManagerPath -InstallDir $InstallDir -Packages $Packages -Manifest $Manifest
 
-    # TargetDirectory 系はディレクトリを削除してクリーンにする
+    # TargetDirectory 指定時はディレクトリをクリーンアップします。
     $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }
     if ($targetDir) {
         $targetPath = Join-Path $InstallDir $targetDir
         if (Test-Path $targetPath) {
-            # VS Code data を保護
+            # VS Code のポータブルデータ (data ディレクトリ) を退避します。
             if ($ShortName -eq "vscode") {
                 $vscodeBackup = Backup-VSCodeData -InstallDirectory $InstallDir -Silent
             }
@@ -218,7 +218,7 @@ function Update-Component {
         }
     }
 
-    # 再インストール
+    # コンポーネントを再インストールします。
     $result = Install-Component `
         -ShortName $ShortName `
         -Packages $Packages `

@@ -1,7 +1,7 @@
 ﻿# ComponentFileRemoval.ps1
-# アンインストール時のファイル削除を扱う
+# アンインストール時におけるインストール済みファイルの削除処理
 
-# 対象コンポーネント以外がマニフェストに記録しているファイルを集める
+# 対象コンポーネント以外のコンポーネントがマニフェストに記録しているファイルを収集します。
 function Get-OtherComponentFiles {
     param(
         [hashtable]$Manifest,
@@ -20,7 +20,7 @@ function Get-OtherComponentFiles {
     return $result
 }
 
-# 相対パスの一覧から、先頭のディレクトリ名を重複なく取り出す
+# 相対パス一覧から、ルートディレクトリ名を重複なく抽出します。
 function Get-ComponentRootDirectories {
     param([string[]]$Paths)
 
@@ -31,8 +31,8 @@ function Get-ComponentRootDirectories {
         Sort-Object -Unique)
 }
 
-# マニフェストのファイル一覧、または DetectFiles に基づいて実体を削除する
-# 他コンポーネントが参照しているファイルとディレクトリは残す
+# マニフェストのファイル一覧または DetectFiles に基づいてインストール成果物を削除します。
+# 他のコンポーネントから参照されている共有ファイルおよびディレクトリは保持します。
 function Remove-ComponentInstalledFiles {
     param(
         [string]$ShortName,
@@ -46,8 +46,8 @@ function Remove-ComponentInstalledFiles {
 
     $targetDirRemoved = $false
     if ($targetDir) {
-        # TargetDirectory 系: ディレクトリごと削除
-        # テンプレート未解決 (例: "jdk-{0}") でパスが存在しない場合はフォールスルー
+        # TargetDirectory 設定時: 対象ディレクトリを一括削除します。
+        # テンプレート未解決 (例: "jdk-{0}") 等によりパスが存在しない場合はフォールスルーします。
         $targetPath = Join-Path $InstallDir $targetDir
         if (Test-Path $targetPath) {
             try {
@@ -61,11 +61,11 @@ function Remove-ComponentInstalledFiles {
     }
 
     if (-not $targetDirRemoved) {
-        # 参照カウントとルートディレクトリ保護のため、他コンポーネントのファイルを集める
+        # 参照整合性の維持およびルートディレクトリ保護のため、他コンポーネントの管理対象ファイルを収集します。
         $allOtherFiles = Get-OtherComponentFiles -Manifest $Manifest -ShortName $ShortName
 
         if ($Files.Count -gt 0) {
-            # ファイルリスト削除 (参照カウント確認)
+            # マニフェストのファイル一覧に基づく削除 (他コンポーネントとの共有判定を含む)
             foreach ($file in $Files) {
                 if ($allOtherFiles.ContainsKey($file)) {
                     Write-Host "  Skipped (shared): $file"
@@ -82,7 +82,7 @@ function Remove-ComponentInstalledFiles {
                 }
             }
         } else {
-            # ファイル一覧なし: DetectFiles で削除対象を特定
+            # ファイル一覧が存在しない場合: DetectFiles の定義に基づいて削除対象を特定します。
             $detectFiles = if ($PackageConfig.ContainsKey("DetectFiles")) { @($PackageConfig.DetectFiles) } else { @() }
             foreach ($df in $detectFiles) {
                 $fullPath = Join-Path $InstallDir $df
@@ -102,8 +102,8 @@ function Remove-ComponentInstalledFiles {
             }
         }
 
-        # ファイル削除後、孤立したルートディレクトリを削除
-        # (VersionNormalized のテンプレート未解決や DetectFiles がファイルパスの場合に対応)
+        # ファイル削除後、残存したルートディレクトリのうち他コンポーネントから参照されていない空ディレクトリを削除します。
+        # (VersionNormalized テンプレート未解決時や DetectFiles にファイルパスが指定されている場合に対応)
         $sourcePaths = if ($Files.Count -gt 0) { $Files } else {
             if ($PackageConfig.ContainsKey("DetectFiles")) { @($PackageConfig.DetectFiles) } else { @() }
         }

@@ -1,7 +1,7 @@
 ﻿# StandardStrategy.ps1
-# Standard 戦略: 展開した中身をそのまま bin へ配置する
+# Standard 戦略: アーカイブを展開し、内容を bin ディレクトリへフラットに配置
 
-# Standard 戦略: 標準的な ZIP 展開
+# Standard 抽出戦略の実行 (アーカイブを展開し、ディレクトリ構造を保持してファイルを配置)
 function Invoke-StandardExtract {
     param(
         [string]$ArchiveFile,
@@ -26,7 +26,7 @@ function Invoke-StandardExtract {
             $relativePath = $_.FullName.Substring($sourcePath.Length + 1)
         }
 
-        # ファイルのみをコピー (空のディレクトリは作成しない)
+        # ファイルのみをコピー (空ディレクトリの不要な生成を防止)
         if (-not $_.PSIsContainer) {
             $destinationPath = Join-Path $BinDir $relativePath
 

@@ -1,7 +1,7 @@
 ﻿# WindowsTerminal.ps1
-# Windows Terminal の設定ファイルの読み取りとプロファイル操作
+# Windows Terminal 設定ファイルの読み取りおよびプロファイルのクリーンアップ
 
-# コメント (// と /* */) を含む JSON を読み込む
+# コメント構文 (// および /* */) を含む JSON 文字列を解析してオブジェクトに変換
 function ConvertFrom-JsonWithComments {
     param(
         [string]$JsonText
@@ -11,7 +11,7 @@ function ConvertFrom-JsonWithComments {
         return $null
     }
 
-    # Windows Terminal の settings.json は既定でコメント付きのため、事前に取り除く
+    # Windows Terminal の settings.json に含まれるコメント構文を事前に除去
     $builder = New-Object System.Text.StringBuilder
     $inString = $false
     $escaped = $false
@@ -118,7 +118,7 @@ function Remove-WindowsTerminalProfilesForRoot {
             $removedNames = @()
             $removedGuids = @()
             $kept = @()
-            # $profile は PowerShell の自動変数のため、ループ変数には使わない
+            # $profile は PowerShell の組み込み自動変数のため、$wtProfile を使用して変数名の衝突を回避
             foreach ($wtProfile in $originalProfiles) {
                 $guid = if ($wtProfile.PSObject.Properties.Match("guid").Count -gt 0) { [string]$wtProfile.guid } else { "" }
                 $commandline = if ($wtProfile.PSObject.Properties.Match("commandline").Count -gt 0) { [string]$wtProfile.commandline } else { "" }
@@ -162,7 +162,7 @@ function Remove-WindowsTerminalProfilesForRoot {
                 }
             }
 
-            # 書き込み直前にバックアップを作成する (無変更時や解析失敗時に残さない)
+            # 変更反映の直前にバックアップを作成 (変更がない場合や解析失敗時のバックアップ作成を防止)
             $backupPath = $settingsPath + "." + (Get-Date -Format "yyMMddHHmmss")
             Copy-Item -Path $settingsPath -Destination $backupPath -Force
 

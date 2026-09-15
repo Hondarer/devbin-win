@@ -1,7 +1,7 @@
 ﻿# BusySignal.ps1
-# 長い処理の間、スリープとスクリーンセーバーを抑止する
+# 長時間処理の実行中におけるシステムのスリープおよびスクリーンセーバーの抑止
 
-# スリープ/スクリーンセーバーを抑止する Busy シグナルを開始する
+# スリープおよびスクリーンセーバーを抑止するビジーシグナルを開始
 function Start-BusySignal {
     if (-not ("Devbin.PowerNative" -as [type])) {
         Add-Type -TypeDefinition @"
@@ -28,8 +28,8 @@ namespace Devbin
     $script:BusySignalTimer.Interval = 10000
     $script:BusySignalTimer.AutoReset = $true
 
-    # Register-ObjectEvent の -Action はモジュールの $script: スコープを参照できないため、
-    # -MessageData 経由でフラグ値を渡す
+    # Register-ObjectEvent の -Action スクリプトブロック内からはモジュールの $script: スコープを参照できないため、
+    # -MessageData パラメーター経由でフラグ値を伝達する
     $script:BusySignalEventJob = Register-ObjectEvent `
         -InputObject $script:BusySignalTimer `
         -EventName Elapsed `
@@ -39,7 +39,7 @@ namespace Devbin
     $script:BusySignalTimer.Start()
 }
 
-# Busy シグナルを停止し、スリープ抑止状態を解除する
+# ビジーシグナルを停止し、スリープ抑止状態を解除
 function Stop-BusySignal {
     if ($null -ne $script:BusySignalTimer) {
         $script:BusySignalTimer.Stop()

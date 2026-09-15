@@ -1,10 +1,10 @@
 ﻿# WindowsTerminalProfile.ps1
-# Windows Terminal のプロファイル操作で共通に使う設定ファイルの読み書き
+# Windows Terminal プロファイル操作における共通設定ファイルの入出力処理
 #
-# Git Bash 用と MinGW 用のプロファイル更新スクリプトが共有する。
+# Git Bash 用および MinGW 用のプロファイル更新スクリプトから共有されます。
 
-# settings.json の場所を特定する
-# 見つからない場合は警告を出力して $null を返す
+# settings.json の配置パスを特定
+# ファイルが存在しない場合は警告メッセージを出力して $null を返却
 function Get-WindowsTerminalSettingsPath {
     param([string]$ProfileLabel = "profile")
 
@@ -24,7 +24,7 @@ function Get-WindowsTerminalSettingsPath {
     return $null
 }
 
-# 変更前の settings.json をバックアップする
+# 変更前の settings.json のバックアップを生成
 function New-SettingsBackup {
     param([string]$SettingsPath)
 
@@ -33,8 +33,8 @@ function New-SettingsBackup {
     return $backupPath
 }
 
-# settings.json を読み込む
-# profiles.list が存在しない場合は作成してから返す
+# settings.json の読み込み
+# profiles.list プロパティが存在しない場合は空配列として初期化して返却
 function Get-TerminalSettings {
     param([string]$SettingsPath)
 
@@ -54,7 +54,7 @@ function Get-TerminalSettings {
     return $settings
 }
 
-# settings.json を保存する
+# settings.json の保存
 function Save-TerminalSettings {
     param(
         [PSCustomObject]$Settings,

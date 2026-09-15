@@ -1,6 +1,6 @@
 ﻿# VSBT PATH 動的追加スクリプト (PowerShell)
-# MSVC と Windows SDK を現在のセッションの環境変数に追加します
-# vswhere を使用してインスタンスを自動検出します
+# MSVC および Windows SDK を現在のセッションの環境変数に追加します。
+# vswhere を使用してインストール済みインスタンスを自動検出します。
 
 $ErrorActionPreference = "Stop"
 $TargetArch = "{{TARGET_ARCH}}"
@@ -8,11 +8,11 @@ $HostArch = "{{HOST_ARCH}}"
 $TargetMsvcVersion = "{{MSVC_VERSION}}"
 $TargetSdkVersion = "{{SDK_VERSION}}"
 
-# スクリプトと同じディレクトリの vswhere.exe を使用
+# スクリプトと同一ディレクトリに存在する vswhere.exe を使用
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $vswhere = Join-Path $scriptDir "vswhere.exe"
 
-# vswhere.exe が見つからない場合は PATH 上の vswhere を試す
+# 同一ディレクトリに存在しない場合は PATH 上の vswhere.exe を探索
 if (-not (Test-Path $vswhere)) {
     try {
         $null = Get-Command vswhere.exe -ErrorAction Stop
@@ -27,10 +27,10 @@ $msvcVersionPath = $null
 $sdkBase = $null
 $sdkVersionPath = $null
 
-# MSVC バージョンの major.minor を抽出 (例: "14.44.35207" -> "14.44")
+# MSVC バージョンのメジャー・マイナー番号を抽出 (例: "14.44.35207" -> "14.44")
 $targetMsvcMajorMinor = if ($TargetMsvcVersion -match '^(\d+\.\d+)') { $matches[1] } else { $null }
 
-# vswhere で MSVC インスタンスを検索
+# vswhere による MSVC インスタンスの検索
 if ($vswhere) {
     try {
         $instances = & $vswhere -products Microsoft.VisualStudio.Product.BuildTools `
@@ -38,12 +38,12 @@ if ($vswhere) {
             -format json | ConvertFrom-Json
 
         if ($instances -and $instances.Count -gt 0) {
-            # 目標バージョンを持つインスタンスを探す
+            # 対象バージョンを保持するインスタンスを探索
             $instanceArray = if ($instances -is [Array]) { $instances } else { @($instances) }
             foreach ($instance in $instanceArray) {
                 $msvcToolsPath = Join-Path $instance.installationPath "VC\Tools\MSVC"
                 if (Test-Path $msvcToolsPath) {
-                    # 目標 major.minor に一致するバージョンを探す
+                    # 対象のメジャー・マイナー番号に一致するバージョンを探索
                     $foundVersions = Get-ChildItem $msvcToolsPath | Where-Object {
                         $_.Name -like "$targetMsvcMajorMinor*"
                     } | Sort-Object Name -Descending
@@ -61,16 +61,16 @@ if ($vswhere) {
     }
 }
 
-# フォールバック: MSVC
+# 代替処理: ローカルの vsbt ディレクトリを使用 (MSVC)
 if (-not $msvcBase) {
     $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
     $msvcBase = Join-Path $scriptDir "vsbt"
 
     if (Test-Path $msvcBase) {
-        # 目標バージョンを検出
+        # 対象バージョンの検出
         $msvcToolsPath = Join-Path $msvcBase "VC\Tools\MSVC"
         if (Test-Path $msvcToolsPath) {
-            # 目標 major.minor に一致するバージョンを探す
+            # 対象のメジャー・マイナー番号に一致するバージョンを探索
             $foundVersions = Get-ChildItem $msvcToolsPath | Where-Object {
                 $_.Name -like "$targetMsvcMajorMinor*"
             } | Sort-Object Name -Descending
@@ -78,26 +78,26 @@ if (-not $msvcBase) {
             if ($foundVersions -and $foundVersions.Count -gt 0) {
                 $msvcVersionPath = $foundVersions[0].Name
             } else {
-                # 目標バージョンがない場合は最新版を使用
+                # 対象バージョンが存在しない場合は最新版を使用
                 $msvcVersionPath = Get-ChildItem $msvcToolsPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
             }
         }
     }
 }
 
-# vswhere で Windows SDK インスタンスを検索
+# vswhere による Windows SDK インスタンスの検索
 if ($vswhere) {
     try {
         $instances = & $vswhere -products Microsoft.VisualStudio.Product.BuildTools `
             -format json | ConvertFrom-Json
 
         if ($instances -and $instances.Count -gt 0) {
-            # 目標 SDK バージョンを持つインスタンスを探す
+            # 対象の Windows SDK バージョンを保持するインスタンスを探索
             $instanceArray = if ($instances -is [Array]) { $instances } else { @($instances) }
             foreach ($instance in $instanceArray) {
                 $sdkBinPath = Join-Path $instance.installationPath "Windows Kits\10\bin"
                 if (Test-Path $sdkBinPath) {
-                    # 目標バージョンのディレクトリが存在するかチェック
+                    # 対象バージョンのディレクトリが存在するか確認
                     $targetSdkPath = Join-Path $sdkBinPath $TargetSdkVersion
                     if (Test-Path $targetSdkPath) {
                         $sdkBase = $instance.installationPath
@@ -112,28 +112,28 @@ if ($vswhere) {
     }
 }
 
-# フォールバック: Windows SDK
+# 代替処理: ローカルの vsbt ディレクトリを使用 (Windows SDK)
 if (-not $sdkBase) {
     $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
     $sdkBase = Join-Path $scriptDir "vsbt"
 
     if (Test-Path $sdkBase) {
-        # 目標 SDK バージョンを検出
+        # 対象の Windows SDK バージョンを検出
         $sdkBinPath = Join-Path $sdkBase "Windows Kits\10\bin"
         if (Test-Path $sdkBinPath) {
-            # 目標バージョンのディレクトリが存在するかチェック
+            # 対象バージョンのディレクトリが存在するか確認
             $targetSdkPath = Join-Path $sdkBinPath $TargetSdkVersion
             if (Test-Path $targetSdkPath) {
                 $sdkVersionPath = $TargetSdkVersion
             } else {
-                # 目標バージョンがない場合は最新版を使用
+                # 対象バージョンが存在しない場合は最新版を使用
                 $sdkVersionPath = Get-ChildItem $sdkBinPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
             }
         }
     }
 }
 
-# バージョン検証
+# バージョンの検証
 if (-not $msvcVersionPath) {
     Write-Host "Error: MSVC version not detected"
     exit 1
@@ -143,7 +143,7 @@ if (-not $sdkVersionPath) {
     exit 1
 }
 
-# パスを構築
+# 各種パスの構築
 $msvcBin = Join-Path $msvcBase "VC\Tools\MSVC\$msvcVersionPath\bin\Host$HostArch\$TargetArch"
 $sdkBin = Join-Path $sdkBase "Windows Kits\10\bin\$sdkVersionPath\$HostArch"
 $sdkUcrtBin = Join-Path $sdkBase "Windows Kits\10\bin\$sdkVersionPath\$HostArch\ucrt"
@@ -168,7 +168,7 @@ if (-not (Test-Path $msvcBin)) {
     exit 1
 }
 
-# 環境変数を設定 (常に上書き)
+# 環境変数を設定 (上書き)
 $env:VSCMD_ARG_HOST_ARCH = $HostArch
 $env:VSCMD_ARG_TGT_ARCH = $TargetArch
 $env:VCToolsVersion = $msvcVersionPath
@@ -181,19 +181,19 @@ $currentPath = $env:PATH
 $pathChanged = $false
 
 foreach ($pathToAdd in $pathsToAdd) {
-    # 既存の PATH にパスが含まれているかチェック
+    # 既存の PATH に対象パスが含まれているか確認
     $pathExists = $currentPath -split ';' | Where-Object { $_ -eq $pathToAdd }
 
     if ($pathExists) {
         # Write-Host "PATH already set: $pathToAdd"
     } else {
-        # パスを先頭に追加
+        # PATH の先頭に対象パスを追加
         $env:PATH = "$pathToAdd;$env:PATH"
         $pathChanged = $true
     }
 }
 
-# INCLUDE と LIB は常に上書き
+# INCLUDE および LIB 環境変数の設定 (上書き)
 $env:INCLUDE = "$msvcInclude;$sdkUcrtInclude;$sdkSharedInclude;$sdkUmInclude;$sdkWinrtInclude;$sdkCppWinrtInclude;$diaInclude"
 $env:LIB = "$msvcLib;$sdkUcrtLib;$sdkUmLib;$diaLib"
 

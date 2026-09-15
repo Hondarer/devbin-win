@@ -1,12 +1,11 @@
 ﻿# PackageAcquisition.ps1
-# 取得処理の入口
+# パッケージ資材取得処理の統合エントリーポイント
 #
-# 対象選択、取得、検証、旧ファイル整理をまとめる。
-# 取得スクリプト (Get-Packages.ps1) と、導入中にキャッシュが不足したときの
-# 自動取得は、どちらもこの関数を通る。
+# 対象パッケージの絞り込み、ダウンロード、検証、および旧資材の整理を一元管理します。
+# 外部取得スクリプト (Get-Packages.ps1) およびインストール中の不足資材取得処理から共通利用されます。
 
-# pip wheel を取得すべきかどうかを判定する
-# 対象を絞り込んだ場合は、Python 関連が含まれるときだけ取得する
+# pip wheel キャッシュの取得要否を判定
+# 対象が絞り込まれている場合は、Python 関連パッケージが含まれる場合のみ取得
 function Test-ShouldAcquirePipWheels {
     param(
         [array]$TargetPackages,
@@ -26,7 +25,7 @@ function Test-ShouldAcquirePipWheels {
         }
     }
 
-    # PipInstall 戦略のパッケージが対象に含まれていれば取得する
+    # PipInstall 戦略のパッケージが対象に含まれる場合は取得対象と判定
     foreach ($package in $TargetPackages) {
         if ([string]$package.ExtractStrategy -eq "PipInstall") {
             return $true
@@ -36,8 +35,8 @@ function Test-ShouldAcquirePipWheels {
     return $false
 }
 
-# パッケージを取得する
-# 戻り値: Success / Messages / FailedShortNames
+# パッケージ資材の取得処理を実行 (アーカイブ、VSBT、npm キャッシュ、pip wheel)
+# 戻り値: Success / Messages / FailedShortNames を持つ結果オブジェクト
 function Invoke-PackageAcquisition {
     param(
         [array]$Packages,
@@ -79,7 +78,7 @@ function Invoke-PackageAcquisition {
         }
     }
 
-    # Visual Studio Build Tools
+    # Visual Studio Build Tools のダウンロード
     if ($vsbtPackage) {
         Write-Host ""
         Write-Host "=== Visual Studio Build Tools Download ===" -ForegroundColor Cyan
@@ -94,7 +93,7 @@ function Invoke-PackageAcquisition {
         Write-Host ""
     }
 
-    # アーカイブ
+    # 一般アーカイブパッケージのダウンロード
     if ($archiveTargets.Count -gt 0) {
         Write-Host "=== File Download Started ==="
         Write-Host "Downloading files to packages directory."
@@ -129,7 +128,7 @@ function Invoke-PackageAcquisition {
         }
     }
 
-    # npm
+    # npm オフラインキャッシュの構築
     if ($npmInstallPackages.Count -gt 0) {
         Write-Host ""
         Write-Host "=== npm Cache Download ===" -ForegroundColor Cyan
@@ -146,7 +145,7 @@ function Invoke-PackageAcquisition {
         }
     }
 
-    # pip wheel
+    # pip wheel キャッシュのダウンロード
     if (Test-ShouldAcquirePipWheels -TargetPackages $targetPackages -RequestedShortNames $ShortNames) {
         Write-Host ""
         Write-Host "=== Pip Wheel Download ===" -ForegroundColor Cyan

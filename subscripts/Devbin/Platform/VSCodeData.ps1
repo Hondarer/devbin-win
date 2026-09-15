@@ -1,7 +1,7 @@
 ﻿# VSCodeData.ps1
-# VS Code の data フォルダーの退避と復元
+# VS Code の data フォルダーの退避および復元
 
-# VS Code data フォルダーをバックアップする
+# VS Code data フォルダーのバックアップを作成
 function Backup-VSCodeData {
     param(
         [string]$InstallDirectory,
@@ -16,7 +16,7 @@ function Backup-VSCodeData {
         return $null
     }
 
-    # Data フォルダー内にファイルが存在するか確認
+    # data フォルダー内に実体ファイルが存在するか確認
     $filesInData = Get-ChildItem -Path $vscodeDataPath -Recurse -File -ErrorAction SilentlyContinue
     if (-not $filesInData -or $filesInData.Count -eq 0) {
         if (-not $Silent) {
@@ -52,7 +52,7 @@ function Backup-VSCodeData {
     }
 }
 
-# VS Code data フォルダーを復元する関数
+# 退避された VS Code data フォルダーを復元
 function Restore-VSCodeData {
     param(
         [string]$InstallDirectory,

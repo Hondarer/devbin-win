@@ -1,7 +1,7 @@
 ﻿# UserPath.ps1
-# ユーザー PATH の追加・削除と、管理下 PATH の再構成
+# ユーザー PATH 環境変数へのディレクトリ追加・削除、および管理下パスの再構成
 
-# ユーザー PATH にディレクトリを追加する関数
+# ユーザー PATH 環境変数に複数のディレクトリを追加
 function Add-ToUserPath {
     param([string[]]$Directories)
 
@@ -91,7 +91,7 @@ function Add-ToUserPath {
     }
 }
 
-# ユーザー PATH からディレクトリを削除する
+# ユーザー PATH 環境変数から指定されたディレクトリ群を除去
 function Remove-FromUserPath {
     param(
         [string[]]$Directories,
@@ -118,7 +118,7 @@ function Remove-FromUserPath {
         $shouldRemove = $false
         foreach ($dir in $Directories) {
             $absolutePath = (Resolve-Path $dir -ErrorAction SilentlyContinue)
-            # ディレクトリが存在しない場合は GetFullPath でノーマライズしてフォールバック
+            # ディレクトリが存在しない場合は GetFullPath による正規化パスでフォールバック
             $normalizedDir = if ($absolutePath) {
                 $absolutePath.Path
             } else {
@@ -151,7 +151,7 @@ function Remove-FromUserPath {
     }
 }
 
-# 単一ディレクトリをユーザー PATH に追加するヘルパー
+# 単一ディレクトリをユーザー PATH 環境変数に追加するヘルパー関数
 function Add-SinglePathDir {
     param([string]$Directory)
 
@@ -174,7 +174,7 @@ function Add-SinglePathDir {
     Write-Host "  Added: $Directory"
 }
 
-# 単一ディレクトリをユーザー PATH から削除するヘルパー
+# 単一ディレクトリをユーザー PATH 環境変数から除去するヘルパー関数
 function Remove-SinglePathDir {
     param([string]$Directory)
 
@@ -197,7 +197,7 @@ function Remove-SinglePathDir {
     }
 }
 
-# packages.psd1 の PathPosition を解釈する
+# パッケージ定義 (packages.psd1) の PathPosition プロパティを解析 (既定値: Prepend)
 function Get-PackagePathPosition {
     param(
         [hashtable]$PackageConfig
@@ -216,7 +216,7 @@ function Get-PackagePathPosition {
     return "Prepend"
 }
 
-# devbin-win 管理下の PATH を宣言順で再構成した文字列を返す (環境変数は変更しない)
+# 管理下パッケージの定義順序に基づいて再構成したユーザー PATH 文字列を生成 (環境変数は未変更)
 function Get-ManagedUserPathValue {
     param(
         [string]$CurrentPath = "",
@@ -362,7 +362,7 @@ function Get-ManagedUserPathValue {
     return ($finalEntries -join ';')
 }
 
-# devbin-win 管理下の PATH を宣言順で再構成し、ユーザー環境変数へ反映する
+# 管理下パッケージの定義順序に基づいてユーザー PATH を再構成し、ユーザー環境変数へ反映
 function Sync-ManagedUserPath {
     param(
         [string]$InstallDir,

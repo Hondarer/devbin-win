@@ -1,10 +1,10 @@
 ﻿# TestHelpers.ps1
-# テスト間で共有するモジュール読み込みと一時領域のヘルパー
+# テスト共通のモジュールインポートおよび一時ディレクトリ管理ヘルパー
 
 $script:RepoRoot = Split-Path -Parent $PSScriptRoot
 $script:SubscriptsDir = Join-Path $script:RepoRoot "subscripts"
 
-# InModuleScope の内側からもこのファイルを読み込めるようにする (プロセス内のみ有効)
+# InModuleScope スコープ内からの参照を可能にするための環境変数を設定します (現在のプロセス内でのみ有効)。
 $env:DEVBIN_TESTS_DIR = $PSScriptRoot
 
 function Import-DevbinModules {
@@ -19,7 +19,7 @@ function Get-DevbinRepoRoot {
     return $script:RepoRoot
 }
 
-# テスト専用の一時ディレクトリを作る (呼び出し側が Remove-TestDirectory で片付ける)
+# テスト専用の一時ディレクトリを作成します (呼び出し側で Remove-TestDirectory により破棄)。
 function New-TestDirectory {
     $path = Join-Path ([System.IO.Path]::GetTempPath()) ("devbin-test-" + [Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $path -Force | Out-Null
@@ -31,7 +31,7 @@ function Remove-TestDirectory {
 
     if ([string]::IsNullOrWhiteSpace($Path)) { return }
     $tempRoot = [System.IO.Path]::GetTempPath()
-    # 一時領域の外を消さないよう、絶対パスを確認してから削除する
+    # 一時ディレクトリ外のファイル削除を防止するため、絶対パスを検証した上で削除します。
     $fullPath = [System.IO.Path]::GetFullPath($Path)
     if (-not $fullPath.StartsWith([System.IO.Path]::GetFullPath($tempRoot), [StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to remove a directory outside the temp area: $fullPath"
@@ -41,7 +41,7 @@ function Remove-TestDirectory {
     }
 }
 
-# テスト用のパッケージ定義を作る
+# テスト用のパッケージ定義ハッシュテーブルを生成します。
 function New-TestPackage {
     param(
         [string]$ShortName,
@@ -69,7 +69,7 @@ function New-TestPackage {
     return $package
 }
 
-# ShortName の一覧から、インストール済みマニフェストを作る
+# コンポーネント情報からテスト用のインストール済みマニフェストを生成します。
 function New-TestManifest {
     param(
         [hashtable]$Components = @{}

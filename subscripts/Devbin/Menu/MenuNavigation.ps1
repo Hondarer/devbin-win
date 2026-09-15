@@ -1,7 +1,7 @@
 ﻿# MenuNavigation.ps1
-# カーソル移動と選択状態の切り替え
+# メニューカーソル移動および選択状態の更新処理
 
-# ビューポート位置をカーソルに追従させる
+# カーソル位置に合わせてビューポートのスクロール範囲を調整します。
 function Update-Viewport {
     param([hashtable]$State)
 
@@ -45,11 +45,11 @@ function Move-MenuCursor {
     $State.CursorIndex = $newIdx
 
     if ($newIdx -lt $State.ViewportTop -or $newIdx -ge $State.ViewportTop + $State.ViewportSize) {
-        # ビューポート外: スクロールしてフルリドロー
+        # ビューポート外へ移動した場合: スクロール位置を更新し全体を再描画します。
         Update-Viewport -State $State
         $State.NeedRedraw = $true
     } else {
-        # ビューポート内: 2行だけ更新
+        # ビューポート内の移動の場合: 変更された 2 行のみを部分更新します。
         $old = $items[$oldIdx]
         if ($null -ne $old) {
             Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
@@ -78,7 +78,7 @@ function Set-AllMenuItemsChecked {
     param([hashtable]$State)
 
     foreach ($item in @(Get-MenuItemList -State $State)) {
-        # Disabled かつ NotInstalled はチェック ON を禁止
+        # 無効化 (Disabled) かつ未インストールの項目は選択を禁止します。
         if ((Get-MenuFlag -Map $State.Disabled -ItemOrName $item) -and ((Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") -eq "NotInstalled")) {
             continue
         }
@@ -104,7 +104,7 @@ function Clear-AllMenuItemsChecked {
     $State.NeedRedraw = $true
 }
 
-# チェック状態をトグルし、依存元 (子) を自動チェックする
+# 項目の選択状態を切り替え、必要に応じて依存関係にある項目を自動選択します。
 function Toggle-CheckedItem {
     param([hashtable]$State, [int]$Index)
 
@@ -122,14 +122,14 @@ function Toggle-CheckedItem {
 
     if ($status -eq "Installed" -or $status -eq "Legacy" -or $status -eq "Updateable") {
         if ($isDisabled) {
-            # Disabled: チェック ON / Reinstall 遷移は禁止。チェック OFF (アンインストール) のみ許可
+            # 無効化 (Disabled) の場合: 再インストールや選択への遷移を禁止し、選択解除 (アンインストール) のみを許可します。
             if ($State.Checked[$shortName]) {
                 $State.Reinstall[$shortName] = $false
                 $State.Checked[$shortName] = $false
             }
-            # Unchecked の場合は何もしない
+            # 未選択の場合は状態を変更しません。
         } else {
-            # 3状態サイクル: Checked → Unchecked → Reinstall → Checked
+            # 状態遷移サイクル: 選択中 (Checked) → 未選択 (Unchecked) → 再インストール (Reinstall) → 選択中 (Checked)
             if ($State.Checked[$shortName] -and -not $State.Reinstall[$shortName]) {
                 # Checked → Unchecked
                 $State.Checked[$shortName] = $false
@@ -144,7 +144,7 @@ function Toggle-CheckedItem {
             }
         }
     } else {
-        # NotInstalled / Broken: Disabled の場合はチェック ON を禁止
+        # 未インストールまたは破損状態の場合: 無効化 (Disabled) 項目に対する選択を禁止します。
         if (-not $isDisabled) {
             $newChecked = -not $State.Checked[$shortName]
             $State.Checked[$shortName] = $newChecked
@@ -153,7 +153,7 @@ function Toggle-CheckedItem {
     }
 
     if ($propagateCheck) {
-        # チェック ON: この親に依存する子 (dependents) を推移的に自動チェック (auto-reinstall はしない)
+        # 選択有効化時: 当該コンポーネントに依存する他の項目を推移的に自動選択します (自動再インストールは行いません)。
         $queue = [System.Collections.Generic.Queue[string]]::new()
         $queue.Enqueue($shortName)
         $visited = @{ $shortName = $true }

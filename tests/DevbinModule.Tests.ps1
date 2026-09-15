@@ -1,10 +1,10 @@
 ﻿# DevbinModule.Tests.ps1
-# 実行コンテキストと、パッケージ定義の読み込み・整合性検査のテスト
+# 実行コンテキスト、パッケージ定義の読み込みおよび整合性検査のテスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
 
-# テスト用の packages.psd1 を書き出す
+# テスト用の packages.psd1 定義ファイルを生成します。
 function New-TestCatalogFile {
     param(
         [string]$Directory,
@@ -214,7 +214,7 @@ Describe "Python 配置先のハードコード" {
         $subscriptsDir = Get-DevbinSubscriptsDir
         $hits = @()
         foreach ($file in (Get-ChildItem $subscriptsDir -Recurse -Include *.ps1, *.psm1)) {
-            # packages.psd1 は設定なので対象外
+            # packages.psd1 は設定ファイルのため検証対象から除外します。
             if (Select-String -Path $file.FullName -Pattern "python-3\.13" -Quiet) {
                 $hits += $file.Name
             }

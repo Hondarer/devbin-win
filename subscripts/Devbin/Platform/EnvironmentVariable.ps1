@@ -1,7 +1,7 @@
 ﻿# EnvironmentVariable.ps1
-# 環境変数のレジストリからの同期
+# レジストリに保存された環境変数の同期処理
 
-# 環境変数をレジストリからカレントプロセスに同期するヘルパー関数
+# 指定した環境変数をレジストリから現在のプロセスに同期
 function Sync-EnvironmentVariable {
     param(
         [string]$VariableName,
@@ -76,7 +76,7 @@ function Sync-EnvironmentVariable {
     }
 }
 
-# 複数の環境変数を一括同期する関数
+# 複数の環境変数を現在のプロセスへ一括同期
 function Sync-EnvironmentVariables {
     param(
         [string[]]$VariableNames = @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT"),

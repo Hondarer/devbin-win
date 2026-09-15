@@ -1,14 +1,14 @@
 ﻿# MenuActions.ps1
-# 選択内容の適用と、計画・結果の表示
+# 選択内容の適用処理および操作計画・実行結果の表示
 
-# Apply: 差分計算 → 確認 → 実行
+# 選択状態の適用処理: 差分計算、確認、および実行を行います。
 function Apply-CheckedState {
     param(
         [hashtable]$State,
         [hashtable]$InputModeState
     )
 
-    # 操作計画の作成は Devbin/Install が担当する。UI は表示と確認だけを行う
+    # 操作計画の作成は Install モジュール側で実施し、UI 側では表示および確認のみを行います。
     $plan = New-ComponentChangePlan `
         -Packages $State.Packages `
         -Items $State.Items `
@@ -46,10 +46,10 @@ function Apply-CheckedState {
         return
     }
 
-    # TUI を一時停止してスクロール表示へ切替
+    # TUI 描画を一時停止し、標準スクロール表示へ切り替えます。
+    Restore-ConsoleInputMode -InputModeState $InputModeState
     [Console]::Clear()
     [Console]::CursorVisible = $true
-    Restore-ConsoleInputMode -InputModeState $InputModeState
 
     Show-ChangePlan -Plan $plan
 
@@ -63,7 +63,7 @@ function Apply-CheckedState {
 
     Write-Host ""
 
-    # 適用中はスリープ / スクリーンセーバーを抑止する
+    # 処理適用中はシステムのサスペンドおよびスクリーンセーバーを抑止します。
     Start-BusySignal
     try {
         $outcome = Invoke-ComponentChangePlan `
@@ -78,7 +78,7 @@ function Apply-CheckedState {
         Show-ChangeOutcome -Outcome $outcome
     } finally {
         Stop-BusySignal
-        # 失敗しても状態表示とコンソールの復元は必ず行う
+        # エラー発生時にもコンポーネント状態表示の更新およびコンソール状態の復元を確実に実行します。
         Update-MenuStatuses -State $State -Plan $plan
     }
 
@@ -89,7 +89,7 @@ function Apply-CheckedState {
     Resume-MenuConsole -State $State -InputModeState $InputModeState
 }
 
-# 適用内容を表示する
+# 適用予定の操作計画を表示します。
 function Show-ChangePlan {
     param([PSCustomObject]$Plan)
 
@@ -122,12 +122,12 @@ function Show-ChangePlan {
     }
 }
 
-# 続行するかを確認する
+# ユーザーへ操作計画の適用続行を確認します。
 function Confirm-ChangePlan {
     return Read-ConfirmationKey -Prompt " 続行しますか? [Y/n/Esc] " -DefaultYes
 }
 
-# 適用結果を表示する
+# 操作計画の実行結果を表示します。
 function Show-ChangeOutcome {
     param([PSCustomObject]$Outcome)
 
@@ -163,8 +163,8 @@ function Show-ChangeOutcome {
     }
 }
 
-# メニュー表示へ戻る前に、コンソールの入力モードとカーソル状態を復元する
-# キャンセル時・失敗時にも必ず通す
+# メニュー画面へ復帰する前に、コンソールの入力モードおよびカーソル状態を復元します。
+# キャンセル時およびエラー終了時にも本関数を確実に呼び出します。
 function Resume-MenuConsole {
     param(
         [hashtable]$State,

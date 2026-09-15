@@ -1,5 +1,5 @@
 ﻿# NpmCacheVerify.ps1
-# npm オフラインキャッシュの検証
+# npm オフラインキャッシュの整合性検証 (マニフェスト、package-lock、アーカイブ整合性)
 
 function Get-NpmCacheStatus {
     [CmdletBinding()]
@@ -62,10 +62,9 @@ function Get-NpmCacheStatus {
             $status.Missing += $script:NpmCacheLockName
         } else {
             try {
-                # package-lock v2/v3 contains an empty-string root key, which the
-                # Windows PowerShell 5.1 JSON parser cannot materialize as a property.
-                # Normalize only that known key before parsing; the source lock file is
-                # copied unchanged and remains the authoritative artifact.
+                # package-lock v2/v3 のルート空文字キー ("") は Windows PowerShell 5.1 の
+                # JSON パーサーでプロパティ化できないため、解析時のみ一時キーへ正規化
+                # (元ファイル自体は改変せず原本性を維持)
                 $lockText = Get-Content $lockPath -Raw -Encoding UTF8
                 $normalizedLockText = $lockText -replace '("packages"\s*:\s*\{\s*)""(\s*:)', '$1"__devbin_npm_root__"$2'
                 $lock = $normalizedLockText | ConvertFrom-Json
@@ -80,9 +79,8 @@ function Get-NpmCacheStatus {
                     if ($rootLockProperty.Count -eq 0) {
                         $status.Invalid += "package-lock.json root package is missing"
                     } else {
-                        # packages[""] describes the temporary project used during
-                        # preparation. The installed package itself is represented by
-                        # packages["node_modules/<root package>"].
+                        # packages[""] は準備時の一時プロジェクトを表し、
+                        # 導入対象パッケージ本体は packages["node_modules/<root package>"] に定義される
                         $rootPackageEntryName = "node_modules/$([string]$manifest.rootPackage)"
                         $rootPackageProperty = @($lock.packages.PSObject.Properties | Where-Object { $_.Name -eq $rootPackageEntryName } | Select-Object -First 1)
                         if ($rootPackageProperty.Count -eq 0) {

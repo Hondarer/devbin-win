@@ -71,11 +71,11 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = 'SilentlyContinue' # Disable progress bar for performance
 
-# スクリプトのディレクトリを取得
+# スクリプトの格納先ディレクトリを取得
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Devbin モジュールをインポートする。
-# モジュール内部から呼ばれた場合は、実行中のモジュールを -Force で置き換えない。
+# Devbin モジュールをインポート
+# 内部モジュールから呼び出された場合は、実行中のモジュールインスタンスを -Force で置換しない
 if ($SkipDevbinModuleImport) {
     $expectedDevbinModulePath = [System.IO.Path]::GetFullPath((Join-Path $ScriptDir "Devbin\Devbin.psm1"))
     $loadedDevbinModule = Get-Module -Name Devbin | Where-Object {
@@ -95,7 +95,7 @@ if ($SkipDevbinModuleImport) {
     }
 }
 
-# 一時領域は実行ごとに分ける
+# 実行単位で独立した一時作業領域を生成
 $TempExtractPath = New-DevbinTempDirectory -Prefix "devbin-vsbt"
 
 # URL definition
@@ -107,8 +107,8 @@ $MANIFEST_URL = if ($Preview) {
 
 $script:TotalDownload = 0
 
-# 環境設定スクリプトのテンプレートを読み込み、値を差し込む
-# 生成物の内容は config/templates/vsbt-env.*.template にある
+# 環境設定スクリプトのテンプレートを読み込み、プレースホルダーを置換する
+# テンプレート定義ファイルは config/templates/vsbt-env.*.template を参照
 function Expand-VsbtTemplate {
     param(
         [string]$TemplateName,
@@ -130,7 +130,7 @@ function Expand-VsbtTemplate {
     $content = $content.Replace("{{MSVC_MAJOR_MINOR}}", $MsvcMajorMinor)
     $content = $content.Replace("{{SDK_VERSION}}", $SdkVersion)
 
-    # テンプレートファイル末尾の改行は生成物には含めない
+    # テンプレートファイル末尾の改行文字は出力内容から除外
     if ($content.EndsWith("`r`n")) {
         $content = $content.Substring(0, $content.Length - 2)
     } elseif ($content.EndsWith("`n")) {
@@ -147,7 +147,7 @@ function Write-ColorMessage {
     Write-Host $Message -ForegroundColor $Color
 }
 
-# aka.ms が解決できないとき、Stop だと Transcript に終了エラーが残る
+# ホスト名解決に失敗した際、ErrorActionPreference が Stop だと Transcript ログに終了エラーが記録されるため一時的に抑制する
 function Get-VsbtRemoteJson {
     param(
         [Parameter(Mandatory)]
@@ -319,9 +319,9 @@ try {
     $manifestCachePath = Join-Path $DownloadsPath "manifest_$manifestType.json"
 
     # Download manifest
-    # 導入でキャッシュが揃っているときはネットに出ない (完全オフラインで赤字を出さない)。
-    # 取得 (-DownloadOnly) は従来どおり更新を試み、失敗時だけキャッシュへ退く。
-    # キャッシュも無く取得にも失敗したら想定外なので終了する。
+    # インストール時にキャッシュが存在する場合は外部通信を行わない (完全オフライン環境でエラー表示を抑止するため)。
+    # ダウンロード時 (-DownloadOnly) は最新情報の取得を試み、通信失敗時のみ既存キャッシュへフォールバックする。
+    # キャッシュが存在せずダウンロードにも失敗した場合は処理を中断する。
     $channelData = $null
     $vsManifest = $null
     $useCache = $false
@@ -559,7 +559,7 @@ try {
             "Universal CRT Headers Libraries and Sources-x86_en-us.msi"
         )
 
-        # 全アーキテクチャのヘッダー
+        # 全アーキテクチャ共通のヘッダーファイル
         foreach ($arch in @("x64", "x86", "arm", "arm64")) {
             $sdkPackages[$t] += @(
                 "Windows SDK Desktop Headers $arch-x86_en-us.msi",
@@ -567,7 +567,7 @@ try {
             )
         }
 
-        # ターゲット固有のライブラリ
+        # ターゲットアーキテクチャ固有のライブラリ
         $sdkPackages[$t] += "Windows SDK Desktop Libs $t-x86_en-us.msi"
     }
 
@@ -811,7 +811,7 @@ try {
     }
 
     foreach ($t in $targets) {
-        # MSVC major.minor を抽出
+        # MSVC バージョンのメジャー・マイナー番号を抽出
         $msvcMajorMinor = if ($msvcFullVer -match '^(\d+\.\d+)') { $matches[1] } else { "" }
 
         # Generate batch file (CMD)
@@ -836,7 +836,7 @@ try {
             -SdkVersion $selectedSdkVer
 
         $ps1Path = Join-Path $scriptDir "Add-VSBT-Env-$t.ps1"
-        # BOM 付き UTF-8 で保存
+        # UTF-8 with BOM で保存 (PowerShell 5.1 互換性維持のため)
         $utf8BOM = New-Object System.Text.UTF8Encoding $true
         [System.IO.File]::WriteAllText($ps1Path, $ps1Content, $utf8BOM)
         Write-Host "  Generated: Add-VSBT-Env-$t.ps1"

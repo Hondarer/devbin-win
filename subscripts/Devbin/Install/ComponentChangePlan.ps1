@@ -1,11 +1,11 @@
 ﻿# ComponentChangePlan.ps1
-# 操作計画の作成と適用
+# コンポーネント操作計画の作成および適用
 #
-# New-ComponentChangePlan は定義・現在状態・選択から操作順を作り、
-# Invoke-ComponentChangePlan は確認画面に表示した計画をそのまま実行する。
-# UI は依存解決もマニフェストの書き込みも行わない。
+# New-ComponentChangePlan は、パッケージ定義・現在状態・ユーザー選択に基づいて操作順序を策定します。
+# Invoke-ComponentChangePlan は、確認画面に提示された操作計画を順次実行します。
+# 依存関係の解決およびマニフェストの書き込み処理は、UI ではなく本モジュール側で集約して実施します。
 
-# 操作 1 件を表す
+# 操作項目 1 件を表すオブジェクトを生成します。
 function New-ComponentChangeEntry {
     param(
         [string]$Action,
@@ -21,7 +21,7 @@ function New-ComponentChangeEntry {
     }
 }
 
-# 操作結果 1 件を表す
+# 操作結果 1 件を表すオブジェクトを生成します。
 function New-ComponentChangeResult {
     param(
         [string]$Status,
@@ -38,10 +38,10 @@ function New-ComponentChangeResult {
     }
 }
 
-# 選択状態から操作計画を作る
+# 選択状態およびコンポーネント状態から操作計画を生成します。
 # 戻り値: Success / Errors / Install / Reinstall / Uninstall / IsEmpty
-#   Install   : 依存先が先に来る順序
-#   Uninstall : 依存元が先に来る順序
+#   Install   : 依存先を優先する順序
+#   Uninstall : 依存元を優先する順序
 function New-ComponentChangePlan {
     param(
         [array]$Packages,
@@ -76,13 +76,13 @@ function New-ComponentChangePlan {
         }
     }
 
-    # 依存関係の検証: チェック済みアイテムの依存先が未チェックかつ未インストールなら中断する
+    # 依存関係の検証: 選択された項目の依存先が未選択かつ未インストールの場合はエラーを返します。
     $errors = @()
     foreach ($item in $Items) {
         if (-not $Checked[$item.ShortName]) { continue }
         $deps = if ($item.ContainsKey("DependsOn")) { @($item.DependsOn) } else { @() }
         foreach ($dep in $deps) {
-            # Hidden パッケージは導入処理が面倒を見るため、ここでは可視のものだけを見る
+            # 非表示 (Hidden) パッケージはインストール処理側で自動導入されるため、ここでは表示項目のみを検証します。
             $depItem = $Items | Where-Object { $_.ShortName -eq $dep } | Select-Object -First 1
             if (-not $depItem) { continue }
             if ($Checked[$dep]) { continue }
@@ -91,11 +91,11 @@ function New-ComponentChangePlan {
         }
     }
 
-    # 残るパッケージが必要としている依存先は削除しない
+    # 残存するパッケージが必要としている依存先は削除対象から除外します。
     $uninstallShortNames = @($toUninstall | ForEach-Object { [string]$_.ShortName })
     foreach ($item in $toUninstall) {
         $dependents = @(Get-Dependents -ShortName $item.ShortName -Packages $Packages -Manifest $Manifest)
-        # 新規導入予定と Legacy はマニフェストにないため、選択状態も確認する。
+        # 新規インストール予定およびレガシーコンポーネントはマニフェストに記録されていないため、選択状態も併せて検証します。
         $dependents += @($Items | Where-Object {
             $Checked[$_.ShortName] -and $_.ContainsKey("DependsOn") -and
             (@($_.DependsOn) -contains $item.ShortName)
@@ -109,7 +109,7 @@ function New-ComponentChangePlan {
         }
     }
 
-    # 導入順: 依存先から
+    # インストール順序の決定: 依存先を優先します。
     $installEntries = @()
     $reinstallEntries = @()
     $reinstallNames = @($toReinstall | ForEach-Object { $_.ShortName })
@@ -142,7 +142,7 @@ function New-ComponentChangePlan {
         }
     }
 
-    # 削除順: 依存元から。残るパッケージが必要とする依存先は対象に含まれない
+    # アンインストール順序の決定: 依存元を優先します (残存パッケージが必要とする依存先は除外済み)。
     $uninstallEntries = @()
     if ($toUninstall.Count -gt 0) {
         $orderedShortNames = @(Get-UninstallOrder `
@@ -170,11 +170,11 @@ function New-ComponentChangePlan {
     }
 }
 
-# 操作計画を実行する
+# 操作計画を実行します。
 # 戻り値: Success / Aborted / Results
-# 依存先が失敗した場合、それを必要とするコンポーネントは実行せずスキップする。
-# マニフェストは操作ごとに保存し、保存に失敗した時点で適用を止める。
-# バッチ全体の自動ロールバックは行わず、完了済みの操作と失敗箇所を結果で示す。
+# 依存先の処理が失敗した場合、そのコンポーネントを必要とする後続処理はスキップします。
+# マニフェストは各操作の完了ごとに保存し、保存に失敗した時点で処理を中断します。
+# バッチ全体の自動ロールバックは行わず、完了済みの操作と失敗箇所を結果として返します。
 function Invoke-ComponentChangePlan {
     param(
         [PSCustomObject]$Plan,
@@ -189,7 +189,7 @@ function Invoke-ComponentChangePlan {
     $aborted = $false
     $abortMessage = "マニフェストを保存できませんでした"
 
-    # 新規導入と再導入を一緒に並べる。修復前の依存先で新規導入しない。
+    # 新規インストールと再インストールを一括で依存順に整列します (修復前の依存先を用いた新規インストールを防止)。
     $deploymentEntries = @($Plan.Install) + @($Plan.Reinstall)
     $deploymentOrder = Resolve-DependencyOrder -ShortNames @($deploymentEntries | ForEach-Object { $_.ShortName }) -Packages $Packages
     if (-not $Plan.Success -or -not $deploymentOrder.Success) {
@@ -210,7 +210,7 @@ function Invoke-ComponentChangePlan {
             continue
         }
 
-        # 依存は計画側で展開済みのため -SkipDeps で実行する
+        # 依存関係は計画側で展開済みのため、-SkipDeps を指定して実行します。
         if ($entry.Action -eq "Reinstall") {
             $succeeded = Update-Component -ShortName $entry.ShortName -Packages $Packages `
                 -InstallDir $InstallDir -ScriptDir $ScriptDir -Manifest $Manifest
@@ -224,7 +224,7 @@ function Invoke-ComponentChangePlan {
                 -SkipDeps
         }
 
-        # 再導入は失敗時にもマニフェストから対象を外すため、成否によらず保存する。
+        # 再インストール時は失敗時にもマニフェストから対象が除外されるため、成否にかかわらず保存します。
         if ($succeeded -or $entry.Action -eq "Reinstall") {
             if (-not (Write-Manifest -InstallDir $InstallDir -Manifest $Manifest)) {
                 $results += New-ComponentChangeResult -Status "Aborted" -ShortName $entry.ShortName -Message $abortMessage
@@ -242,7 +242,7 @@ function Invoke-ComponentChangePlan {
     }
 
     if (-not $aborted) {
-        # Legacy はマニフェストに無いため、削除処理が早期 return しないよう仮エントリを登録する
+        # レガシーコンポーネントはマニフェストに記録されていないため、削除処理が早期復帰しないよう仮エントリを登録します。
         foreach ($entry in $Plan.Uninstall) {
             if (-not $entry.IsLegacy) { continue }
             $package = Get-PackageByShortName -ShortName $entry.ShortName -Packages $Packages

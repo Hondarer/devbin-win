@@ -1,7 +1,7 @@
 ﻿# ExecutableStrategy.ps1
-# JarWithWrapper / SingleExecutable 戦略: 実行ファイル 1 つを配置する
+# JarWithWrapper および SingleExecutable 戦略: 単一バイナリやラッパー付き実行ファイルの配置
 
-# JarWithWrapper 戦略: JAR ファイル + ラッパー
+# JarWithWrapper 戦略: JAR ファイルを bin ディレクトリへ配置し、起動用ラッパースクリプトを生成
 function Invoke-JarWithWrapperExtract {
     param(
         [string]$ArchiveFile,
@@ -18,7 +18,7 @@ function Invoke-JarWithWrapperExtract {
     Copy-Item -Path $ArchiveFile -Destination $jarDestination -Force
     Write-Host "Copied to bin directory as $jarFileName"
 
-    # ラッパースクリプトを生成
+    # 起動用ラッパースクリプトを生成
     $wrapperName = $Config.WrapperName
     if (-not $wrapperName) {
         Write-Host "Warning: WrapperName not specified in config" -ForegroundColor Yellow
@@ -38,7 +38,7 @@ function Invoke-JarWithWrapperExtract {
     return $true
 }
 
-# SingleExecutable 戦略: 単一実行ファイル
+# SingleExecutable 戦略: 単一の実行可能ファイルを bin ディレクトリへ配置
 function Invoke-SingleExecutableExtract {
     param(
         [string]$ArchiveFile,
@@ -58,7 +58,7 @@ function Invoke-SingleExecutableExtract {
         Unblock-File -Path $ArchiveFile -ErrorAction SilentlyContinue
         Write-Host "Unblocked $exeFileName"
     } catch {
-        # ブロック解除に失敗した場合は続行
+        # ゾーン識別子の解除に失敗した場合も処理を継続
     }
 
     Copy-Item -Path $ArchiveFile -Destination $exeDestination -Force
@@ -67,7 +67,7 @@ function Invoke-SingleExecutableExtract {
     try {
         Unblock-File -Path $exeDestination -ErrorAction SilentlyContinue
     } catch {
-        # ブロック解除に失敗した場合は続行
+        # ゾーン識別子の解除に失敗した場合も処理を継続
     }
 
     return $true

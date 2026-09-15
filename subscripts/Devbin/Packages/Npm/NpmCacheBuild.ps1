@@ -1,5 +1,5 @@
 ﻿# NpmCacheBuild.ps1
-# npm オフラインキャッシュの作成
+# npm パッケージのオフラインキャッシュ生成 (一時プロジェクトでの依存解決、パック、メタデータ生成)
 
 function Save-NpmPackageCache {
     [CmdletBinding()]
@@ -45,7 +45,7 @@ function Save-NpmPackageCache {
     }
     $previousSkip = $env:PUPPETEER_SKIP_DOWNLOAD
     try {
-        # Preparation must never fetch Puppeteer's browser payload.
+        # キャッシュ作成時のブラウザーバイナリ自動ダウンロードを抑止 (完全オフライン化)
         $env:PUPPETEER_SKIP_DOWNLOAD = "1"
         $packageSpecs = @(Get-NpmPackageSpecs -PackageConfig $PackageConfig)
         Write-Host "  Installing $($packageSpecs -join ', ') into a temporary project for packing..."

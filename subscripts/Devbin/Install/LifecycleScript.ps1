@@ -1,5 +1,5 @@
 ﻿# LifecycleScript.ps1
-# パッケージ定義の後処理スクリプトを実行する
+# パッケージ定義に基づくライフサイクル後処理スクリプトの実行
 
 function Invoke-PackageLifecycleScripts {
     param(

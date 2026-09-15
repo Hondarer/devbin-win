@@ -1,5 +1,5 @@
 ﻿# Dependencies.Tests.ps1
-# 依存解決 (導入順・削除順・循環・欠落) の回帰テスト
+# パッケージ依存関係の解決 (インストール順、アンインストール順、循環依存、欠落検出) の回帰テスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules

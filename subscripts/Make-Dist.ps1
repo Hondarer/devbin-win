@@ -1,6 +1,6 @@
-﻿# 配布用 zip 作成スクリプト
+﻿# 配布用 ZIP アーカイブ生成スクリプト
 #
-# カレントディレクトリは変更せず、リポジトリ基準の絶対パスで扱う。
+# 作業ディレクトリの変更は行わず、リポジトリルートを基準とした絶対パスで処理します。
 param(
     [string]$OutputDir = ""
 )
@@ -28,7 +28,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $rootDir $OutputDir
 }
 
-# zip ファイル名と出力パスを組み立て
+# ZIP ファイル名と出力先パスの生成
 $date = Get-Date -Format "yyMMdd"
 $zipFileName = "$projectName-$date.zip"
 $zipPath = Join-Path $OutputDir $zipFileName
@@ -47,15 +47,15 @@ if (Test-Path $zipPath) {
 
 Write-Host "Collecting files..."
 
-# ステージング領域は実行ごとに分ける
+# 実行単位で独立したステージング領域を作成
 $stagingRoot = New-DevbinTempDirectory -Prefix "$projectName-staging"
 $archiveRoot = Join-Path $stagingRoot $projectName
 New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
 
 try {
-    # 収録対象 (リポジトリルートからの相対パス)
-    # subscripts はフォルダーごと収録するため、Devbin 配下の新モジュールと
-    # config/templates のテンプレートも自動的に含まれる
+    # アーカイブ収録対象 (リポジトリルートからの相対パス)
+    # subscripts ディレクトリ配下は再帰的に収録されるため、Devbin モジュールおよび
+    # config/templates 配下の各種テンプレートファイルも自動的に含まれます。
     $itemsToInclude = @(
         "packages",
         "README.md",
@@ -65,7 +65,7 @@ try {
         "Manage-Bin.cmd"
     )
 
-    # 配布物に含めないファイル (アーカイブルートからの相対パス)
+    # 配布対象外ファイル (アーカイブルートからの相対パス)
     $excludeFiles = @(
         "subscripts\Make-Dist.ps1"
     )
@@ -102,7 +102,7 @@ try {
 
     Write-Host "Compressing files..."
 
-    # ステージングしたルートフォルダーごと圧縮し、zip のルート直下に親フォルダー名の階層を作成する
+    # ステージングしたルートフォルダーごと圧縮し、ZIP アーカイブ直下にプロジェクト名フォルダーの階層を構築
     Compress-Archive -Path $archiveRoot -DestinationPath $zipPath -Force
 } finally {
     Remove-DevbinTempDirectory -Path $stagingRoot

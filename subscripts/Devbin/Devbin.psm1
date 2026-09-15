@@ -1,14 +1,14 @@
 ﻿# Devbin.psm1
-# devbin-win の内部モジュールの読み込み窓口
+# devbin-win 内部モジュールの統合エントリーポイント
 #
-# 読み込み順は下から上への依存関係を崩さないよう、ここで明示する。
-# 呼び出し元の Import 順や Get-Command による存在確認には依存しない。
+# 各モジュールの読み込み順序は依存関係の整合性を保つため本ファイル内で明示的に制御します。
+# 呼び出し側のインポート順序や Get-Command による存在確認ロジックには依存しません。
 
 $script:DevbinModuleRoot = $PSScriptRoot
 $script:DevbinSubscriptsDir = Split-Path -Parent $PSScriptRoot
 $script:DevbinRepositoryRoot = Split-Path -Parent $script:DevbinSubscriptsDir
 
-# npm は StrictMode を使うため子モジュールとして分離し、他の処理へ波及させない
+# npm 関連処理は StrictMode を適用するため子モジュールとして分離し、他のモジュールへの影響を局所化
 $script:DevbinNpmModulePath = Join-Path $script:DevbinModuleRoot "Packages\Npm\DevbinNpm.psm1"
 if (-not (Test-Path $script:DevbinNpmModulePath -PathType Leaf)) {
     throw "Devbin npm module not found: $($script:DevbinNpmModulePath)"
@@ -169,7 +169,7 @@ Export-ModuleMember -Function @(
     'Invoke-NpmCacheDownload',
     'Invoke-VsBuildToolsDownload',
     'Invoke-PackageAcquisition',
-    # Packages/Npm (子モジュールからの再公開)
+    # Packages/Npm (子モジュールからの再エクスポート)
     'Get-NpmPackageSpecs',
     'Get-NpmPackageCacheDirectory',
     'Get-NpmCacheManifestPath',

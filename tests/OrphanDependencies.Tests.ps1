@@ -1,5 +1,5 @@
 ﻿# OrphanDependencies.Tests.ps1
-# 孤立した隠し依存パッケージの削除に関する回帰テスト
+# 参照元が存在しなくなった非表示依存パッケージの削除処理に関する回帰テスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules

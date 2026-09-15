@@ -1,7 +1,7 @@
 ﻿# ProductUninstall.ps1
-# 再インストール前のクリーンアップと、製品の完全アンインストール
+# 再インストール前のクリーンアップ処理および製品の完全アンインストール
 
-# Y/N/Esc を 1 キーで決定する。Enter は既定の可否に従う。
+# 1 キー入力による確認プロンプト (Y/N/Esc)。Enter キーは既定値に従います。
 function Read-ConfirmationKey {
     param(
         [Parameter(Mandatory)]
@@ -32,7 +32,7 @@ function Read-ConfirmationKey {
     }
 }
 
-# 完全アンインストール処理を実行する関数
+# インストールディレクトリ配下の削除および環境設定の解除を実行
 function Invoke-CompleteUninstall {
     param(
         [string]$InstallDirectory,
@@ -54,14 +54,14 @@ function Invoke-CompleteUninstall {
     }
 
     try {
-        # PATH から削除
+        # ユーザー PATH 環境変数から対象ディレクトリを除去
         if ($PackagesConfigPath -and (Test-Path $PackagesConfigPath)) {
             try {
-                # PowerShell 5.0+ の Import-PowerShellDataFile を試行
+                # PowerShell 5.0 以降では Import-PowerShellDataFile を使用
                 if (Get-Command Import-PowerShellDataFile -ErrorAction SilentlyContinue) {
                     $packagesConfig = Import-PowerShellDataFile $PackagesConfigPath
                 } else {
-                    # フォールバック: Invoke-Expression を使用
+                    # フォールバック: Invoke-Expression によるデータファイル読み込み
                     $packagesConfig = Invoke-Expression (Get-Content $PackagesConfigPath -Raw)
                 }
 
@@ -76,7 +76,7 @@ function Invoke-CompleteUninstall {
                     }
                 }
 
-                # 後方互換: dotnet8sdk が存在する場合は削除対象に追加
+                # 後方互換対応: dotnet8sdk が存在する場合は削除対象に追加
                 $dotnet8SdkPath = Join-Path $InstallDirectory "dotnet8sdk"
                 if (Test-Path $dotnet8SdkPath) {
                     $pathDirs += $dotnet8SdkPath
@@ -92,7 +92,7 @@ function Invoke-CompleteUninstall {
             }
         }
 
-        # DOTNET_HOME 環境変数を削除 (dotnet10sdk および dotnet8sdk の後方互換)
+        # DOTNET_HOME 環境変数を削除 (dotnet10sdk および dotnet8sdk の後方互換対応)
         $currentDotnetHome = [Environment]::GetEnvironmentVariable("DOTNET_HOME", "User")
         $dotnet10SdkPath = Join-Path $InstallDirectory "dotnet10sdk"
         $dotnet8SdkPath = Join-Path $InstallDirectory "dotnet8sdk"
@@ -121,13 +121,13 @@ function Invoke-CompleteUninstall {
             }
         }
 
-        # vswhere インスタンスを削除
+        # vswhere インスタンス登録を解除
         if (-not $Silent) {
             Write-Host "Removing vswhere instance registration..."
         }
         Unregister-VswhereInstance
 
-        # インストールディレクトリを削除
+        # インストールディレクトリの削除
         if (Test-Path $InstallDirectory) {
             if (-not $Silent) {
                 Write-Host "Removing installation directory: $InstallDirectory"
@@ -139,7 +139,7 @@ function Invoke-CompleteUninstall {
                     Write-Host "Installation directory removed."
                 }
             } else {
-                # ファイルが使用中 (busy) かどうかをチェック
+                # ファイルが他プロセスで使用中 (ビジー状態) であるかを検証
                 $isBusy = [string]$removeResult.ErrorMessage -match "(使用中|being used|in use|access.*denied|cannot access|プロセスで使用|別のプロセス)"
 
                 if ($isBusy) {
@@ -160,24 +160,24 @@ function Invoke-CompleteUninstall {
             }
         }
 
-        # VS Code data の復元
+        # VS Code ユーザーデータ (data フォルダ) の復元
         if ($vscodeDataBackup) {
             if (-not $Silent) {
                 Write-Host "Restoring VS Code data from backup..."
             }
 
-            # bin ディレクトリを作成 (削除されている場合)
+            # bin ディレクトリの再作成 (削除済みの場合)
             if (!(Test-Path $InstallDirectory)) {
                 New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
             }
 
-            # vscode ディレクトリを作成
+            # vscode ディレクトリの作成
             $vscodeDir = Join-Path $InstallDirectory "vscode"
             if (!(Test-Path $vscodeDir)) {
                 New-Item -ItemType Directory -Path $vscodeDir -Force | Out-Null
             }
 
-            # data フォルダを復元
+            # data ディレクトリの復元
             $vscodeDataPath = Join-Path $vscodeDir "data"
             Copy-Item -Path $vscodeDataBackup -Destination $vscodeDataPath -Recurse -Force
 
@@ -185,7 +185,7 @@ function Invoke-CompleteUninstall {
                 Write-Host "VS Code data restored successfully"
             }
 
-            # バックアップを削除
+            # 一時バックアップの削除
             Remove-Item -Path $vscodeDataBackup -Recurse -Force -ErrorAction SilentlyContinue
         }
 
@@ -206,7 +206,7 @@ function Invoke-CompleteUninstall {
     }
 }
 
-# vswhere インスタンス ID (固定値、8文字ハッシュ形式)
+# vswhere インスタンス ID (固定値: 8 文字ハッシュ形式)
 $script:VSBT_INSTANCE_ID = "8f3e5d42"
 
 function Invoke-ProductUninstall {
@@ -222,7 +222,7 @@ function Invoke-ProductUninstall {
     Write-Host "Product root: $productRoot"
     Write-Host ""
 
-    # 標準のインストール先以外を対象にした削除は行わない (リポジトリや配布フォルダの誤削除を防ぐ)
+    # 標準インストール先以外への削除要求を拒否 (リポジトリや作業ディレクトリの誤削除を防止)
     if (-not (Test-DevbinProductRootAllowed -ProductRoot $productRoot)) {
         Write-Host "Error: Complete uninstallation is limited to the standard install location." -ForegroundColor Red
         Write-Host "  Expected: $(Get-DevbinExpectedProductRoot)"

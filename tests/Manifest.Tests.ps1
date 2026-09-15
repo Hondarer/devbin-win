@@ -1,5 +1,5 @@
 ﻿# Manifest.Tests.ps1
-# マニフェスト入出力と状態判定の回帰テスト
+# マニフェストの入出力およびコンポーネント状態判定の回帰テスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules

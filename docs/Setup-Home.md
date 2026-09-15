@@ -4,7 +4,8 @@ HOME 環境変数とホーム ディレクトリのセットアップを行う P
 
 ## 概要
 
-このスクリプトは、Windows 環境でのホーム ディレクトリセットアップを自動化します。HOME 環境変数が設定されていない場合に、適切なディレクトリ構造を作成し、必要な環境変数を設定します。
+このスクリプトは、Windows 環境におけるホーム ディレクトリのセットアップを自動化します。
+HOME 環境変数が未設定の場合に、適切なディレクトリ構造を作成し、必要な環境変数を設定します。
 
 ## 主な機能
 
@@ -57,22 +58,22 @@ powershell.exe -ExecutionPolicy Bypass -File .\subscripts\Setup-Home.ps1
 
 ```text
 C:\ProgramData\home\
-└── {ユーザー名}\
-    ├── .continue\
-    ├── .config\
-    ├── .cache\
-    └── .local\
-        ├── share\
-        └── state\
+\-- {ユーザー名}\
+    +-- .continue\
+    +-- .config\
+    +-- .cache\
+    \-- .local\
+        +-- share\
+        \-- state\
 ```
 
 ## 注意事項
 
-- 既に HOME 環境変数が設定されている場合、不足している環境変数およびディレクトリのみを検証・作成します。
-- 複数回実行しても安全であり、既存の設定を損なうことはありません (冪等性を保証)。
-- 環境変数の変更を反映するには新しいターミナル セッションを開始する必要があります。
-- XDG Base Directory Specification は、設定・キャッシュ・データファイルの適切な配置を支援する仕様です。
-- `Manage-Bin.cmd` の `U` (または `Setup-Bin.ps1 -Uninstall`) による完全アンインストールは `C:\ProgramData\{ユーザー名}\devbin-win` を対象にするため、HOME (`C:\ProgramData\home\{ユーザー名}`) と XDG 系環境変数は削除しません。
+- 既に HOME 環境変数が設定されている場合は、未設定の環境変数および未作成のディレクトリのみを検証・作成します。
+- 複数回実行しても既存の設定を損なわず、安全に処理を完了します (冪等性を担保)。
+- 環境変数の変更を反映するには、新しいターミナル セッションを開始する必要があります。
+- XDG Base Directory Specification は、設定・キャッシュ・データ ファイルの適切な配置を支援する仕様です。
+- `Manage-Bin.cmd` の `U` (または `Setup-Bin.ps1 -Uninstall`) による完全アンインストールは `C:\ProgramData\{ユーザー名}\devbin-win` を対象とするため、HOME (`C:\ProgramData\home\{ユーザー名}`) および XDG 関連の環境変数は削除されません。
 
 ## XDG Base Directory Specification について
 

@@ -1,7 +1,7 @@
 ﻿# ComponentEnvironment.ps1
-# コンポーネントの環境変数を設定・削除する
+# コンポーネントに関連する環境変数の設定および削除
 
-# Edge 実行ファイルを PATH、標準インストール先、App Paths から解決する
+# Microsoft Edge の実行ファイルパスを、PATH・標準インストール先・App Paths レジストリから解決します。
 function Resolve-EdgeExecutable {
     $candidates = @()
     $command = Get-Command msedge.exe -ErrorAction SilentlyContinue
@@ -18,7 +18,7 @@ function Resolve-EdgeExecutable {
         }
     }
 
-    # Enterprise/per-user installation may be registered only through App Paths.
+    # 組織向けまたはユーザー単位のインストール環境では、App Paths レジストリにのみ登録されている場合があります。
     $registryPaths = @(
         "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe",
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe",
@@ -44,7 +44,7 @@ function Resolve-EdgeExecutable {
     return $null
 }
 
-# 既存の環境変数から有効な実行ファイルパスを取得する
+# 既存の環境変数から、実在する実行ファイルパスを取得します。
 function Get-ValidEnvironmentValue {
     param([string]$Name)
 
@@ -61,8 +61,8 @@ function Get-ValidEnvironmentValue {
     return $null
 }
 
-# EnvVars と EnvVarIsLiteral から、実際に設定する値を求める
-# 設定側と削除側が同じ値を見るよう、計算はここに一本化する
+# EnvVars および EnvVarIsLiteral の定義に基づき、適用する環境変数の値を算出します。
+# 設定処理と削除処理で整合性を保つため、値の計算ロジックを本関数に集約します。
 function Get-ComponentEnvVarValues {
     param(
         [string]$InstallDir,
@@ -87,14 +87,14 @@ function Get-ComponentEnvVarValues {
     return $values
 }
 
-# パッケージ定義が Edge を必要とするかを判定する
+# パッケージ定義において Microsoft Edge が必要とされているかを判定します。
 function Test-ComponentUsesEdge {
     param([hashtable]$PackageConfig)
 
     return ($PackageConfig.ContainsKey("Browser") -and [string]$PackageConfig.Browser -eq "Edge")
 }
 
-# 環境変数を EnvVars/EnvVarIsLiteral と Browser 設定に基づいて設定する
+# EnvVars / EnvVarIsLiteral および Browser 設定に基づいて環境変数を設定します。
 function Set-ComponentEnvVars {
     param(
         [string]$InstallDir,
@@ -133,7 +133,7 @@ function Set-ComponentEnvVars {
     return $appliedVars
 }
 
-# 環境変数を削除する
+# コンポーネントに関連する環境変数を削除します。
 function Remove-ComponentEnvVars {
     param(
         [string]$InstallDir,

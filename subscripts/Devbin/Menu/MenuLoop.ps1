@@ -1,7 +1,7 @@
 ﻿# MenuLoop.ps1
-# キー操作の振り分けとメニューの主ループ
+# キー入力ディスパッチおよびメニューメインループ
 
-# キー入力を処理する (戻り値: "continue" or "quit")
+# キー入力を処理します (戻り値: "continue" または "quit")。
 function Handle-KeyInput {
     param(
         [hashtable]$State,
@@ -20,7 +20,7 @@ function Handle-KeyInput {
 
         "Spacebar" {
             Toggle-CheckedItem -State $State -Index $State.CursorIndex
-            # 依存伝播があるためビューポート内のアイテム行を全て再描画
+            # 依存関係の連動選択があるため、ビューポート内の全項目行を再描画します。
             $items = @(Get-MenuItemList -State $State)
             $viewEnd = [Math]::Min($items.Count, $State.ViewportTop + $State.ViewportSize)
             for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
@@ -84,7 +84,7 @@ function Handle-KeyInput {
     return "continue"
 }
 
-# メインの対話ループ
+# メニューのメイン対話ループを実行します。
 function Invoke-MenuLoop {
     param(
         [array]$Packages,
@@ -92,7 +92,7 @@ function Invoke-MenuLoop {
         [string]$ScriptDir
     )
 
-    # 導入先の作成、マニフェストの読み込み、Legacy 検出は State が担当する
+    # インストール先ディレクトリの作成、マニフェスト読み込み、レガシー検出は State モジュール側で実施します。
     $initialized = Initialize-ComponentManifest -InstallDir $InstallDir -Packages $Packages
     $manifest = $initialized.Manifest
 

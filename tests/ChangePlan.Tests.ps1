@@ -1,10 +1,10 @@
 ﻿# ChangePlan.Tests.ps1
-# 操作計画の作成と適用のテスト
+# コンポーネント操作計画の作成および適用処理のテスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
 
-# 計画作成に必要な状態をまとめて組み立てる
+# 計画作成に必要なテスト用状態ハッシュテーブルを構築します。
 function New-TestPlanState {
     param(
         [array]$Packages,
@@ -83,7 +83,7 @@ Describe "New-ComponentChangePlan" {
             base = (New-TestManifestEntry)
             mid  = (New-TestManifestEntry)
         }
-        # base のチェックだけ外す。mid は残るので base は削除できない
+        # base の選択のみを解除します (mid が残存するため base は削除不可)。
         $state = New-TestPlanState -Packages $packages -Manifest $manifest `
             -Checked @{ mid = $true } `
             -Statuses @{ base = "Installed"; mid = "Installed"; leaf = "NotInstalled" }
@@ -325,7 +325,7 @@ Describe "Invoke-ComponentChangePlan" {
         try {
             InModuleScope Devbin {
                 Mock Update-Component {
-                    # 実際の Update-Component は失敗時もマニフェストから対象を外す
+                    # 実際の Update-Component 処理は失敗時にもマニフェストから対象を除外します。
                     Remove-ComponentFromManifest -Manifest $Manifest -ShortName $ShortName
                     return $false
                 }

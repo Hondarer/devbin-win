@@ -1,7 +1,7 @@
 ﻿# Vswhere.ps1
-# vswhere インスタンスの登録と解除
+# vswhere 向けインスタンス情報の登録および登録解除
 
-# vswhere インスタンスを登録する関数
+# Visual Studio Build Tools のインスタンス情報を vswhere 向けに登録
 function Register-VswhereInstance {
     param(
         [string]$InstallPath,
@@ -15,7 +15,7 @@ function Register-VswhereInstance {
         $instancePath = Join-Path $instancesPath $script:VSBT_INSTANCE_ID
 
         # インスタンスディレクトリを作成
-        # 一般ユーザーでは Packages 配下が書けない。Stop だと Transcript に終了エラーが残る
+        # 標準ユーザー権限では ProgramData 配下への書き込みが制限されるため、例外を抑制して判定
         if (-not (Test-Path $instancePath)) {
             New-Item -ItemType Directory -Path $instancePath -Force -ErrorAction SilentlyContinue | Out-Null
         }
@@ -25,10 +25,10 @@ function Register-VswhereInstance {
             return
         }
 
-        # 絶対パスを取得
+        # インストール先の絶対パスを取得
         $absolutePath = (Resolve-Path $InstallPath -ErrorAction Stop).Path
 
-        # ターゲットに基づいてパッケージ配列を構築
+        # 対象アーキテクチャに応じたパッケージメタデータ配列を構築
         $packagesArray = @(
             @{
                 id = "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
@@ -43,7 +43,7 @@ function Register-VswhereInstance {
             }
         }
 
-        # state.json を作成
+        # vswhere 参照用の state.json メタデータを生成
         $stateJson = @{
             installationPath = $absolutePath
             installationVersion = $MsvcVersion
@@ -88,7 +88,7 @@ function Register-VswhereInstance {
     }
 }
 
-# vswhere インスタンスを削除する関数
+# vswhere 向けインスタンス情報の登録を解除
 function Unregister-VswhereInstance {
     try {
         $instancesPath = Join-Path $env:ProgramData "Microsoft\VisualStudio\Packages\_Instances"

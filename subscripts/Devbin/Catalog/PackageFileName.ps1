@@ -1,12 +1,12 @@
 ﻿# PackageFileName.ps1
-# 保存アーカイブ名の決定
+# パッケージ保存ファイル名の解決
 #
-# 取得側 (Get-Packages) と導入側 (Install-Component) が同じ名前を期待するよう、
-# 版表記の判定も含めてここに一本化する。
+# パッケージ取得処理 (Get-Packages) とインストール処理 (Install-Component) で同一の保存ファイル名を参照できるよう、
+# バージョン番号の包含判定およびファイル名生成ロジックを集約します。
 
 $script:DevbinCompoundExtensions = @(".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".7z.exe")
 
-# ダウンロード URL から、版を付けない素のファイル名を求める
+# ダウンロード URL から既定のベースファイル名を取得
 function Get-PackageBaseFileName {
     param(
         [hashtable]$Package
@@ -24,17 +24,17 @@ function Get-PackageBaseFileName {
         $fileName = [System.IO.Path]::GetFileName($uri.AbsolutePath)
     }
 
-    # SourceForge の /download で終わる URL の場合、その前のセグメントを使用
+    # SourceForge の /download で終わる URL の場合、直前のパスセグメントを採用
     if ($fileName -eq "download" -and $uri.Host -like "*sourceforge.net*") {
         $pathSegments = $uri.AbsolutePath.Split('/', [StringSplitOptions]::RemoveEmptyEntries)
         $fileName = $pathSegments[-2]  # /download の前のセグメント
     }
-    # GitHub の /archive/refs/tags/ URL の場合、リポジトリ名を含むファイル名を生成
+    # GitHub の /archive/refs/tags/ URL の場合、リポジトリ名とタグ名を組み合わせたファイル名を生成
     elseif ($uri.Host -eq "github.com" -and $uri.AbsolutePath -match '/([^/]+)/([^/]+)/archive/refs/tags/(.+)$') {
         $repoName = $matches[2]
         $tagName = [System.IO.Path]::GetFileNameWithoutExtension($matches[3])
         $extension = [System.IO.Path]::GetExtension($matches[3])
-        # タグ名の先頭が "v" で始まる場合は除去
+        # タグ名先頭のプレフィックス "v" を除去
         $tagName = $tagName -replace '^v', ''
         $fileName = "$repoName-$tagName$extension"
     }
@@ -42,8 +42,8 @@ function Get-PackageBaseFileName {
     return $fileName
 }
 
-# ファイル名に版が含まれているかを判定する
-# 区切り文字 (. _ -) と大文字小文字の違いは吸収する
+# ファイル名にバージョン文字列が含まれているかを判定
+# 区切り文字 (. _ -) および大文字小文字の差異を正規化して比較
 function Test-FileNameContainsVersion {
     param(
         [string]$FileName,
@@ -59,8 +59,8 @@ function Test-FileNameContainsVersion {
     return $normalizedFileName.Contains($normalizedVersion)
 }
 
-# packages ディレクトリへ保存するときのファイル名を求める
-# 素のファイル名に版が含まれていなければ、拡張子の手前に版を差し込む
+# packages ディレクトリに保存するアーカイブファイル名を生成
+# ベースファイル名にバージョンが含まれていない場合、拡張子の直前にバージョン文字列を挿入
 function Get-PackageDownloadFileName {
     param(
         [hashtable]$Package,

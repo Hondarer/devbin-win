@@ -1,5 +1,5 @@
 ﻿# NpmOfflineInstall.ps1
-# キャッシュからのオフライン導入
+# オフラインキャッシュからの npm パッケージインストールおよび shim スクリプト配置
 
 function Get-NpmPackageNameFromLockPath {
     param([Parameter(Mandatory)][string]$Path)
@@ -107,7 +107,7 @@ function Test-NpmSpecIsDistTag {
         return $false
     }
 
-    # latest / next などの dist-tag。semver 範囲や file:/git: は対象外。
+    # dist-tag (latest や next 等) を判定します (SemVer 範囲指定や file: / git: プロトコルは対象外)。
     return [bool]($Spec -match '^[A-Za-z][A-Za-z0-9._-]*$')
 }
 
@@ -180,7 +180,7 @@ function Write-NpmNativeOutput {
             continue
         }
 
-        # 2>&1 の ErrorRecord をそのまま流すと赤字になる。文言だけ出す。
+        # 標準エラー出力 (2>&1) の ErrorRecord によるコンソール赤字化を防ぎ、テキストのみを出力します。
         Write-Host ([string]$item)
     }
 }
@@ -266,13 +266,13 @@ function New-NpmOfflineInstallProject {
         if (-not $manifestRecords.ContainsKey($identity)) {
             $isOptional = ($entryPropertyNames -contains 'optional' -and [bool]$entry.optional)
             if ($isOptional -and -not (Test-NpmOptionalLockEntryForCurrentPlatform -Entry $entry)) {
-                # npm records optional native packages for other platforms in the
-                # lockfile, although npm did not install or pack them here.
+                # 他プラットフォーム向けのオプショナルネイティブパッケージは、
+                # 当該環境でインストール・アーカイブされていない場合でも lockfile に記録されます。
                 continue
             }
             if ($isOptional -and -not (Test-NpmLockEntryHasPlatformConstraint -Entry $entry)) {
-                # Transitive optional of a skipped platform package, e.g. @emnapi/runtime
-                # for wasm32. It was not packed because npm did not install it here.
+                # スキップされたプラットフォーム固有パッケージの間接オプショナル依存関係 (wasm32 向け @emnapi/runtime 等)。
+                # 当該環境でインストールされないためアーカイブも存在しません。
                 $optionalEntriesToRemove += [string]$packageProperty.Name
                 continue
             }
@@ -323,8 +323,8 @@ function Copy-NpmOfflineInstallToPrefix {
         throw 'robocopy.exe is required to copy the offline npm installation'
     }
 
-    # Merge package directories without replacing the global npm inventory
-    # file. robocopy exit codes 0..7 are successful (including copied files).
+    # グローバルな npm インベントリファイルを上書きすることなく、パッケージディレクトリをマージします。
+    # robocopy の終了コード 0 から 7 は正常終了 (ファイルコピー成功を含む) を示します。
     & $robocopy.Source $sourceNodeModules $targetNodeModules '/E' '/XD' (Join-Path $sourceNodeModules '.bin') '/XF' '.package-lock.json' '/NFL' '/NDL' '/NJH' '/NJS' '/NP' | Out-Null
     if ($LASTEXITCODE -gt 7) {
         throw "robocopy failed for npm node_modules (exit code: $LASTEXITCODE)"

@@ -1,9 +1,9 @@
 ﻿# PackageDependency.ps1
-# 依存関係の解決: 導入順、削除順、逆依存の列挙
+# パッケージの依存関係解決 (インストール順序、アンインストール順序、逆依存の列挙)
 
-# 依存を再帰的に解決し、トポロジカルソート順で返す
-# 戻り値: ShortName の配列 (依存先が先、対象が最後)
-# 循環依存と未定義の依存先は $Problems (Cycles / Missing) に記録する
+# 依存関係を再帰的に解決し、トポロジカルソート順で返却
+# 戻り値: ShortName の配列 (依存先を先行させ、対象自身を末尾に配置)
+# 循環依存および未定義の依存先は $Problems (Cycles / Missing) に記録
 function Resolve-Dependencies {
     param(
         [string]$ShortName,
@@ -46,9 +46,9 @@ function Resolve-Dependencies {
     return $result
 }
 
-# 複数の ShortName について導入順を解決し、成否と併せて返す
+# 指定された複数の ShortName についてインストール順序を解決し、検証結果とあわせて返却
 # 戻り値: Success / Order / Errors を持つオブジェクト
-# 循環依存または未定義の依存先がある場合は Success = $false となり、Order は使用しない
+# 循環依存または未定義パッケージが検出された場合は Success = $false となり、Order は空配列となります
 function Resolve-DependencyOrder {
     param(
         [string[]]$ShortNames,
@@ -78,7 +78,7 @@ function Resolve-DependencyOrder {
     }
 }
 
-# 指定コンポーネントに依存しているインストール済みコンポーネントの一覧を返す
+# 指定コンポーネントに依存しているインストール済みコンポーネント (逆依存) の一覧を取得
 function Get-Dependents {
     param(
         [string]$ShortName,
@@ -89,11 +89,11 @@ function Get-Dependents {
     $dependents = @()
 
     foreach ($pkg in $Packages) {
-        # 自分自身はスキップ
+        # 自己参照はスキップ
         if ($pkg.ShortName -eq $ShortName) {
             continue
         }
-        # インストール済みのみ対象
+        # インストール済みコンポーネントのみを対象とする
         if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $pkg.ShortName)) {
             continue
         }
@@ -107,8 +107,8 @@ function Get-Dependents {
     return $dependents
 }
 
-# 削除対象を依存元から依存先の順に並べ替える
-# 残る対象が依存しているものは後回しにし、解決できない残りは末尾に置く
+# 削除対象コンポーネントを安全なアンインストール順序 (依存元から依存先の順) に並び替え
+# 他の削除対象から依存されているコンポーネントは後回しにし、依存解消順に抽出
 function Get-UninstallOrder {
     [CmdletBinding()]
     param(

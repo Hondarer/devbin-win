@@ -1,5 +1,5 @@
 ﻿# PackageFileName.Tests.ps1
-# 保存ファイル名の決定と版表記判定の回帰テスト
+# 保存ファイル名の決定およびバージョン表記判定の回帰テスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
@@ -81,7 +81,7 @@ Describe "Get-PackageDownloadFileName" {
 
 Describe "保存ファイル名の実装の一本化" {
 
-    # 取得側・導入側それぞれに残っていた重複定義が無いことを確認する
+    # 取得側およびインストール側の各スクリプトに重複定義が残存していないことを確認します。
     $subscriptsDir = Get-DevbinSubscriptsDir
     $targets = @("Get-Packages.ps1", "Devbin\Install\ComponentInstall.ps1", "Devbin\Install\ComponentSource.ps1")
     $fileNameFunctions = @("Get-PackageBaseFileName", "Get-PackageDownloadFileName", "Test-FileNameContainsVersion")
@@ -102,7 +102,7 @@ Describe "保存ファイル名の実装の一本化" {
     }
 
     It "導入側が取得側と同じ保存ファイル名を期待する" {
-        # 区切り文字の違いを吸収しない実装が残っていると、ここで食い違う
+        # 区切り文字の差異を吸収しない実装が残存している場合、ここで不一致が発生します。
         $componentsPath = Join-Path $subscriptsDir "Devbin\Install\ComponentSource.ps1"
         $source = Get-Content $componentsPath -Raw
         ($source -match '\$baseFileName -notlike') | Should Be $false

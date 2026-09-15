@@ -4,18 +4,15 @@
 
 ユーザーの settings.json を次のとおり編集または追加します。
 
-キーボード ショートカット: Windows: Ctrl + Shift + P
-
-上記のショートカットでコマンドパレットを開きます。  
-検索窓に settings.json と入力します。  
-候補に表示される [基本設定: ユーザー設定を開く (JSON)] (英語の場合は Preferences: Open User Settings (JSON)) を選択します。
+ショートカット キー `Ctrl + Shift + P` でコマンド パレットを開きます。
+検索入力欄に `settings.json` と入力します。
+候補に表示される [基本設定: ユーザー設定を開く (JSON)] (英語表記の場合は Preferences: Open User Settings (JSON)) を選択します。
 
 次のとおり設定ファイルを編集します。
 
 `terminal.integrated.defaultProfile.windows` が既に定義されている場合は、値を変更してください。
 
-`terminal.integrated.profiles.windows` が既に定義されている場合は、値を変更してください。  
-`terminal.integrated.profiles.windows` に別の項目がある場合は、`pwsh` を追加するように編集してください。
+`terminal.integrated.profiles.windows` が既に定義されている場合は、該当ブロックへ `pwsh` の定義を追加するように編集してください。
 
 ```json
     "terminal.integrated.defaultProfile.windows": "pwsh",
@@ -38,4 +35,4 @@
 - [名前] を `pwsh` とします。任意の名前でも問題ありません。
 - [コマンド ライン] を `%ProgramData%\%USERNAME%\devbin-win\bin\pwsh\pwsh.exe` とします。
 - [アイコン] を [ファイル] とし、`%ProgramData%\%USERNAME%\devbin-win\bin\pwsh\pwsh.ico` を指定すると、タブに PowerShell 7 のアイコンが表示されます。
-- 常に常にこの pwsh を標準で開きたい場合は、設定画面の「スタートアップ」にある「既定のプロファイル」から指定した名前のプロファイルを選択することで、ターミナル起動時の既定のシェルに設定できます。
+- 常にこの pwsh を標準で開きたい場合は、設定画面の「スタートアップ」にある「既定のプロファイル」から指定した名前のプロファイルを選択することで、ターミナル起動時の既定のシェルに設定できます。

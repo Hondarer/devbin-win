@@ -1,7 +1,7 @@
 ﻿# ComponentPath.ps1
-# コンポーネントのディレクトリをユーザー PATH へ反映する
+# コンポーネント関連ディレクトリのユーザー環境変数 PATH への反映および同期
 
-# 複数ディレクトリを PATH に追加するヘルパー
+# 複数のディレクトリをユーザー環境変数 PATH に追加します。
 function Add-MultiplePathDirs {
     param([string[]]$Directories)
 
@@ -29,7 +29,7 @@ function Add-MultiplePathDirs {
     }
 }
 
-# PATH ディレクトリを追加する (SkipIfCommand 考慮)
+# パッケージ定義に基づいて PATH ディレクトリを追加します (SkipIfCommand によるスキップ判定を含む)。
 function Add-ComponentPathDirs {
     param(
         [string]$InstallDir,
@@ -59,7 +59,7 @@ function Add-ComponentPathDirs {
     return $pathDirs
 }
 
-# PATH ディレクトリを削除する
+# パッケージ定義に基づいて PATH ディレクトリを削除します。
 function Remove-ComponentPathDirs {
     param(
         [string]$InstallDir,
@@ -77,7 +77,7 @@ function Remove-ComponentPathDirs {
     Remove-FromUserPath -Directories $dirsToRemove
 }
 
-# ベース PATH (bin/ ルート) を追加する
+# インストール先ルートディレクトリ (bin ディレクトリ) をユーザー環境変数 PATH に追加します。
 function Add-BasePathDir {
     param([string]$InstallDir)
 
@@ -88,13 +88,13 @@ function Add-BasePathDir {
     Add-MultiplePathDirs -Directories @($InstallDir)
 }
 
-# ベース PATH (bin/ ルート) を削除する
+# インストール先ルートディレクトリ (bin ディレクトリ) をユーザー環境変数 PATH から削除します。
 function Remove-BasePathDir {
     param([string]$InstallDir)
     Remove-FromUserPath -Directories @($InstallDir)
 }
 
-# コンポーネント マネージャーの現在状態から PATH を再構成する
+# コンポーネントのインストール状態に基づいてユーザー環境変数 PATH を再構成します。
 function Sync-ComponentManagerPath {
     param(
         [string]$InstallDir,

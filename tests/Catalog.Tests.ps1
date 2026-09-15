@@ -1,5 +1,5 @@
 ﻿# Catalog.Tests.ps1
-# packages.psd1 の読み込みと整合性の回帰テスト
+# packages.psd1 の読み込みおよび整合性検証の回帰テスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules

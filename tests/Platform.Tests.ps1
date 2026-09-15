@@ -1,6 +1,6 @@
 ﻿# Platform.Tests.ps1
-# OS 操作まわり (一時領域、HOME/XDG、Terminal 設定) のテスト
-# 実ユーザーの環境変数とレジストリは変更しない
+# プラットフォーム操作機能 (一時領域、HOME / XDG、Windows Terminal 設定等) の単体テスト
+# 実環境のユーザー環境変数およびレジストリは変更しません。
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules

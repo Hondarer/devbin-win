@@ -1,11 +1,11 @@
 ﻿# Extract.Tests.ps1
-# Devbin/Extract へ移した抽出戦略のテスト
-# 一時領域に作った ZIP のみを扱い、bin ディレクトリには触れない
+# Extract モジュールの抽出戦略処理のテスト
+# 一時ディレクトリ内に生成した ZIP アーカイブのみを対象とし、製品ディレクトリへのアクセスは行いません。
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
 
-# テスト用の ZIP を作る (指定した相対パスに空ファイルを置いて固める)
+# テスト用の ZIP アーカイブを生成します (指定の相対パスに空ファイルを作成して圧縮)。
 function New-TestArchive {
     param(
         [string]$Path,

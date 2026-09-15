@@ -1,7 +1,7 @@
 ﻿# SubdirectoryStrategy.ps1
-# Subdirectory / SubdirectoryToTarget 戦略: 一部のディレクトリだけを取り出す
+# Subdirectory および SubdirectoryToTarget 戦略: アーカイブ内の特定サブディレクトリを抽出
 
-# Subdirectory 戦略: サブディレクトリのみを抽出
+# Subdirectory 戦略: 指定サブディレクトリ配下のファイルを bin ディレクトリ直下へ抽出 (リネームおよびパターン一致対応)
 function Invoke-SubdirectoryExtract {
     param(
         [string]$ArchiveFile,
@@ -20,7 +20,7 @@ function Invoke-SubdirectoryExtract {
         throw "Extracted folder not found"
     }
 
-    # サブディレクトリを検索
+    # アーカイブ内の指定サブディレクトリを探索
     $subDirPath = $null
     $extractPathNormalized = $ExtractPath -replace '/', '\'
 
@@ -40,21 +40,21 @@ function Invoke-SubdirectoryExtract {
         throw "Subdirectory not found: $ExtractPath"
     }
 
-    # 絶対パスに変換
+    # 絶対パスへ正規化
     $subDirPath = (Resolve-Path $subDirPath).Path
 
     Write-Host "Extracting from subdirectory: $subDirPath"
 
     $allItems = Get-ChildItem -Path $subDirPath -Recurse
 
-    # FilePattern が指定されている場合はフィルタリング
+    # FilePattern が指定されている場合はファイル名でフィルタリング
     if ($FilePattern) {
         $allItems = $allItems | Where-Object { -not $_.PSIsContainer -and $_.Name -match $FilePattern }
         Write-Host "Filtering files with pattern: $FilePattern"
     }
 
     foreach ($item in $allItems) {
-        # 相対パスを安全に計算 (絶対パス同士で計算)
+        # 絶対パス基準で安全に相対パスを算出
         $itemFullPath = $item.FullName
         if ($itemFullPath.StartsWith($subDirPath)) {
             $relativePath = $itemFullPath.Substring($subDirPath.Length).TrimStart('\', '/')
@@ -69,7 +69,7 @@ function Invoke-SubdirectoryExtract {
             continue
         }
 
-        # RenameFiles が指定されている場合、ファイル名を変更
+        # RenameFiles マッピングに一致する場合、配置先ファイル名を置換
         $fileName = Split-Path $relativePath -Leaf
         if ($RenameFiles -and $RenameFiles.ContainsKey($fileName)) {
             $newFileName = $RenameFiles[$fileName]
@@ -84,7 +84,7 @@ function Invoke-SubdirectoryExtract {
 
         $destinationPath = Join-Path $BinDir $relativePath
 
-        # ファイルのみをコピー (空のディレクトリは作成しない)
+        # ファイルのみをコピー (空ディレクトリの不要な生成を防止)
         if (-not $item.PSIsContainer) {
             $destinationDir = Split-Path $destinationPath -Parent
             if ($destinationDir -and !(Test-Path $destinationDir)) {
@@ -102,7 +102,7 @@ function Invoke-SubdirectoryExtract {
     return $true
 }
 
-# SubdirectoryToTarget 戦略: サブディレクトリをターゲットディレクトリに抽出
+# SubdirectoryToTarget 戦略: アーカイブ内の指定サブディレクトリを bin 配下のターゲットディレクトリへ展開
 function Invoke-SubdirectoryToTargetExtract {
     param(
         [string]$ArchiveFile,
@@ -120,7 +120,7 @@ function Invoke-SubdirectoryToTargetExtract {
         throw "Extracted folder not found"
     }
 
-    # サブディレクトリを検索
+    # アーカイブ内の指定サブディレクトリを探索
     $subDirPath = $null
     $extractPathNormalized = $ExtractPath -replace '/', '\'
 
@@ -140,7 +140,7 @@ function Invoke-SubdirectoryToTargetExtract {
         throw "Subdirectory not found: $ExtractPath"
     }
 
-    # 絶対パスに変換
+    # 絶対パスへ正規化
     $subDirPath = (Resolve-Path $subDirPath).Path
 
     # ターゲットディレクトリを作成
@@ -157,7 +157,7 @@ function Invoke-SubdirectoryToTargetExtract {
     $allItems = Get-ChildItem -Path $subDirPath -Recurse
 
     foreach ($item in $allItems) {
-        # 相対パスを安全に計算 (絶対パス同士で計算)
+        # 絶対パス基準で安全に相対パスを算出
         $itemFullPath = $item.FullName
         if ($itemFullPath.StartsWith($subDirPath)) {
             $relativePath = $itemFullPath.Substring($subDirPath.Length).TrimStart('\', '/')
@@ -174,7 +174,7 @@ function Invoke-SubdirectoryToTargetExtract {
 
         $destinationPath = Join-Path $targetPath $relativePath
 
-        # ファイルのみをコピー (空のディレクトリは作成しない)
+        # ファイルのみをコピー (空ディレクトリの不要な生成を防止)
         if (-not $item.PSIsContainer) {
             $destinationDir = Split-Path $destinationPath -Parent
             if ($destinationDir -and !(Test-Path $destinationDir)) {

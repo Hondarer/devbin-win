@@ -14,7 +14,9 @@
 Manage-Bin.cmd
 ```
 
-Git、VS Code、GitHub Copilot CLI は既定では選択されません。必要な場合は Space キーで選択してから Enter キーを押してください。すべて導入する場合は A キーで全選択します。
+Git、VS Code、GitHub Copilot CLI は既定値では選択されません。
+必要な場合は Space キーで選択してから Enter キーを押してください。
+すべて導入する場合は A キーで全選択します。
 
 ### インストール内容
 
@@ -24,7 +26,7 @@ Git、VS Code、GitHub Copilot CLI は既定では選択されません。必要
 
 ### インストール後の確認
 
-新しいコマンドプロンプトまたは PowerShell を開いて次のコマンドで確認します。
+新しいコマンド プロンプトまたは PowerShell を開き、次のコマンドで確認します。
 
 ```cmd
 node --version
@@ -56,17 +58,24 @@ copilot --version
 glab --version
 ```
 
-PowerShell では `ni` が標準 alias (`New-Item`) と衝突します。PowerShell で `@antfu/ni` の `ni` コマンドを使う場合は、セッション内で `Remove-Item Alias:ni -Force` を実行してください。`cmd /c ni` や Git Bash ではこの衝突は発生しません。
+PowerShell では `ni` が標準エイリアス (`New-Item`) と衝突します。
+PowerShell で `@antfu/ni` の `ni` コマンドを使用する場合は、セッション内で `Remove-Item Alias:ni -Force` を実行してください。
+`cmd /c ni` や Git Bash では、この衝突は発生しません。
 
 ## 操作ログ
 
-`Manage-Bin.cmd` と `Setup-Bin.ps1` の Manage / Uninstall は、外部で Transcript を取らなくても操作結果をファイルへ残します。保存先は製品ルート (`...\devbin-win`) の一つ上です。既定の導入先では `C:\ProgramData\<ユーザー名>\devbin-win-operation-yyyyMMdd-HHmmss.log` になります。
+`Manage-Bin.cmd` と `Setup-Bin.ps1` の Manage および Uninstall は、外部で Transcript を取得しなくても操作結果をファイルへ記録します。
+保存先は製品ルート (`...\devbin-win`) の 1 階層上のフォルダーです。
+既定の導入先では、`C:\ProgramData\<ユーザー名>\devbin-win-operation-yyyyMMdd-HHmmss.log` に保存されます。
 
-製品フォルダーを完全削除しても、このログは残ります。古いログは削除しません。開始時に保存先を画面へ表示します。
+製品フォルダーを完全削除した場合でも、このログ ファイルは保持されます。
+古いログ ファイルは自動削除されません。
+処理の開始時に、保存先パスを画面へ表示します。
 
 ## オフライン環境での npm インストール
 
-Node.js/npm パッケージは ShortName ごとに依存木を保存します。オンライン環境で Node.js/npm が使用できる状態で、次を実行してください。
+Node.js/npm パッケージは、ShortName ごとに依存関係ツリーを保存します。
+オンライン環境で Node.js/npm が使用できる状態で、次のコマンドを実行してください。
 
 ```powershell
 .\subscripts\Get-Packages.ps1
@@ -80,11 +89,16 @@ npm-cache-manifest.json
 archives\*.tgz
 ```
 
-`npm-cache-manifest.json` は全 archive の version・サイズ・SHA-512 を検証するために使用します。`Manage-Bin.cmd` は、キャッシュが不足している場合のみ `Get-Packages.ps1` の自動実行を試みます。この場合はネットワークへ接続するため、完全オフライン導入では事前に キャッシュを揃えてください。取得後も不足する場合は導入を開始せずエラーで停止します。
+`npm-cache-manifest.json` は、全アーカイブのバージョン、ファイル サイズ、および SHA-512 ハッシュ値を検証するために使用します。
+`Manage-Bin.cmd` は、キャッシュが不足している場合に限り `Get-Packages.ps1` の自動実行を試行します。
+この処理ではネットワーク接続が発生するため、完全オフラインでの導入環境では事前にキャッシュを準備してください。
+取得後もキャッシュが不足している場合は、導入処理を開始せずにエラーで停止します。
 
-導入時は registry metadata に依存せず、lockfile の `resolved` と `integrity` を キャッシュ内のローカル `.tgz` に差し替えた一時プロジェクトへ `npm install --offline` します。完了後、一時プロジェクトの `node_modules` と command shim をインストール先へ配置します。
+導入時はレジストリ メタデータに依存せず、lockfile の `resolved` と `integrity` をキャッシュ内のローカル `.tgz` に差し替えた一時プロジェクトに対して `npm install --offline` を実行します。
+処理の完了後、一時プロジェクトの `node_modules` とコマンド shim をインストール先へ配置します。
 
-Marp CLI、Mermaid CLI、Puppeteer は Chromium をダウンロードせず、PATH、標準インストール先、Windows の `App Paths` レジストリから既存の Microsoft Edge を自動検出して使用します。Edge が見つからない場合はブラウザを必要とするコンポーネントの導入に失敗します。
+Marp CLI、Mermaid CLI、Puppeteer は Chromium をダウンロードせず、PATH、標準インストール先、および Windows の `App Paths` レジストリから既存の Microsoft Edge を自動検出して使用します。
+Microsoft Edge が検出されない場合は、ブラウザーを必要とするコンポーネントの導入に失敗します。
 
 ### オフライン移行手順
 
@@ -122,7 +136,8 @@ clang-format はソースコードを自動整形する LLVM ツールです。`
 
 #### WinFlexBison について
 
-WinFlexBison は Flex と GNU Bison の Windows 移植です。lexer / parser 生成に使います。
+WinFlexBison は Flex と GNU Bison の Windows 移植版です。
+字句解析器 (lexer) および構文解析器 (parser) の生成に使用します。
 
 - **用途**: `flex` / `bison` による字句解析器と構文解析器の生成
 - **配置場所**: `bin\winflexbison`
@@ -158,7 +173,8 @@ GitHub Copilot CLI は、ターミナルから GitHub Copilot を利用するた
 - **プロジェクト**: [github/copilot-cli](https://github.com/github/copilot-cli)
 - **前提条件**: PowerShell 6 以上、GitHub Copilot の有効な契約
 
-Copilot CLI は既定では選択されていません。コンポーネント マネージャーで選択して導入し、初回起動時に `copilot login` または CLI 内の `/login` で認証してください。
+Copilot CLI は既定値では選択されていません。
+コンポーネント マネージャーで選択して導入し、初回起動時に `copilot login` または CLI 内の `/login` で認証してください。
 
 #### glab について
 
@@ -173,7 +189,9 @@ glab は GitLab の Issue・Merge Request・CI/CD パイプライン等をコマ
 
 ### かんたんアンインストール (完全削除)
 
-インストールの途中失敗や版更新の移行不良から復帰するための完全削除です。マニフェストやパッケージ定義は参照せず、対象フォルダーと該当フォルダーを参照している設定を機械的に削除します。`bin` フォルダーが既に存在しない場合でも実行できます。
+インストールの途中失敗やバージョン更新時の移行不良から復帰するための完全削除手順です。
+マニフェストやパッケージ定義は参照せず、対象フォルダーと該当フォルダーを参照している設定を機械的に削除します。
+`bin` フォルダーが既に存在しない状態であっても実行できます。
 
 1. `Manage-Bin.cmd` をダブルクリックして実行
 2. コンポーネント マネージャーで `U` を押す
@@ -185,19 +203,28 @@ PowerShell から直接実行する場合は、対象を明示します。
 .\subscripts\Setup-Bin.ps1 -Uninstall -InstallDir "$env:ProgramData\$env:USERNAME\devbin-win\bin"
 ```
 
-`-Force` を付けると確認プロンプトを省略します。
+`-Force` パラメーターを指定すると、確認プロンプトの表示を省略します。
 
 ### アンインストール内容
 
-対象ルート `C:\ProgramData\<ユーザー名>\devbin-win` をフォルダーごと削除します。`bin` と VS Code の `data` も含みます。続けて、値がこのフォルダー配下を指しているユーザー PATH、ユーザー環境変数、HKCU フォント登録、Windows Terminal プロファイル、vswhere の `installationPath` を機械的に削除します。MinGW 用 Windows Terminal プロファイルはパスを含まないため、固定 GUID でも削除します。
+対象ルート `C:\ProgramData\<ユーザー名>\devbin-win` をフォルダーごと削除します。
+この削除対象には `bin` および VS Code の `data` が含まれます。
+続けて、設定値がこのフォルダー配下を参照しているユーザー PATH、ユーザー環境変数、HKCU フォント登録、Windows Terminal プロファイル、および vswhere の `installationPath` を機械的に削除します。
+MinGW 用 Windows Terminal プロファイルはパスを含まないため、固定 GUID をキーとして削除します。
 
-環境変数は `;` 区切りのエントリ単位で除去します。対象ルート配下を指すエントリだけを取り除き、他のエントリが残る変数はその値を残します。すべてのエントリが対象となった変数は変数ごと削除します。
+環境変数はセミコロン (`;`) 区切りのエントリ単位で除去します。
+対象ルート配下を参照するエントリのみを取り除き、他のエントリが残る環境変数については該当エントリを除いた値を維持します。
+すべてのエントリが対象となった環境変数は、環境変数自体を削除します。
 
-削除できるのは `C:\ProgramData\<ユーザー名>\devbin-win` だけです。`-InstallDir` に他の場所を指定した場合は、何も削除せずに拒否します。リポジトリや展開した配布フォルダーを誤って削除することを防止するための制限です。
+削除できる対象は `C:\ProgramData\<ユーザー名>\devbin-win` に限定されています。
+`-InstallDir` に他の場所を指定した場合は、いかなるファイルも削除せずに処理を拒絶します。
+この制限は、リポジトリや展開された配布フォルダーの誤削除を防止するために設けています。
 
-HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ルート外のため削除しません。値がパスでない環境変数 (`DOTNET_CLI_TELEMETRY_OPTOUT` など) や、Edge を指す `BROWSER_PATH` も削除しません。
+HOME (`C:\ProgramData\home\<ユーザー>` および XDG 関連の環境変数) は対象ルート外であるため削除しません。
+値がパスではない環境変数 (`DOTNET_CLI_TELEMETRY_OPTOUT` など) や、Microsoft Edge を参照する `BROWSER_PATH` も削除しません。
 
-個別コンポーネントの削除は同じ `Manage-Bin.cmd` で行います。こちらは VS Code の `data` を残す通常操作です。
+個別コンポーネントの削除は、同一の `Manage-Bin.cmd` から行います。
+個別コンポーネントの削除は、VS Code の `data` を保持する通常操作です。
 
 ## 既存ツールとの共存
 
@@ -245,7 +272,7 @@ HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ル
 - システムに `inkscape.exe` が存在する場合、Inkscape への PATH は追加されません
 - 既存の Inkscape インストールが優先されます
 - devbin-win の Inkscape は低優先度の PATH 項目として扱われ、既存の Python より後ろに配置されます
-- これにより Inkscape に同梱された `python.exe` が `python` コマンドを横取りすることを防止しています
+- これにより、Inkscape に同梱された `python.exe` が `python` コマンドとして優先実行される事態を防止しています
 
 ### その他のツール
 
@@ -257,7 +284,7 @@ HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ル
 
 ### 自動対応の仕組み
 
-`Get-Packages.ps1` の実行により、pip source tarball と、pip インストールに必要な wheel ファイルが自動的に準備されます。
+`Get-Packages.ps1` の実行により、pip のソース tarball および pip インストールに必要な wheel ファイルが自動的に準備されます。
 
 #### Python がインストール済みの環境
 
@@ -266,7 +293,7 @@ HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ル
 
 #### Python が未インストールの環境
 
-1. `Get-Packages.ps1` 実行時は wheel ファイルのダウンロードをスキップします (Python がないため)
+1. `Get-Packages.ps1` 実行時は wheel ファイルのダウンロードをスキップします (Python がインストールされていないため)
 2. `Manage-Bin.cmd` で Python をインストールします
 3. 初回インストール時にオンライン接続があれば、wheel ファイルを自動的に `packages\pip-packages` に保存します
 4. 次回以降はオフラインでも pip インストールが可能になります
@@ -279,7 +306,8 @@ HOME (`C:\ProgramData\home\<ユーザー>` と XDG 系環境変数) は対象ル
 2. リポジトリ全体 (特に `packages` フォルダー) をオフライン環境にコピー
 3. オフライン環境で `Manage-Bin.cmd` を実行
 
-これにより、完全オフライン環境でも pip とプリインストール対象の pytest を含む全ツールがインストールされます。Python 導入後は `python -m pytest` でテストを起動できます。
+これにより、完全オフライン環境でも pip とプリインストール対象の pytest を含む全ツールがインストールされます。
+Python 導入後は、`python -m pytest` でテストを実行できます。
 
 詳細な設計や内部動作については、[offline-pip-design.md](./offline-pip-design.md) を参照してください。
 
@@ -295,9 +323,12 @@ Manage-Bin.cmd
 
 ### メニュー操作
 
-起動すると番号付きの一覧が表示されます。`[X]` がインストール済み、`[ ]` が未インストールです。
+起動すると番号付きの一覧が表示されます。
+`[X]` がインストール済み、`[ ]` が未インストールです。
 
-Space キーで選択状態を切り替えます。未インストール項目は `[ ] <-> [X]`、インストール済み項目は `[X] -> [ ] -> [R] -> [X]` の順で切り替わります。`cmd.exe` / `powershell.exe` の標準コンソールでは、一覧上にマウスカーソルを置いた状態でホイールスクロールも使えます。
+Space キーで選択状態を切り替えます。
+未インストール項目は `[ ] <-> [X]`、インストール済み項目は `[X] -> [ ] -> [R] -> [X]` の順で切り替わります。
+`cmd.exe` および `powershell.exe` の標準コンソールでは、一覧上にマウス カーソルを置いた状態でホイール スクロールも使用できます。
 
 ```text
   #  コンポーネント          状態          依存
@@ -322,13 +353,15 @@ Space キーで選択状態を切り替えます。未インストール項目�
 
 ### 依存関係の自動処理
 
-依存コンポーネントが未インストールの場合は確認後に自動インストールされます。逆に、依存元コンポーネントが存在する状態でアンインストールしようとすると警告が表示されます。
+依存コンポーネントが未インストールの場合は、確認後に自動インストールされます。
+依存元コンポーネントが存在する状態でアンインストールを試行した場合は、警告が表示されます。
 
-個別インストール時に必要なアーカイブが `packages` フォルダーにない場合は、選択したコンポーネントと不足している依存コンポーネントだけを自動ダウンロードします。
+個別インストール時に必要なアーカイブが `packages` フォルダーに存在しない場合は、選択したコンポーネントおよび不足している依存コンポーネントのみを自動ダウンロードします。
 
 ### 既存インストールからの移行
 
-マニフェストが存在しない既存インストールがある状態で `Manage-Bin.cmd` を起動すると、インストール状態を自動検出してマニフェストを生成します。以降は個別管理が可能になります。
+マニフェストが存在しない既存インストール環境で `Manage-Bin.cmd` を起動した場合、現在のインストール状態を自動検出してマニフェストを生成します。
+マニフェスト生成後は、コンポーネント単位の個別管理が可能になります。
 
 ## 高度な使用方法
 
@@ -347,7 +380,8 @@ Space キーで選択状態を切り替えます。未インストール項目�
 .\subscripts\Setup-Bin.ps1 -Uninstall -InstallDir "$env:ProgramData\$env:USERNAME\devbin-win\bin"
 ```
 
-一括導入専用のモード (`-Extract` / `-Install`) は廃止しました。すべてを導入する場合は、コンポーネント マネージャーで全選択してください。
+一括導入専用のモード (`-Extract` / `-Install`) は廃止されました。
+全コンポーネントを導入する場合は、コンポーネント マネージャーで全選択を実行してください。
 
 ### 利用可能なオプション
 
@@ -360,20 +394,20 @@ Space キーで選択状態を切り替えます。未インストール項目�
 
 ### PowerShell 実行ポリシーエラー
 
-`Manage-Bin.cmd` は `-ExecutionPolicy Bypass` を使用するため、通常は問題ありません。
+`Manage-Bin.cmd` は `-ExecutionPolicy Bypass` を使用して起動するため、通常は問題ありません。
 
 ### 管理者権限エラー
 
-C:\ProgramData は通常ユーザーでも書き込み可能なため、管理者権限は不要です。
+`C:\ProgramData` は一般ユーザーに対しても書き込み権限が付与されているため、管理者権限は不要です。
 
 ### PATH が反映されない
 
-新しいコマンドプロンプトまたは PowerShell を開いてください。
+新しいコマンド プロンプトまたは PowerShell を開いてください。
 
 ## Git Bash プロファイル管理
 
-`git` パッケージをコンポーネント マネージャーからインストール / アンインストールすると、Windows Terminal の Git Bash / MinGW プロファイルは自動的に同期されます。
-Windows Terminal が未導入の場合は警告のみ表示して処理を継続します。
+`git` パッケージをコンポーネント マネージャーからインストールまたはアンインストールすると、Windows Terminal の Git Bash および MinGW プロファイルが自動的に同期されます。
+Windows Terminal が未導入の場合は、警告のみを表示して処理を継続します。
 
 ### Git Bash プロファイルをインストール
 
@@ -391,8 +425,9 @@ Uninstall-GitBash-Profile.cmd
 
 ## MinGW ツール
 
-Git に含まれる MinGW ツール (awk, diff など) は、他のコマンドとの衝突を避けるため、既定では PATH に追加されません。必要に応じて次のスクリプトを使用して有効化 / 無効化してください。
-Windows Terminal の `Windows PowerShell (w/MinGW)` プロファイルも、`git` パッケージの install / uninstall に連動して自動更新されます。
+Git に同梱されている MinGW ツール (awk, diff など) は、他のコマンドとの衝突を防止するため、既定値では PATH に追加されません。
+必要に応じて、次のスクリプトを使用して有効化または無効化を行ってください。
+Windows Terminal の `Windows PowerShell (w/MinGW)` プロファイルも、`git` パッケージのインストールおよびアンインストールに連動して自動更新されます。
 
 ### MinGW PATH の追加
 
@@ -428,6 +463,5 @@ Remove-MinGW-Path.cmd
 
 ### 注意事項
 
-- これらのスクリプトは有効化したセッション内でのみ有効です。
-  新しいターミナルを開く際は再度実行が必要です。
-- システムに既存の同名ツールがある場合、PATH の優先順位によって動作が変わります。
+- これらのスクリプトによる設定は、実行したセッション内でのみ有効です。新しいターミナルを開く際は、再度実行してください。
+- システムに既存の同名ツールが存在する場合、PATH の優先順位によって動作が変化します。

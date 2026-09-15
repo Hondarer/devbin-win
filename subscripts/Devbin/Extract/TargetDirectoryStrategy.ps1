@@ -1,7 +1,7 @@
 ﻿# TargetDirectoryStrategy.ps1
-# VersionNormalized / TargetDirectory 戦略: 指定ディレクトリへ展開する
+# VersionNormalized および TargetDirectory 戦略: 指定ターゲットディレクトリへの展開
 
-# VersionNormalized 戦略: バージョン番号を正規化
+# VersionNormalized 戦略: フォルダ名からバージョン番号を抽出し、正規化名ターゲットディレクトリへ展開
 function Invoke-VersionNormalizedExtract {
     param(
         [string]$ArchiveFile,
@@ -49,7 +49,7 @@ function Invoke-VersionNormalizedExtract {
         Get-ChildItem -Path $sourceFolder.FullName -Recurse | ForEach-Object {
             $relativePath = $_.FullName.Substring($sourceFolder.FullName.Length + 1)
 
-            # ファイルのみをコピー (空のディレクトリは作成しない)
+            # ファイルのみをコピー (空ディレクトリの不要な生成を防止)
             if (-not $_.PSIsContainer) {
                 $destinationPath = Join-Path $targetPath $relativePath
                 $destinationDir = Split-Path $destinationPath -Parent
@@ -67,7 +67,7 @@ function Invoke-VersionNormalizedExtract {
     throw "Failed to extract version from folder name"
 }
 
-# TargetDirectory 戦略: ターゲットディレクトリ指定
+# TargetDirectory 戦略: 一時展開された全ファイルを指定ターゲットディレクトリへ配置 (長いパス対応および事後ディレクトリ作成に対応)
 function Invoke-TargetDirectoryExtract {
     param(
         [string]$ArchiveFile,
@@ -96,7 +96,7 @@ function Invoke-TargetDirectoryExtract {
         $relativePath = $_.FullName.Substring($absoluteTempDir.Length + 1)
         $destinationPath = Join-Path $targetPath $relativePath
 
-        # ファイルのみをコピー (空のディレクトリは作成しない)
+        # ファイルのみをコピー (空ディレクトリの不要な生成を防止)
         if (-not $_.PSIsContainer) {
             $destinationDir = Split-Path $destinationPath -Parent
             if ($destinationDir) {
@@ -122,7 +122,7 @@ function Invoke-TargetDirectoryExtract {
 
     Write-Host "Installed to: $targetPath"
 
-    # PostExtract: data ディレクトリの作成
+    # 抽出後処理 (PostExtract): 追加ディレクトリの作成
     if ($Config.PostExtract -and $Config.PostExtract.CreateDirectories) {
         foreach ($dir in $Config.PostExtract.CreateDirectories) {
             $dirPath = Join-Path $targetPath $dir

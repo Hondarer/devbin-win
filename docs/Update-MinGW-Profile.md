@@ -55,8 +55,8 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ### バックアップ機能
 
-- 操作前に自動的に設定ファイルのバックアップを作成します。
-- バックアップファイル名: `settings.json.yyMMddHHmmss`
+- 操作前に、設定ファイルのバックアップを自動的に作成します。
+- バックアップ ファイル名: `settings.json.yyMMddHHmmss`
 
 ### 重複チェック
 
@@ -66,7 +66,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 ### Add-MinGW-Path.ps1 存在確認
 
 - PATH 内で `Add-MinGW-Path.ps1` スクリプトの存在を確認します。
-- 存在しない場合は警告を表示します (処理は継続)。
+- スクリプトが存在しない場合は警告を表示しますが、処理は継続します。
 
 ## 動作について
 
@@ -85,4 +85,4 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 ## 注意事項
 
 - Windows Terminal を再起動して変更を反映してください。
-- `Add-MinGW-Path.ps1` が PATH で見つからない場合でもプロファイルは作成されますが、MinGW ツールは利用できません。
+- `Add-MinGW-Path.ps1` が PATH 内で検出されない場合でもプロファイルは作成されますが、MinGW ツールは利用できません。

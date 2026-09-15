@@ -1,6 +1,6 @@
 ﻿# ManagedPath.Tests.ps1
-# 管理下 PATH の再構成 (順序・重複排除・外部エントリ保持) の回帰テスト
-# 実ユーザーの環境変数は変更せず、純粋な計算関数のみを検証する
+# 管理対象 PATH の再構成処理 (順序維持、重複排除、外部エントリ保持) の回帰テスト
+# 実際のユーザー環境変数は変更せず、パス計算ロジックのみを検証します。
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules

@@ -1,5 +1,5 @@
 ﻿# PackageManagerStrategy.ps1
-# pip / npm のキャッシュから導入する戦略
+# pip および npm のローカルキャッシュを用いたオフライン導入戦略
 
 function Invoke-PipInstallStrategy {
     param(
@@ -24,7 +24,7 @@ function Invoke-PipInstallStrategy {
 
     Write-Host "Installing $($Config.Name) via pip ($packageSpec)..."
 
-    # Python の配置先はパッケージ定義の TargetDirectory から取得する
+    # Python の配置先パスをパッケージ定義の TargetDirectory から解決
     $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $BinDir
     if ([string]::IsNullOrWhiteSpace($pythonDir)) {
         $pythonDir = Join-Path $BinDir "python"
@@ -60,11 +60,12 @@ function Invoke-PipInstallStrategy {
         }
     } catch {
         Write-Host "Error: Failed to install $($Config.Name): $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Red
         return $false
     }
 }
 
-# NpmInstall 戦略: オフライン一時 prefix の node_modules と shim を devbin 配下に配置
+# NpmInstall 戦略: オフライン一時 prefix から node_modules および shim スクリプトを bin 配下に配置
 function Invoke-NpmInstallStrategy {
     param(
         [string]$BinDir,

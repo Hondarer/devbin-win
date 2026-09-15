@@ -1,5 +1,5 @@
 ﻿# ConsoleInput.ps1
-# コンソール入力 (キーとホイール) の読み取り
+# コンソール入力 (キー入力およびマウスホイールイベント) の読み取り
 
 $script:INPUT_RECORD_KEY_EVENT = 0x0001
 $script:INPUT_RECORD_MOUSE_EVENT = 0x0002
@@ -15,8 +15,8 @@ $script:ENABLE_MOUSE_INPUT = 0x0010
 $script:ENABLE_QUICK_EDIT_MODE = 0x0040
 $script:ENABLE_EXTENDED_FLAGS = 0x0080
 
-# ネイティブ定義はメニューを開いたときだけ用意する
-# ヒアストリングの終端は行頭に置く必要があるため、この中は字下げしない
+# ネイティブ型定義はメニュー表示時のみ動的にロードします。
+# ヒアストリングの構文規則に従い、終端記号を行頭に配置するためインデントを適用しません。
 function Initialize-ConsoleInputType {
 if (-not ("Devbin.ConsoleInputNative" -as [type])) {
     Add-Type -TypeDefinition @"

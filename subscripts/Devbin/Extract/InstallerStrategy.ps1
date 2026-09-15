@@ -1,7 +1,7 @@
 ﻿# InstallerStrategy.ps1
-# インストーラー形式 (自己解凍、Inno Setup、VS Build Tools) を扱う戦略
+# インストーラー形式 (自己解凍アーカイブ、Inno Setup、Visual Studio Build Tools) の抽出戦略
 
-# SelfExtractingArchive 戦略: 自己解凍アーカイブ
+# SelfExtractingArchive 戦略: 自己解凍実行ファイルを実行してターゲットディレクトリへ展開
 function Invoke-SelfExtractingArchiveExtract {
     param(
         [string]$ArchiveFile,
@@ -36,7 +36,7 @@ function Invoke-SelfExtractingArchiveExtract {
     if ($process.ExitCode -eq 0) {
         Write-Host "Extracted successfully to: $targetPath"
 
-        # PostExtract: ファイルのコピー
+        # 抽出後処理 (PostExtract): 追加ファイルのコピー
         if ($Config.PostExtract -and $Config.PostExtract.CopyFiles) {
             Write-Host "Copying additional files..."
             foreach ($fileEntry in $Config.PostExtract.CopyFiles) {
@@ -60,7 +60,7 @@ function Invoke-SelfExtractingArchiveExtract {
     }
 }
 
-# InnoSetup 戦略: innoextract を使用して Inno Setup インストーラーを展開
+# InnoSetup 戦略: innoextract を使用して Inno Setup インストーラーから指定サブディレクトリを展開
 function Invoke-InnoSetupExtract {
     param(
         [string]$ArchiveFile,
@@ -69,19 +69,19 @@ function Invoke-InnoSetupExtract {
         [hashtable]$Config
     )
 
-    # innoextract.exe のパスを確認
+    # innoextract.exe の存在確認
     $innoextractPath = Join-Path $BinDir "innoextract.exe"
     if (-not (Test-Path $innoextractPath)) {
         throw "innoextract.exe not found at: $innoextractPath. Please ensure innoextract is extracted first."
     }
 
-    # 一時ディレクトリを作成
+    # 一時ディレクトリの初期化
     if (Test-Path $TempDir) {
         Remove-Item $TempDir -Recurse -Force
     }
     New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
 
-    # innoextract で展開
+    # innoextract によるアーカイブ展開
     Write-Host "  Extracting with innoextract..."
     $innoextractArgs = @("-d", "`"$TempDir`"", "`"$ArchiveFile`"")
     $process = Start-Process -FilePath $innoextractPath -ArgumentList $innoextractArgs -Wait -PassThru -NoNewWindow
@@ -90,7 +90,7 @@ function Invoke-InnoSetupExtract {
         throw "innoextract failed with exit code: $($process.ExitCode)"
     }
 
-    # ExtractPath で指定されたサブディレクトリを TargetDirectory に配置
+    # ExtractPath で指定された展開先サブディレクトリを TargetDirectory へ配置
     $sourcePath = Join-Path $TempDir $Config.ExtractPath
     if (-not (Test-Path $sourcePath)) {
         throw "Source path not found: $sourcePath"
@@ -98,16 +98,16 @@ function Invoke-InnoSetupExtract {
 
     $targetPath = Join-Path $BinDir $Config.TargetDirectory
 
-    # ターゲットディレクトリが存在する場合は削除
+    # 既存のターゲットディレクトリが存在する場合は削除
     if (Test-Path $targetPath) {
         Remove-Item $targetPath -Recurse -Force
     }
 
-    # サブディレクトリを移動
+    # 展開済みサブディレクトリを配置先へ移動
     Move-Item -Path $sourcePath -Destination $targetPath -Force
     Write-Host "  Extracted to: $targetPath"
 
-    # 一時ディレクトリを削除
+    # 一時ディレクトリの削除
     if (Test-Path $TempDir) {
         Remove-Item $TempDir -Recurse -Force
     }
@@ -115,7 +115,7 @@ function Invoke-InnoSetupExtract {
     return $targetPath
 }
 
-# VSBuildTools 戦略: Setup-VSBT.ps1 を実行
+# VSBuildTools 戦略: Setup-VSBT.ps1 を呼び出して MSVC および Windows SDK をセットアップ
 function Invoke-VSBuildToolsExtract {
     param(
         [string]$BinDir,

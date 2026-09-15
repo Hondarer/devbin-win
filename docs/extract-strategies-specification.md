@@ -2,7 +2,8 @@
 
 ## 概要
 
-Extract Strategies (抽出戦略) は、パッケージのアーカイブファイルを展開し、bin ディレクトリに配置する際の処理パターンを定義したものです。各戦略は `subscripts/Devbin/Extract` に実装されており、packages.psd1 の `ExtractStrategy` プロパティで指定されます。
+Extract Strategies (抽出戦略) は、パッケージのアーカイブ ファイルを展開し、bin ディレクトリに配置する際の処理パターンを定義したものです。
+各戦略は `subscripts/Devbin/Extract` に実装されており、`packages.psd1` の `ExtractStrategy` プロパティで指定されます。
 
 定義駆動アーキテクチャの中核を担い、新しい戦略を追加することで、複数のパッケージに適用可能な処理パターンを標準化できます。
 
@@ -39,11 +40,12 @@ subscripts/Devbin/Extract/
 
 ## 共通関数
 
-ArchiveExtraction.ps1 では、複数の戦略で共有される共通関数を提供しています。
+`ArchiveExtraction.ps1` では、複数の戦略で共有される共通関数を提供しています。
 
 ### Unblock-ArchiveFile
 
-アーカイブファイルをブロック解除します。ダウンロードしたファイルに付加される Zone.Identifier を削除します。
+アーカイブ ファイルのブロックを解除します。
+ダウンロードしたファイルに付加される Zone.Identifier 代替データ ストリームを削除します。
 
 ```powershell
 function Unblock-ArchiveFile {
@@ -54,7 +56,8 @@ function Unblock-ArchiveFile {
 
 ### Expand-ArchiveToTemp
 
-アーカイブを一時ディレクトリに展開します。ZIP、7z、zstd 圧縮 tar (.pkg.tar.zst)、xz 圧縮 tar (.tar.xz) 形式をサポートします。
+アーカイブを一時ディレクトリに展開します。
+ZIP、7z、zstd 圧縮 tar (.pkg.tar.zst)、および xz 圧縮 tar (.tar.xz) 形式に対応しています。
 
 ```powershell
 function Expand-ArchiveToTemp {
@@ -68,7 +71,8 @@ function Expand-ArchiveToTemp {
 
 ### Get-ExtractedSourcePath
 
-展開されたアーカイブの実際のソースパスを取得します。単一フォルダーの場合はそのフォルダーを、複数フォルダーまたはファイルのみの場合は TempDir を返します。
+展開されたアーカイブの実際のソース パスを取得します。
+単一フォルダーの場合はそのフォルダー パスを返し、複数フォルダーまたはファイルのみで構成される場合は TempDir を返します。
 
 ```powershell
 function Get-ExtractedSourcePath {
@@ -112,7 +116,8 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 
 ### Subdirectory 戦略
 
-アーカイブを展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) や tar.xz 形式にも対応しています。
+アーカイブの展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。
+ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) や tar.xz 形式にも対応しています。
 
 #### パラメーター
 
@@ -192,9 +197,10 @@ RenameFiles を使用してファイル名を変更する例:
 }
 ```
 
-この例では、`mingw32-make.exe` が `make.exe` にリネームされて bin ディレクトリに配置されます。
+この例では、`mingw32-make.exe` のファイル名を `make.exe` に変更して bin ディレクトリに配置します。
 
-MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。`Get-ExtractedSourcePath` が `mingw64` を単一フォルダーとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
+MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。
+`Get-ExtractedSourcePath` が `mingw64` を単一フォルダーとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
 
 tar.xz アーカイブと PostSetupScript を使用した例:
 
@@ -211,7 +217,7 @@ tar.xz アーカイブと PostSetupScript を使用した例:
 }
 ```
 
-この例では、大きな LLVM アーカイブから 3 ファイルのみを抽出し、`clang-format-setup.ps1` で `git-clang-format.bat` 内の `py` コマンドを `python3` に置換します。
+この例では、大規模な LLVM アーカイブから 3 ファイルのみを抽出し、`clang-format-setup.ps1` で `git-clang-format.bat` 内の `py` コマンドを `python3` に置換します。
 
 #### 適用パッケージ
 
@@ -219,7 +225,8 @@ nkf, CMake, GNU Make, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, 
 
 ### SubdirectoryToTarget 戦略
 
-ZIP を展開後、指定されたサブディレクトリの内容を指定のターゲットディレクトリに配置します。Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin 内の特定のサブディレクトリになる点です。
+ZIP を展開後、指定されたサブディレクトリの内容を指定のターゲット ディレクトリに配置します。
+Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin 内の特定のサブディレクトリになる点です。
 
 #### パラメーター
 
@@ -251,7 +258,8 @@ ZIP を展開後、指定されたサブディレクトリの内容を指定の�
 }
 ```
 
-この例では、アーカイブ内の `bin` フォルダーが `bin/graphviz` に配置されます。FFmpeg も同じ戦略で、アーカイブ内の `bin` フォルダーを `bin/ffmpeg` に配置します。
+この例では、アーカイブ内の `bin` フォルダーが `bin/graphviz` に配置されます。
+FFmpeg も同一の戦略により、アーカイブ内の `bin` フォルダーを `bin/ffmpeg` に配置します。
 
 #### 適用パッケージ
 
@@ -259,7 +267,8 @@ Graphviz, FFmpeg
 
 ### VersionNormalized 戦略
 
-ZIP を展開後、バージョン番号を含むディレクトリ名を正規化します。パッケージのバージョンが変わっても、一貫したディレクトリ名を維持できます。
+ZIP を展開後、バージョン番号を含むディレクトリ名を正規化します。
+パッケージのバージョンが更新された場合でも、一貫したディレクトリ名を維持できます。
 
 #### パラメーター
 
@@ -339,7 +348,9 @@ PostExtract では次の後処理をサポートしています。
   )
   ```
 
-`CopyFiles.Source` の相対パスは、まずリポジトリルートを基準に解決されます。見つからない場合は、既存定義との互換性のため現在の作業ディレクトリを基準に解決します。Portable Git の MinGW PATH スクリプトなど、リポジトリで管理する追加ファイルは `subscripts` を正本として指定します。
+`CopyFiles.Source` の相対パスは、まずリポジトリ ルートを基準に解決されます。
+ファイルが検出されない場合は、既存定義との互換性を保つため、現在の作業ディレクトリを基準に解決します。
+Portable Git の MinGW PATH スクリプトなど、リポジトリで管理する追加ファイルは `subscripts` を正本として指定します。
 
 #### 使用例
 
@@ -516,7 +527,8 @@ Portable Git
 
 ### InnoSetup 戦略
 
-innoextract を使用して Inno Setup インストーラーを展開します。Inno Setup で作成されたインストーラーからファイルを抽出します。
+`innoextract` を使用して Inno Setup インストーラーを展開します。
+Inno Setup で作成されたインストーラーからファイルを抽出します。
 
 #### パラメーター
 
@@ -533,7 +545,8 @@ innoextract を使用して Inno Setup インストーラーを展開します�
 
 #### 依存関係
 
-innoextract パッケージが先にインストールされている必要があります。packages.psd1 での定義順序により、この依存関係は自動的に満たされます。
+`innoextract` パッケージが事前にインストールされている必要があります。
+`packages.psd1` における定義順序により、この依存関係は自動的に満たされます。
 
 #### 使用例
 
@@ -557,7 +570,8 @@ OpenCppCoverage
 
 ### VSBuildTools 戦略
 
-Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアップします。MSVC と Windows SDK をポータブル形式でダウンロード・展開します。
+`Setup-VSBT.ps1` を呼び出して Visual Studio Build Tools をセットアップします。
+MSVC と Windows SDK をポータブル形式でダウンロードおよび展開します。
 
 #### パラメーター
 
@@ -609,7 +623,8 @@ Visual Studio Build Tools
 
 ### PipInstall 戦略
 
-`python -m pip install` を実行して Python パッケージをインストールします。アーカイブファイルを使わず、`packages/pip-packages/` の wheel を正本として読み込みます。
+`python -m pip install` を実行して Python パッケージをインストールします。
+アーカイブ ファイルを使用せず、`packages/pip-packages/` の wheel を正本として読み込みます。
 
 #### パラメーター
 
@@ -624,11 +639,13 @@ Visual Studio Build Tools
 1. `$BinDir\python-3.13\python.exe` を特定
 2. `packages\pip-packages\` に `PipPackage` と `PipDependencies` の wheel が揃っていることを確認
 3. `--no-index --find-links` でオフラインインストール
-4. wheel が不足していれば PyPI へ直接 fallback せずエラー
+4. wheel が不足している場合は PyPI へ直接フォールバックせずエラー終了
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に Python が利用可能であれば、`PipPackage` と `PipDependencies` の wheel が `packages/pip-packages/` に保存されます。インストール時に不足があれば `Get-Packages.ps1` で取得を試み、取得後も不足する場合はエラーで停止します。`PipInstall` は PyPI への直接 fallback は行いません。
+`Get-Packages.ps1` 実行時に Python が利用可能であれば、`PipPackage` と `PipDependencies` の wheel が `packages/pip-packages/` に保存されます。
+インストール時に不足している場合は `Get-Packages.ps1` による取得を試行し、取得後も不足する場合はエラーで停止します。
+`PipInstall` は PyPI への直接フォールバックを行いません。
 
 #### 使用例
 
@@ -652,7 +669,8 @@ yamllint
 
 ### NpmInstall 戦略
 
-検証済み依存ツリーを一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim を devbin-win のインストール先へマージします。npm パッケージは ShortName ごとの dependency tree cache から、常にオフラインで導入します。
+検証済みの依存関係ツリーを一時プロジェクトへ `npm install --offline` でインストールし、生成された `node_modules` とコマンド shim を devbin-win のインストール先へマージします。
+npm パッケージは ShortName ごとの依存関係ツリー キャッシュから、常にオフラインで導入します。
 
 #### パラメーター
 
@@ -675,7 +693,9 @@ yamllint
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージの依存ツリー、`package-lock.json`、`npm-cache-manifest.json` が `packages\npm-packages\<ShortName>\` に保存されます。キャッシュ不足時は `Get-Packages.ps1 -PackageShortNames <ShortName>` の自動実行を試み、取得後も不足する場合はエラーで停止します。`NpmInstall` 自体は npm registry へ直接 フォールバックしません。
+`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージの依存関係ツリー、`package-lock.json`、および `npm-cache-manifest.json` が `packages\npm-packages\<ShortName>\` に保存されます。
+キャッシュ不足時は `Get-Packages.ps1 -PackageShortNames <ShortName>` の自動実行を試行し、取得後も不足する場合はエラーで停止します。
+`NpmInstall` 自体は npm レジストリへ直接フォールバックしません。
 
 #### 使用例
 
@@ -693,7 +713,9 @@ yamllint
 }
 ```
 
-`Get-Packages.ps1` は一時 prefix へ `npm install --ignore-scripts --package-lock=true` したあと、配下の各 package を `npm pack` します。archive 作成後に manifest を最後に書き込むため、未完成の cache は有効とみなされません。既存 cache は `-Force` 指定時のみ再生成します。
+`Get-Packages.ps1` は一時 prefix に対して `npm install --ignore-scripts --package-lock=true` を実行後、配下の各パッケージを `npm pack` します。
+アーカイブ作成の完了後にマニフェストを書き込むため、未完了のキャッシュは有効と判定されません。
+既存キャッシュは `-Force` 指定時のみ再生成します。
 
 #### 適用パッケージ
 
@@ -701,7 +723,8 @@ pnpm, @antfu/ni, Marp CLI, Mermaid CLI, Widdershins, Puppeteer, MiniSearch, @pla
 
 #### 注意事項
 
-PowerShell の `ni` は `New-Item` alias と衝突します。devbin-win は profile を自動変更しないため、PowerShell で `ni` コマンドを優先したい場合は `Remove-Item Alias:ni -Force` を実行してください。
+PowerShell の `ni` は、標準エイリアス `New-Item` と衝突します。
+devbin-win はプロファイルを自動変更しないため、PowerShell で `ni` コマンドを優先したい場合は、セッション内で `Remove-Item Alias:ni -Force` を実行してください。
 
 ## 新しい戦略の追加
 

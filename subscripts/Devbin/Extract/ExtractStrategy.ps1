@@ -1,7 +1,7 @@
 ﻿# ExtractStrategy.ps1
-# ExtractStrategy の指定に応じて戦略を呼び分ける
+# パッケージ定義の ExtractStrategy に応じた抽出処理のディスパッチ
 
-# メイン関数: 抽出戦略を実行
+# パッケージ定義に基づく抽出処理のディスパッチおよび事後スクリプト (PostSetupScript) の実行
 function Invoke-ExtractStrategy {
     [CmdletBinding()]
     param(
@@ -24,7 +24,7 @@ function Invoke-ExtractStrategy {
         [string]$TempDir = ""
     )
 
-    # 一時領域は実行ごとに分離する。呼び出し元が指定した場合はそれを使用する
+    # 一時ディレクトリは実行ごとに分離 (呼び出し元から指定された場合はそれを優先)
     $ownsTempDir = [string]::IsNullOrWhiteSpace($TempDir)
     if ($ownsTempDir) {
         $TempDir = New-DevbinTempDirectory -Prefix "devbin-extract"
@@ -86,8 +86,8 @@ function Invoke-ExtractStrategy {
             }
         }
 
-        # PostSetupScript 実行
-        # .ps1 は別プロセスで実行する。同一セッションだと Import-Module -Force や exit が導入処理ごと終わる。
+        # 事後スクリプト (PostSetupScript) の実行
+        # PowerShell スクリプト (.ps1) はセッション汚染や exit による呼び出し元終了を防ぐため別プロセスで起動
         if ($PackageConfig.PostSetupScript) {
             $scriptTargetPath = if ($targetPath) { $targetPath } else { $BinDir }
             $scriptPath = Join-Path $ScriptDir "config\templates\$($PackageConfig.PostSetupScript)"
@@ -116,7 +116,7 @@ function Invoke-ExtractStrategy {
         return $false
     }
     finally {
-        # 自身で作成した一時領域は、成否によらず必ずクリーンアップする
+        # 自関数内で作成した一時ディレクトリは、処理の成否に関わらず確実に削除
         if ($ownsTempDir) {
             Remove-DevbinTempDirectory -Path $TempDir
         }

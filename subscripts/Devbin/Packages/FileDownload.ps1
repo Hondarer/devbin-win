@@ -1,9 +1,9 @@
 ﻿# FileDownload.ps1
-# ファイル取得の共通処理
+# ファイルダウンロード共通処理
 #
-# 取得に失敗したとき、既にある資材を壊さないよう一時ファイルへ受けてから置き換える。
+# ダウンロード失敗時に既存ファイルを破損させないよう、一時ファイルへ受信完了した後に置換します。
 
-# SourceForge の実際のダウンロード URL を取得する
+# SourceForge のリダイレクトおよびメタ更新タグから実際のダウンロード URL を解決
 function Get-SourceForgeDownloadUrl {
     param([string]$Url)
 
@@ -11,15 +11,15 @@ function Get-SourceForgeDownloadUrl {
         $ProgressPreference = 'SilentlyContinue'
         $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -ErrorAction Stop
 
-        # meta refresh タグから実際のダウンロード URL を抽出
+        # meta refresh タグからリダイレクト先 URL を抽出
         if ($response.Content -match '<meta[^>]+http-equiv="refresh"[^>]+content="\d+;\s*url=([^"]+)"') {
             $downloadUrl = $matches[1]
-            # HTML エンティティをデコード (&amp; -> &)
+            # HTML エンティティのデコード (&amp; -> &)
             $downloadUrl = $downloadUrl -replace '&amp;', '&'
             return $downloadUrl
         }
 
-        # ダイレクトダウンロード URL を構築
+        # ダイレクトダウンロード URL の構築
         if ($Url -match 'sourceforge\.net/projects/([^/]+)/files/(.+)/download') {
             $project = $matches[1]
             $filePath = $matches[2]
@@ -32,8 +32,8 @@ function Get-SourceForgeDownloadUrl {
     }
 }
 
-# ファイルを取得する
-# 既存ファイルは -Force のときだけ置き換える。取得に失敗した場合、既存ファイルはそのまま残す
+# 指定 URL からファイルをダウンロードして保存
+# 既存ファイルは -Force 指定時のみ上書き。取得失敗時は既存ファイルを保持
 function Save-DownloadedFile {
     param(
         [string]$Url,
@@ -49,14 +49,14 @@ function Save-DownloadedFile {
         return $true
     }
 
-    # 取得中の内容で既存ファイルを壊さないよう、一時ファイルへ受けてから置き換える
+    # ダウンロード途中の不完全ファイルによる既存破損を防ぐため、一時ファイルを経由して配置
     $temporaryPath = "$OutputPath.download"
     $originalProgressPreference = $ProgressPreference
 
     try {
         Write-Host "  Downloading $fileName..."
 
-        # Invoke-WebRequest のプログレスバーは性能に問題があるため無効化する
+        # Invoke-WebRequest のプログレス表示に伴うスループット低下を回避するため非表示化
         $ProgressPreference = 'SilentlyContinue'
 
         $downloadUrl = $Url
@@ -104,7 +104,7 @@ function Save-DownloadedFile {
     }
 }
 
-# packages ディレクトリのファイルのブロックを解除する
+# packages ディレクトリ配下の全ファイルからゾーン識別子 (Mark-of-the-Web) を解除
 function Unblock-PackageFiles {
     param([string]$PackagesDir)
 

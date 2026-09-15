@@ -1,7 +1,7 @@
 ﻿# MenuState.ps1
-# メニューに表示する一覧と状態を作る
+# メニュー表示項目一覧およびコンポーネント選択状態の管理
 
-# 表示用コンポーネント一覧を構築する (Hidden パッケージを除外)
+# 表示用コンポーネント一覧を生成します (非表示パッケージは除外)。
 function Get-MenuItems {
     param([array]$Packages)
 
@@ -15,7 +15,7 @@ function Get-MenuItems {
     return $items
 }
 
-# メニュー項目をパイプラインへ出す。呼び出し側は @(Get-MenuItemList) で配列にする
+# メニュー項目一覧をパイプラインへ出力します (呼び出し側で @(Get-MenuItemList) により配列化可能)。
 function Get-MenuItemList {
     param([hashtable]$State)
 
@@ -34,7 +34,7 @@ function Get-MenuItemList {
     }
 }
 
-# hashtable[$null] はモジュール内で終了エラーになるため、キーを確かめてから読む
+# hashtable[$null] 参照による実行時エラーを防ぐため、キーの有効性を確認した上で値を取得します。
 function Get-MenuFlag {
     param(
         [hashtable]$Map,
@@ -55,7 +55,7 @@ function Get-MenuFlag {
     return $Map[$shortName]
 }
 
-# 依存表示文字列を生成する
+# 依存関係の表示文字列を生成します。
 function Get-DependencyDisplay {
     param(
         [hashtable]$PackageConfig,
@@ -95,7 +95,7 @@ function Get-DependencyDisplay {
     return $parts -join " "
 }
 
-# ステータスに応じた初期選択状態を設定する
+# コンポーネントの状態に応じた初期選択状態を設定します。
 function Set-MenuSelectionState {
     param(
         [hashtable]$Checked,
@@ -178,7 +178,7 @@ function Get-FontRegistryMatchState {
     return $result
 }
 
-# メニュー状態を初期化する
+# メニュー状態ハッシュテーブルを初期化します。
 function Initialize-MenuState {
     param(
         [array]$Packages,
@@ -201,7 +201,7 @@ function Initialize-MenuState {
         }
     }
 
-    # Disabled 判定: DisableIfCommand が devbin-win 外部で見つかった場合に非活性化
+    # 無効化 (Disabled) 判定: DisableIfCommand 指定のコマンドが devbin-win 外部に存在する場合に非活性化します。
     $disabled = @{}
     $resolvedInstall = Resolve-Path $InstallDir -ErrorAction SilentlyContinue
     $absInstallDir = if ($resolvedInstall) { $resolvedInstall.Path } else { $InstallDir }
@@ -222,7 +222,7 @@ function Initialize-MenuState {
         }
     }
 
-    # Disabled 判定: DisableIfFont が HKCU/HKLM で devbin-win 外部登録済みの場合に非活性化
+    # 無効化 (Disabled) 判定: DisableIfFont 指定のフォントがレジストリ上で devbin-win 外部から登録済みの場合に非活性化します。
     foreach ($item in $items) {
         if ($disabled[$item.ShortName]) { continue }
 
@@ -274,11 +274,11 @@ function Initialize-MenuState {
         ScriptDir    = $ScriptDir
         NeedRedraw   = $true
         ViewportTop  = 0
-        ViewportSize = $items.Count  # Render-Menu で確定
+        ViewportSize = $items.Count  # Render-Menu 実行時に確定
     }
 }
 
-# ステータスとチェック状態を取り直す
+# コンポーネントの状態および選択状態を再評価して更新します。
 function Update-MenuStatuses {
     param(
         [hashtable]$State,
@@ -308,8 +308,8 @@ function Update-MenuStatuses {
             -IsDefaultChecked $false
     }
 
-    # アンインストール対象だったアイテムは、操作結果にかかわらず強制 OFF
-    # (Legacy 状態でファイルが残っていても、ユーザーの意図は「外す」なので再チェックしない)
+    # アンインストール対象として処理された項目は、操作結果にかかわらず選択を解除します。
+    # (ファイル残存によりレガシー状態として検出された場合でも、アンインストール意図を優先)
     foreach ($entry in @($Plan.Uninstall)) {
         $shortName = [string]$entry.ShortName
         if ([string]::IsNullOrWhiteSpace($shortName)) { continue }

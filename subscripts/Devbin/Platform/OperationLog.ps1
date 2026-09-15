@@ -1,15 +1,15 @@
 ﻿# OperationLog.ps1
-# 操作ログの配置と Transcript の開始・終了
+# 操作ログの配置パス解決および Transcript のライフサイクル管理
 #
-# 完全アンインストールは製品ルート (...\devbin-win) を消す。
-# ログは消さないため、製品ルートの親ディレクトリへ書く。
+# 完全アンインストール時に製品ルート (...\devbin-win) が削除されるため、
+# ログファイルは製品ルートの親ディレクトリに退避して保存します。
 
 $script:DevbinOperationLogState = @{
     Started = $false
     Path    = $null
 }
 
-# ボリューム直下など、操作ログを置かない場所かを判定する
+# 指定パスがボリューム直下など操作ログ配置に適さない場所かを判定
 function Test-DevbinOperationLogDirectoryAllowed {
     param(
         [string]$Directory
@@ -42,7 +42,7 @@ function Test-DevbinOperationLogDirectoryAllowed {
     )
 }
 
-# 操作ログの配置先 (製品ルートの親) を返す
+# 操作ログの配置先ディレクトリ (製品ルートの親ディレクトリ) を取得
 function Get-DevbinOperationLogDirectory {
     param(
         [Parameter(Mandatory)]
@@ -66,7 +66,7 @@ function Get-DevbinOperationLogDirectory {
     return $parent.TrimEnd('\')
 }
 
-# 日時付きの操作ログパスを組み立てる。既存ファイルは上書きしない。
+# タイムスタンプを付与した一意な操作ログのファイルパスを生成 (既存ファイルの上書きを防止)
 function New-DevbinOperationLogPath {
     param(
         [Parameter(Mandatory)]
@@ -120,7 +120,7 @@ function New-DevbinOperationLogPath {
     }
 }
 
-# Transcript が UTF-16 なら UTF-8 BOM に直す (Windows PowerShell 5.1 向け)
+# Transcript 出力が UTF-16 LE の場合、UTF-8 with BOM に変換 (Windows PowerShell 5.1 互換対応)
 function Convert-DevbinOperationLogToUtf8 {
     param(
         [string]$Path
@@ -145,7 +145,7 @@ function Convert-DevbinOperationLogToUtf8 {
     [System.IO.File]::WriteAllText($Path, $text, $utf8)
 }
 
-# 操作ログの Transcript を開始する。失敗しても導入処理は止めない。
+# 操作ログの記録 (Transcript) を開始 (開始に失敗した場合もセットアップ処理は継続)
 function Start-DevbinOperationLog {
     param(
         [Parameter(Mandatory)]
@@ -196,7 +196,7 @@ function Start-DevbinOperationLog {
     }
 }
 
-# このモジュールが開始した Transcript だけを終了する。ログファイルは削除しない。
+# 自モジュールで開始した Transcript を終了 (ログファイルは保持)
 function Stop-DevbinOperationLog {
     if (-not $script:DevbinOperationLogState.Started) {
         $script:DevbinOperationLogState.Path = $null

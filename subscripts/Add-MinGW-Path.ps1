@@ -1,5 +1,5 @@
 ﻿# MinGW PATH 動的追加スクリプト (PowerShell)
-# Git MinGW バイナリを現在のセッションの PATH に追加します
+# Git MinGW バイナリを現在のセッションの PATH に追加します。
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $baseDir = $scriptDir
@@ -30,7 +30,7 @@ foreach ($pathToAdd in $pathsToAdd) {
     if ($pathExists) {
         #Write-Host "PATH already set: $pathToAdd"
     } else {
-        # パスを先頭に追加
+        # PATH の先頭に対象パスを追加
         $env:PATH = "$pathToAdd;$env:PATH"
         #Write-Host "Added: $pathToAdd"
         $pathChanged = $true

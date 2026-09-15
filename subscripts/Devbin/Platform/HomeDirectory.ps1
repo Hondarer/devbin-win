@@ -1,13 +1,13 @@
 ﻿# HomeDirectory.ps1
-# HOME と XDG ディレクトリの構成
+# HOME および XDG ディレクトリの構成管理
 #
-# 初期作成と、既に HOME がある場合の不足項目の補完を同じ定義で扱う。
+# 新規作成と、既存 HOME に対する不足項目の補完を同一のレイアウト定義で処理します。
 
-# HOME 未設定時の既定の配置先
+# HOME 環境変数未設定時の既定ルートパス
 $script:DevbinDefaultHomeRoot = "C:\ProgramData\home"
 
-# HOME 配下に用意する項目の定義を返す
-# 各項目は環境変数名、パス、表示名を持つ
+# HOME 配下に配置するディレクトリのレイアウト定義を取得
+# 戻り値: EnvName (環境変数名)、Path (対象パス)、Label (表示名) を持つオブジェクト配列
 function Get-DevbinHomeLayout {
     param([string]$HomePath)
 
@@ -20,8 +20,8 @@ function Get-DevbinHomeLayout {
     )
 }
 
-# 現在の状態から、必要な作業の一覧を作る
-# 戻り値: HomePath / IsNewHome / Directories / EnvVars / Actions / IsEmpty
+# システムの現在状態に基づき、必要な作成・設定処理の実行計画を生成
+# 戻り値: HomePath / IsNewHome / Directories / EnvVars / Actions / IsEmpty を含む計画オブジェクト
 function Get-DevbinHomePlan {
     param([string]$HomeRoot = "")
 
@@ -49,7 +49,7 @@ function Get-DevbinHomePlan {
     }
 
     foreach ($entry in Get-DevbinHomeLayout -HomePath $homePath) {
-        # 既に環境変数が設定されている項目は、利用者の設定として尊重する
+        # 既に環境変数が設定されている項目は、既存のユーザー設定を優先してスキップ
         $currentValue = [Environment]::GetEnvironmentVariable($entry.EnvName, "User")
         if (-not [string]::IsNullOrWhiteSpace($currentValue)) {
             continue
@@ -73,8 +73,8 @@ function Get-DevbinHomePlan {
     }
 }
 
-# 作業一覧を適用する
-# 戻り値: Success / Messages
+# 生成された実行計画を適用
+# 戻り値: Success (ブール値) / Messages (メッセージ配列) を含む結果オブジェクト
 function Invoke-DevbinHomePlan {
     param([PSCustomObject]$Plan)
 

@@ -1,5 +1,5 @@
 ﻿# NpmCacheLayout.ps1
-# npm キャッシュのパス・名前・整合値などの共通部品
+# npm キャッシュのパス解決、アーカイブ命名、ハッシュ値計算ヘルパー
 
 $script:NpmCacheSchemaVersion = 1
 $script:NpmCacheManifestName = "npm-cache-manifest.json"
@@ -127,8 +127,8 @@ function Get-NpmPackageManifestFiles {
         return @()
     }
 
-    # package contents may contain arbitrary package.json files (for example,
-    # test fixtures). Traverse only node_modules' package-directory layout.
+    # テスト用フィクスチャ等に含まれる任意の package.json の誤検出を防ぐため、
+    # node_modules の階層レイアウトに沿って探索を実施
     $nodeModulesQueue = New-Object 'System.Collections.Generic.Queue[string]'
     $visitedNodeModules = @{}
     $visitedPackageDirectories = @{}

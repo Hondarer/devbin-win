@@ -1,16 +1,16 @@
 ﻿# Manifest.ps1
-# インストールマニフェストの入出力とファイル一覧
+# インストールマニフェスト (.devbin-manifest.json) の入出力およびファイルスナップショット管理
 
 $script:ManifestFileName = ".devbin-manifest.json"
 $script:ManifestVersion = 1
 
-# マニフェストファイルのパスを取得する
+# マニフェストファイルの絶対パスを取得
 function Get-ManifestPath {
     param([string]$InstallDir)
     return Join-Path $InstallDir $script:ManifestFileName
 }
 
-# マニフェストを読み込む。存在しなければ空のマニフェストを返す
+# マニフェストファイルを読み込み (ファイルが存在しない場合は初期構造のハッシュテーブルを返却)
 function Read-Manifest {
     param([string]$InstallDir)
 
@@ -27,7 +27,7 @@ function Read-Manifest {
         $json = Get-Content $manifestPath -Raw -Encoding UTF8
         $obj = $json | ConvertFrom-Json
 
-        # PSCustomObject をハッシュテーブルに変換
+        # JSON からデシリアライズされた PSCustomObject をハッシュテーブルへ変換
         $manifest = @{
             version = $obj.version
             components = @{}
@@ -60,8 +60,8 @@ function Read-Manifest {
     }
 }
 
-# マニフェストを保存する (.tmp に書いてから置換。失敗時は旧ファイルを保持)
-# 戻り値: 保存に成功したかどうか
+# マニフェストをアトミックに保存 (一時ファイル書き込み後に置換、失敗時は既存ファイルを保持)
+# 戻り値: 保存成功時は $true、失敗時は $false
 function Write-Manifest {
     param(
         [string]$InstallDir,
@@ -90,7 +90,7 @@ function Write-Manifest {
     }
 }
 
-# コンポーネントをマニフェストに追加/更新する
+# コンポーネント情報をマニフェストに追加または更新
 function Add-ComponentToManifest {
     param(
         [hashtable]$Manifest,
@@ -112,7 +112,7 @@ function Add-ComponentToManifest {
     }
 }
 
-# コンポーネントをマニフェストから削除する
+# コンポーネント情報をマニフェストから削除
 function Remove-ComponentFromManifest {
     param(
         [hashtable]$Manifest,
@@ -124,7 +124,7 @@ function Remove-ComponentFromManifest {
     }
 }
 
-# マニフェスト上でコンポーネントがインストール済みかを確認する
+# マニフェスト内に該当コンポーネントが登録されているかを検証
 function Test-ComponentInstalled {
     param(
         [hashtable]$Manifest,
@@ -134,7 +134,7 @@ function Test-ComponentInstalled {
     return $Manifest.components.ContainsKey($ShortName)
 }
 
-# ファイルシステム上でコンポーネントのファイルが実在するかを確認する
+# 検出対象ファイル (DetectFiles) がファイルシステム上に実在するかを検証
 function Test-ComponentFiles {
     param(
         [string]$InstallDir,
@@ -154,7 +154,7 @@ function Test-ComponentFiles {
     return $false
 }
 
-# インストール前後のファイルスナップショット差分を取得する
+# インストール前後のファイルスナップショットを比較し、新規追加された相対パス一覧を取得
 function Get-FileSnapshotDiff {
     param(
         [string]$InstallDir,
@@ -173,7 +173,7 @@ function Get-FileSnapshotDiff {
     return $newFiles
 }
 
-# ディレクトリのファイルスナップショット(相対パス → 最終更新時刻)を取得する
+# 対象ディレクトリ内のファイルスナップショット (相対パスから最終更新日時へのマッピング) を取得
 function Get-DirectorySnapshot {
     param([string]$InstallDir)
 
@@ -186,7 +186,7 @@ function Get-DirectorySnapshot {
     try {
         $items = Get-ChildItem -Path $InstallDir -Recurse -File -ErrorAction SilentlyContinue
         foreach ($item in $items) {
-            # マニフェストファイル自体は除外
+            # マニフェストファイル自身はスナップショットから除外
             if ($item.Name -eq $script:ManifestFileName) {
                 continue
             }
@@ -194,13 +194,13 @@ function Get-DirectorySnapshot {
             $snapshot[$relativePath] = $item.LastWriteTimeUtc
         }
     } catch {
-        # スナップショット取得失敗は無視
+        # スナップショット取得時の例外は無視
     }
 
     return $snapshot
 }
 
-# レガシーインストール(マニフェストなし)をスキャンしてマニフェストを生成する
+# レガシーインストール (マニフェスト不在) のディレクトリを走査し、検出されたコンポーネント情報から初期マニフェストを生成
 function Initialize-LegacyManifest {
     param(
         [string]$InstallDir,
@@ -244,9 +244,9 @@ function Initialize-LegacyManifest {
     return $manifest
 }
 
-# 導入先とマニフェストを使える状態にする
-# マニフェストが無く既存ファイルがある場合は Legacy として生成し、保存まで行う
-# 戻り値: Manifest / LegacyDetected / Saved
+# インストール先ディレクトリおよびマニフェストを初期化
+# マニフェストが存在せず既存ファイルが検出された場合は、レガシーマニフェストを自動生成して保存
+# 戻り値: Manifest (ハッシュテーブル) / LegacyDetected (ブール値) / Saved (ブール値) を含むオブジェクト
 function Initialize-ComponentManifest {
     param(
         [string]$InstallDir,

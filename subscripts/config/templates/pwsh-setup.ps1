@@ -1,6 +1,6 @@
-﻿# PowerShell 7 Post-Setup Script
-# pwsh.exe からアイコンを抽出し pwsh.ico を生成
-# パラメータ: $TargetPath - PowerShell 7 がインストールされたディレクトリ
+﻿# PowerShell 7 事後セットアップ スクリプト
+# pwsh.exe からアイコンリソースを抽出し pwsh.ico を生成
+# パラメーター: $TargetPath - PowerShell 7 のインストール先ディレクトリ
 
 param(
     [Parameter(Mandatory=$true)]

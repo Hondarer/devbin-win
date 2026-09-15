@@ -1,21 +1,21 @@
 ﻿# PipPackage.ps1
-# pip パッケージ名の正規化と wheel の検証
+# pip パッケージ名の正規化およびオフライン wheel ファイルの検証
 #
-# Python の初期設定に必要な wheel (pip / setuptools / wheel / packaging / pytest) と、
-# 追加パッケージに必要な wheel の違いは -IncludeCorePackages で表す。
+# Python の初期セットアップに必要な基本パッケージ (pip / setuptools / wheel / packaging / pytest) と、
+# 各種追加パッケージに必要な wheel の切り替えは -IncludeCorePackages スイッチで制御します。
 
-# Python 初期設定に必要なコアパッケージ
+# Python 初期セットアップ用の基本コアパッケージ一覧
 $script:DevbinPipCorePackages = @("pip", "setuptools", "wheel", "packaging", "pytest")
 
-# PEP 503 に従って pip パッケージ名を正規化する
+# PEP 503 に準拠した pip パッケージ名の正規化
 function Get-NormalizedPipPackageName {
     param([string]$Name)
 
     return (([string]$Name).Trim().ToLowerInvariant() -replace '[-_.]+', '-')
 }
 
-# パッケージ定義から、必要な pip パッケージ名 (版指定込み) を重複なく返す
-# 重複判定は正規化後の名前で行う
+# パッケージ定義群から必要な pip パッケージ仕様 (バージョン指定を含む) を重複なく抽出
+# 重複判定は正規化名に基づいて実行
 function Get-PipWheelPackageNames {
     param(
         [array]$PackageConfigs = @(),
@@ -63,9 +63,8 @@ function Get-PipWheelPackageNames {
     return @($result)
 }
 
-# pip download に渡す仕様を返す
-# 検証側 (Get-PipWheelPackageNames) と同じ正規化で重複排除するため、
-# ruamel.yaml と ruamel-yaml のような表記ゆれを別物として扱わない
+# pip download コマンドに渡すパッケージ仕様一覧を取得
+# 検証処理と同一の正規化ロジックで重複を排除し、表記揺れ (ruamel.yaml と ruamel-yaml 等) を同一パッケージとして処理
 function Get-PipWheelDownloadSpecs {
     param(
         [array]$PackageConfigs = @(),
@@ -75,7 +74,7 @@ function Get-PipWheelDownloadSpecs {
     return (Get-PipWheelPackageNames -PackageConfigs $PackageConfigs -IncludeCorePackages:$IncludeCorePackages)
 }
 
-# 指定ディレクトリに必要な wheel が揃っているかを確認し、不足分を返す
+# 指定ディレクトリ内に必要な wheel ファイルが存在するかを照合し、不足しているパッケージ一覧を返却
 function Test-PipWheelPackages {
     param(
         [string]$DirectoryPath,

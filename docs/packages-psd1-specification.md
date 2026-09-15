@@ -2,9 +2,10 @@
 
 ## 概要
 
-packages.psd1 は、devbin-win で管理されるすべてのパッケージ情報を一元管理する PowerShell データファイルです。パッケージの定義情報を宣言的に記述することで、コードを変更せずに新しいパッケージを追加できます。
+`packages.psd1` は、devbin-win で管理されるすべてのパッケージ情報を一元管理する PowerShell データ ファイルです。
+パッケージの定義情報を宣言的に記述することで、コードを変更せずに新しいパッケージを追加できます。
 
-このファイルは定義駆動アーキテクチャの中核を担い、Setup-Bin.ps1 および Get-Packages.ps1 によって読み込まれます。
+このファイルは定義駆動アーキテクチャの中核を担い、`Setup-Bin.ps1` および `Get-Packages.ps1` によって読み込まれます。
 
 ## ファイルの場所
 
@@ -72,7 +73,8 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 
 ### DependsOn
 
-依存するパッケージの ShortName を配列で指定します。コンポーネント マネージャーが依存を自動解決し、依存先を先にインストールします。
+依存するパッケージの ShortName を配列で指定します。
+コンポーネント マネージャーが依存関係を自動解決し、依存先を先にインストールします。
 
 ```powershell
 DependsOn = @("jdk")                  # JDK が必要
@@ -94,15 +96,16 @@ PathDirs = @()                        # PATH 変更なし (bin/ ルートは共�
 
 ### PathPosition
 
-`PathDirs` を既存 PATH の前に置くか後ろに置くかを指定します。低優先度で公開したいランタイム同梱ディレクトリに使用します。
+`PathDirs` を既存 PATH の前段に配置するか後段に配置するかを指定します。
+低優先度で公開したいランタイム同梱ディレクトリに使用します。
 
 ```powershell
 PathDirs = @("inkscape\bin")
 PathPosition = "Append"              # 既存 PATH の後段に配置
 ```
 
-- `Prepend` (既定): devbin-win 管理の高優先度 PATH ブロックへ追加
-- `Append`: 既存 PATH の後段へ追加。Inkscape 同梱 `python.exe` のような副作用を回避したい場合に使用します
+- `Prepend` (既定値): devbin-win 管理の高優先度 PATH ブロックへ追加
+- `Append`: 既存 PATH の後段へ追加 (Inkscape 同梱の `python.exe` が優先実行される事態を回避したい場合などに使用)
 
 ### EnvVars と EnvVarIsLiteral
 
@@ -135,7 +138,8 @@ DetectFiles = @("plantuml.jar", "plantuml.cmd")
 
 ### Hidden
 
-`$true` に設定すると CLI メニューに表示されず、他のコンポーネントの依存として自動インストール/アンインストールされます。GNU Make が依存する MinGW ランタイム DLL パッケージ (`mingw64-gcc-libs` など) に使用します。
+`$true` に設定すると CLI メニューに表示されず、他のコンポーネントの依存関係として自動的にインストールおよびアンインストールされます。
+GNU Make が依存する MinGW ランタイム DLL パッケージ (`mingw64-gcc-libs` など) に使用します。
 
 ```powershell
 Hidden = $true   # メニュー非表示・自動管理
@@ -143,7 +147,7 @@ Hidden = $true   # メニュー非表示・自動管理
 
 ### DisableIfFont
 
-フォント系パッケージで、同名フォントが既に登録済みならメニューからの新規インストールを無効化したい場合に使用します。
+フォント系パッケージにおいて、同名フォントが既に登録済みの場合にメニューからの新規インストールを無効化する目的で使用します。
 
 - `HKCU` の value name を照合し、value data が `$InstallDir` 配下なら devbin 自身の登録として扱う
 - `HKCU` に一致があっても value data が `$InstallDir` 配下以外なら `External`
@@ -201,7 +205,8 @@ packages フォルダー内でアーカイブファイルを検索する際に�
 
 SourceForge の URL は自動的に実際のダウンロード URL に変換されます。
 
-`DownloadHeaders` を指定すると、`Get-Packages.ps1` はそのハッシュテーブルを `Invoke-WebRequest -Headers` に渡します。通常は不要ですが、配布元がブラウザー相当の `User-Agent` や元ページの `Referer` を要求する場合に使用します。
+`DownloadHeaders` を指定すると、`Get-Packages.ps1` はそのハッシュテーブルを `Invoke-WebRequest -Headers` に渡します。
+通常は指定不要ですが、配布元がブラウザー相当の `User-Agent` や元ページの `Referer` を要求する場合に使用します。
 
 ```powershell
 DownloadHeaders = @{
@@ -210,15 +215,19 @@ DownloadHeaders = @{
 }
 ```
 
-`DownloadFileName` を省略した場合、Get-Packages.ps1 は URL から保存ファイル名を決定します。`Version` が空でない場合は、保存ファイル名に同じバージョンが含まれていなければ、拡張子の直前に `-<Version>` を付与して packages フォルダー内の保存名を正規化します。バージョン比較では `.` / `_` / `-` の区切り揺れを同一として扱います（例: `2.1.5` と `2_1_5`）。
+`DownloadFileName` を省略した場合、`Get-Packages.ps1` は URL から保存ファイル名を決定します。
+`Version` が空ではない場合、保存ファイル名に同一バージョンが含まれていなければ、拡張子の直前に `-<Version>` を付与して packages フォルダー内の保存名を正規化します。
+バージョン比較では、ピリオド (`.`)、アンダースコア (`_`)、ハイフン (`-`) の区切り文字の差異を同一と判定します (例: `2.1.5` と `2_1_5`)。
 
-`ArchivePattern` は、配布元の元ファイル名ではなく、packages フォルダーへ保存される最終ファイル名に一致するように定義してください。`Install-Component` には互換フォールバックがあり、ArchivePattern に一致するファイルがない場合のみ、URL 由来の元ファイル名が packages にあればそれを使用できます。
+`ArchivePattern` は、配布元の元ファイル名ではなく、packages フォルダーへ保存される最終ファイル名に一致するように定義してください。
+`Install-Component` には互換フォールバック機能があり、`ArchivePattern` に一致するファイルが存在しない場合に限り、URL 由来の元ファイル名が packages に存在すればそのファイルを使用します。
 
 #### DownloadVersion と VersionSource
 
-配布元の ZIP ファイル名にバージョンが含まれないが、オフラインインストール用には版付きファイル名で保存したい場合は `DownloadVersion` と `DownloadFileName` を組み合わせます。
+配布元の ZIP ファイル名にバージョンが含まれないものの、オフライン インストール用にはバージョン付きファイル名で保存したい場合は、`DownloadVersion` と `DownloadFileName` を組み合わせて指定します。
 
-`VersionSource` を指定すると、インストール時のマニフェスト記録と `Manage-Bin.cmd` の更新判定では、`Version` の固定値ではなく取得済みアーカイブから読み取った値を使用できます。現在サポートする `Type` は `ZipEntry` です。
+`VersionSource` を指定すると、インストール時のマニフェスト記録および `Manage-Bin.cmd` の更新判定において、`Version` の固定値ではなく取得済みアーカイブから読み取った値を使用できます。
+現在サポートしている `Type` は `ZipEntry` です。
 
 ```powershell
 @{
@@ -236,11 +245,13 @@ DownloadHeaders = @{
 }
 ```
 
-`ZipEntry` は `ArchivePattern` に一致する ZIP の中から `Path` の entry を読み取り、`Pattern` に最初に一致した文字列をバージョンとして使用します。該当 ZIP が `packages` にない場合は空文字列または `Version` の値にフォールバックするため、自動的な `Updateable` 判定は行われません。
+`ZipEntry` は、`ArchivePattern` に一致する ZIP アーカイブの中から `Path` のエントリを読み取り、`Pattern` に最初に一致した文字列をバージョンとして使用します。
+該当する ZIP が `packages` に存在しない場合は、空文字列または `Version` の値にフォールバックするため、自動的な `Updateable` 判定は行われません。
 
 ## 戦略別の定義例
 
-各抽出戦略で必要となるプロパティは異なります。以下は代表的な戦略の定義例です。
+各抽出戦略で必要となるプロパティは異なります。
+代表的な戦略の定義例は、次のとおりです。
 
 ### Standard 戦略
 
@@ -289,7 +300,9 @@ MSYS2 MinGW パッケージの例 (RenameFiles 使用):
 }
 ```
 
-MSYS2 パッケージは展開するとルートフォルダーが1つだけ含まれる構造になります。mingw パッケージは `mingw64/`、msys パッケージは `usr/` がルートです。`Get-ExtractedSourcePath` がこれらを自動認識するため、`ExtractPath` にはルートフォルダーを含めず配下のパスを指定してください。
+MSYS2 パッケージは展開するとルート フォルダーが 1 つだけ含まれる構造になります。
+mingw パッケージは `mingw64/`、msys パッケージは `usr/` がルートです。
+`Get-ExtractedSourcePath` がこれらを自動認識するため、`ExtractPath` にはルート フォルダーを含めず配下のパスを指定してください。
 
 **追加パラメーター**:
 - `ExtractPath` (必須): 抽出するサブディレクトリのパス
@@ -383,7 +396,7 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
 
 - `Path` (必須): `subscripts/` からの相対パス
 - `Arguments` (オプション): 引数配列。`<InstallDir>` は実際のインストール先に置換される
-- スクリプト失敗時は警告を出して本体の install / uninstall は継続する
+- スクリプトの実行に失敗した場合は警告を出力し、本体のインストールまたはアンインストール処理は継続
 
 ### JarWithWrapper 戦略
 
@@ -436,7 +449,9 @@ endlocal
 
 NuGet、cloc、vswhere のように、配布物が単体の `.exe` で完結するツールに適しています。
 
-`DownloadFileName` は保存名を明示固定したい場合に指定します。たとえば VS Code の公式固定版 URL は末尾が `stable` になるため、`DownloadFileName = "VSCode-win32-x64-1.128.0.zip"` のように指定します。未指定時でも `Version` があれば、保存名は自動的に版付きへ正規化されます（`2.1.5` と `2_1_5` などの区切り揺れは同一版として判定）。
+`DownloadFileName` は、保存ファイル名を明示的に固定したい場合に指定します。
+たとえば VS Code の公式固定版 URL は末尾が `stable` となるため、`DownloadFileName = "VSCode-win32-x64-1.128.0.zip"` のように指定します。
+未指定の場合であっても `Version` が定義されていれば、保存ファイル名は自動的にバージョン付きのファイル名へ正規化されます (区切り文字の差異は同一バージョンとして判定)。
 
 ### SelfExtractingArchive 戦略
 
@@ -525,7 +540,9 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 
 ### PipInstall 戦略
 
-`python -m pip install` を実行して Python パッケージをインストールします。アーカイブファイルは不要で、`DownloadUrl` も省略します。インストール本体は `packages/pip-packages/` の wheel を使用し、PyPI へ直接 fallback しません。
+`python -m pip install` を実行して Python パッケージをインストールします。
+アーカイブ ファイルは不要であり、`DownloadUrl` も省略します。
+インストール処理は `packages/pip-packages/` の wheel を使用し、PyPI へ直接フォールバックしません。
 
 ```powershell
 @{
@@ -549,11 +566,15 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 - `PipDependencies` (任意): オフライン用に一緒に取得・確認する pip 依存パッケージ名
 - `Version` (共通プロパティ): 指定時は `pip install <PipPackage>==<Version>` として渡す
 
-`ArchivePattern = "^$"` はアーカイブ検索をスキップするための規約です。`DownloadUrl` は省略します。`Get-Packages.ps1` は `PipPackage` と `PipDependencies` の wheel を `packages/pip-packages/` に保存します。インストール時に不足があれば `Get-Packages.ps1` で取得を試み、取得後も不足する場合はエラーで停止します。
+`ArchivePattern = "^$"` は、アーカイブ検索をスキップするための規約です。
+`DownloadUrl` は省略します。
+`Get-Packages.ps1` は `PipPackage` と `PipDependencies` の wheel を `packages/pip-packages/` に保存します。
+インストール時に不足している場合は `Get-Packages.ps1` による取得を試行し、取得後も不足する場合はエラーで停止します。
 
 ### NpmInstall 戦略
 
-検証済み依存木を一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim を devbin-win のインストール先へマージします。オンライン環境では `Get-Packages.ps1` が依存木を解決し、導入時は保存済み archive と一時 npm cache だけを使用します。
+検証済みの依存関係ツリーを一時プロジェクトへ `npm install --offline` でインストールし、生成された `node_modules` とコマンド shim を devbin-win のインストール先へマージします。
+オンライン環境では `Get-Packages.ps1` が依存関係ツリーを解決し、導入時は保存済みアーカイブと一時 npm キャッシュのみを使用します。
 
 ```powershell
 @{
@@ -587,7 +608,11 @@ packages/npm-packages/<ShortName>/
   archives/*.tgz
 ```
 
-`npm-cache-manifest.json` には、全 package の version、archive path、サイズ、SHA-512 integrity が記録されます。導入時は manifest、lock、全 archive を検証し、lockfile の `resolved` と `integrity` をローカル archive に差し替えてから、一時プロジェクトへ `npm install --offline` します。不足または改変があれば npm install を開始しません。キャッシュ不足時は `Get-Packages.ps1` の自動実行を試み、取得後も不足する場合はエラーで停止します。PowerShell の `ni` は `New-Item` alias と衝突するため、必要な場合はユーザー側で `Remove-Item Alias:ni -Force` を実行してください。
+`npm-cache-manifest.json` には、全パッケージのバージョン、アーカイブ パス、ファイル サイズ、および SHA-512 ハッシュ値が記録されます。
+導入時はマニフェスト、lockfile、および全アーカイブを検証し、lockfile の `resolved` と `integrity` をローカル アーカイブに差し替えてから、一時プロジェクトへ `npm install --offline` を実行します。
+不足または改変が検出された場合は、npm install を開始しません。
+キャッシュ不足時は `Get-Packages.ps1` の自動実行を試行し、取得後も不足する場合はエラーで停止します。
+PowerShell の `ni` は標準エイリアス `New-Item` と衝突するため、必要な場合はセッション内で `Remove-Item Alias:ni -Force` を実行してください。
 
 ## 新規パッケージの追加手順
 
@@ -629,9 +654,10 @@ packages.psd1 の `Packages` 配列に新しいパッケージ定義を追加す
 
 ## パッケージ定義の順序
 
-packages.psd1 内のパッケージ定義の順序は、コンポーネント マネージャーの表示順と PATH の並び順を決めます。
+`packages.psd1` 内におけるパッケージ定義の順序は、コンポーネント マネージャーの表示順と PATH の並び順を決定します。
 
-導入順は `DependsOn` から自動で解決するため、定義の順序には依存しません。ただし読みやすさのため、依存先を先に記述することを推奨します。
+導入順は `DependsOn` から自動解決されるため、定義の順序には依存しません。
+ただし可読性のため、依存先パッケージを先に記述することを推奨します。
 
 例: OpenCppCoverage は innoextract に依存するため、innoextract を先に定義します。
 

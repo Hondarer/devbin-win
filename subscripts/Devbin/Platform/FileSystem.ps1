@@ -1,7 +1,7 @@
 ﻿# FileSystem.ps1
-# 長いパスに対応したファイル操作と、ディレクトリツリーの削除
+# 長いパス (MAX_PATH 超過) に対応したファイル操作およびディレクトリツリーの削除
 
-# 長いパスを UNC 形式に変換する関数
+# 長いパスを拡張長パス形式 (\\?\) に変換
 function Convert-ToLongPath {
     param([string]$Path)
 
@@ -19,7 +19,7 @@ function Convert-ToLongPath {
     return "\\?\$Path"
 }
 
-# 長いパス対応のディレクトリ作成関数
+# 長いパスに対応したディレクトリ作成
 function New-LongPathDirectory {
     param([string]$Path)
 
@@ -37,7 +37,7 @@ function New-LongPathDirectory {
     return $true
 }
 
-# 長いパス対応のファイルコピー関数
+# 長いパスに対応したファイルコピー
 function Copy-LongPathFile {
     param(
         [string]$SourcePath,
@@ -60,7 +60,7 @@ function Copy-LongPathFile {
     return $false
 }
 
-# ディレクトリツリーを削除する (260 文字を超えるパス向けに robocopy へフォールバック)
+# ディレクトリツリーの削除 (MAX_PATH 超過時は robocopy による空同期へフォールバック)
 function Remove-DirectoryTree {
     param(
         [string]$Path
@@ -79,7 +79,7 @@ function Remove-DirectoryTree {
         return [PSCustomObject]@{ Success = $false; ErrorMessage = $lastError }
     }
 
-    # robocopy はロングパスを扱えるため、空ディレクトリとの /MIR で中身を空にしてから削除する
+    # robocopy は長いパスを処理可能なため、空ディレクトリとの /MIR 同期により配下を消去した後に本体を削除
     $emptyDir = Join-Path ([System.IO.Path]::GetTempPath()) ("devbin-empty-" + [System.Guid]::NewGuid().ToString("N"))
     try {
         New-Item -ItemType Directory -Path $emptyDir -Force | Out-Null

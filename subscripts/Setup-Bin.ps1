@@ -1,5 +1,5 @@
-﻿# 開発ツール セットアップ スクリプト
-# コンポーネント マネージャーの起動と、製品の完全アンインストールを行う
+﻿# 開発環境セットアップ スクリプト
+# コンポーネント マネージャーの起動および製品の完全アンインストールを実行します。
 
 param(
     [string]$InstallDir = ".\bin",
@@ -8,17 +8,17 @@ param(
     [switch]$Force
 )
 
-# スクリプトのディレクトリを取得
+# スクリプトの格納先ディレクトリを取得
 $ScriptDir = if ($PSScriptRoot) {
     $PSScriptRoot
 } elseif ($MyInvocation.MyCommand.Path) {
     Split-Path -Parent $MyInvocation.MyCommand.Path
 } else {
-    # フォールバック: 現在の実行ディレクトリを使用
+    # 代替処理: 現在の作業ディレクトリを使用
     Get-Location | Select-Object -ExpandProperty Path
 }
 
-# モジュールをインポート
+# 内部モジュールのインポート
 $devbinModulePath = "$ScriptDir\Devbin"
 try {
     Import-Module $devbinModulePath -Force -ErrorAction Stop
@@ -27,7 +27,7 @@ try {
     exit 1
 }
 
-# パッケージ設定を読み込む (完全アンインストールは定義に依存しない)
+# パッケージ定義の読み込み (完全アンインストール時は定義ファイルに依存しない)
 $DevbinContext = New-DevbinContext -InstallDir $InstallDir -SubscriptsDir $ScriptDir
 $Packages = @()
 if (-not $Uninstall) {
@@ -42,7 +42,7 @@ if (-not $Uninstall) {
     $Packages = $catalog.Packages
 }
 
-# オプションが指定されていない場合は使用方法を表示
+# パラメーターが指定されていない場合は使用方法を表示
 if (-not ($Uninstall -or $Manage)) {
     Write-Host "Development Tools Setup Script"
     Write-Host "================================"
@@ -68,7 +68,7 @@ if (-not ($Uninstall -or $Manage)) {
     exit 0
 }
 
-# 昇格された管理者権限での実行を検出する (本スクリプトは非昇格ユーザーでの実行を想定)
+# 昇格した管理者権限での実行を検出 (本スクリプトは一般ユーザー権限での実行を前提とする)
 $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
 if ($currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -77,14 +77,14 @@ if ($currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administ
     exit 1
 }
 
-# Manage モード: 対話型コンポーネント マネージャー
+# Manage モード: 対話型コンポーネント マネージャーの起動
 if ($Manage) {
-    # 導入先は実行コンテキストで解決済みの絶対パスを使用する
+    # インストール先には実行コンテキストで解決された絶対パスを使用
     $absoluteInstallDir = $DevbinContext.InstallDir
     $operationExitCode = 0
     Start-DevbinOperationLog -InstallDir $absoluteInstallDir
     try {
-        # 環境変数をレジストリから同期
+        # レジストリから環境変数を同期
         Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
 
         Invoke-MenuLoop -Packages $Packages -InstallDir $absoluteInstallDir -ScriptDir $ScriptDir
@@ -106,7 +106,7 @@ if ($Uninstall) {
                 $operationExitCode = 0
             }
             "Cancelled" {
-                # キャンセルは失敗と区別する (呼び出し元が完了メッセージを出力しないようにする)
+                # キャンセルは失敗と区別する (呼び出し元での完了メッセージ出力を抑止するため)
                 $operationExitCode = 2
             }
             "Refused" {

@@ -1,6 +1,6 @@
 ﻿# ComponentInstall.Tests.ps1
-# Devbin/Install へ移した導入・削除処理のテスト
-# 実ファイルは一時領域のみを触り、通信とユーザー環境の変更は行わない
+# Install モジュールのコンポーネントインストールおよびアンインストール処理のテスト
+# 実ファイル操作は一時ディレクトリ内に限定し、外部通信およびユーザー環境の変更は行いません。
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules

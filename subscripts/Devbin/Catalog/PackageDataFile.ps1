@@ -1,12 +1,11 @@
 ﻿# PackageDataFile.ps1
-# .psd1 データファイルの読み込み
+# PowerShell データファイル (.psd1) の安全な読み込み
 #
-# Import-PowerShellDataFile は Windows PowerShell 5.1 に存在しないため、
-# 同コマンドレットと同じ仕組みである AST の SafeGetValue() を使用する。
-# 構文解析してハッシュテーブルのノードを取り出すだけなので、
-# Invoke-Expression と違いファイル内のコードは実行されない。
+# Windows PowerShell 5.1 環境との互換性を確保するため、AST (抽象構文木) の SafeGetValue() を使用します。
+# 構文解析によってハッシュテーブルノードのみを静的に抽出するため、
+# Invoke-Expression とは異なりファイル内の任意コード実行を防止できます。
 
-# .psd1 をハッシュテーブルとして読み込む
+# .psd1 ファイルを解析してハッシュテーブルとして読み込み
 function Import-DevbinDataFile {
     param([string]$Path)
 

@@ -1,6 +1,6 @@
 ﻿# Menu.Tests.ps1
-# Devbin/Menu へ移した対話型メニューのテスト
-# 画面描画とキー入力は行わず、状態を扱う関数だけを確認する
+# Menu モジュールの対話型メニュー機能のテスト
+# 画面描画およびキー入力待機は行わず、状態管理ロジックのみを検証します。
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
@@ -281,7 +281,7 @@ Describe "メニューの分割" {
         $ast = [System.Management.Automation.Language.Parser]::ParseFile($consoleInputPath, [ref]$null, [ref]$null)
         $topLevel = @($ast.EndBlock.Statements | Where-Object { -not ($_ -is [System.Management.Automation.Language.FunctionDefinitionAst]) })
 
-        # 関数定義と定数の代入だけが並んでいること (Add-Type は関数の中)
+        # スクリプト直下に関数定義と定数代入のみが存在することを確認します (Add-Type は関数内にカプセル化)。
         @($topLevel | Where-Object { -not ($_ -is [System.Management.Automation.Language.AssignmentStatementAst]) }).Count | Should Be 0
     }
 }

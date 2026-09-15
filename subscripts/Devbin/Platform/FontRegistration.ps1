@@ -1,5 +1,5 @@
 ﻿# FontRegistration.ps1
-# 製品ルートを指すフォント登録の解除
+# 製品ルート配下を参照するフォント登録の解除処理
 
 function Remove-FontRegistrationsPointingToRoot {
     param(

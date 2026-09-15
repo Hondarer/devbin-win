@@ -1,7 +1,7 @@
 ﻿# ComponentUninstall.ps1
-# コンポーネントの削除と、孤立した依存のクリーンアップ
+# コンポーネントのアンインストールおよび孤立した依存コンポーネントのクリーンアップ
 
-# コンポーネントをアンインストールする
+# 単一のコンポーネントをアンインストールします。
 function Uninstall-Component {
     param(
         [string]$ShortName,
@@ -23,7 +23,7 @@ function Uninstall-Component {
         return $true
     }
 
-    # 依存元コンポーネントを確認
+    # 当該コンポーネントに依存している他のコンポーネントを確認します。
     if (-not $Force) {
         $dependents = Get-Dependents -ShortName $ShortName -Packages $Packages -Manifest $Manifest
         if ($dependents.Count -gt 0) {
@@ -61,14 +61,14 @@ function Uninstall-Component {
         }
     }
 
-    # VS Code: data フォルダーをバックアップ
+    # VS Code の場合: ポータブルデータ (data ディレクトリ) を退避します。
     $isVSCode = $ShortName -eq "vscode"
     $vscodeBackup = $null
     if ($isVSCode) {
         $vscodeBackup = Backup-VSCodeData -InstallDirectory $InstallDir -Silent
     }
 
-    # マニフェストのファイル一覧に基づいて削除
+    # マニフェストに記録されたファイル一覧に基づいて配置ファイルを削除します。
     $componentData = $Manifest.components[$ShortName]
     $files = if ($componentData -and $componentData.ContainsKey("files")) {
         @($componentData.files) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
@@ -82,7 +82,7 @@ function Uninstall-Component {
         -Manifest $Manifest `
         -Files $files
 
-    # VS Code: data フォルダーを復元
+    # VS Code の場合: 退避したポータブルデータ (data ディレクトリ) を復元します。
     if ($isVSCode -and $vscodeBackup) {
         $vscodeDir = Join-Path $InstallDir "vscode"
         if (-not (Test-Path $vscodeDir)) {
@@ -91,7 +91,7 @@ function Uninstall-Component {
         Restore-VSCodeData -InstallDirectory $InstallDir -BackupPath $vscodeBackup -Silent | Out-Null
     }
 
-    # 環境変数削除
+    # コンポーネントに関連する環境変数を削除します。
     $envVarsConfig = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
     $hasBrowserConfig = Test-ComponentUsesEdge -PackageConfig $pkg
     if ($envVarsConfig.Count -gt 0 -or $hasBrowserConfig) {
@@ -117,10 +117,10 @@ function Uninstall-Component {
         Remove-ComponentEnvVars -InstallDir $InstallDir -PackageConfig $pkg -AppliedEnvVars $componentEnvVars -SkipKeys $skipEnvironmentKeys
     }
 
-    # マニフェストから削除
+    # マニフェストからコンポーネントの登録を解除します。
     Remove-ComponentFromManifest -Manifest $Manifest -ShortName $ShortName
 
-    # 孤立した隠し依存パッケージを自動アンインストール
+    # 参照元が存在しなくなった非表示の依存コンポーネントを自動的にアンインストールします。
     Remove-OrphanDependencies -UninstalledShortName $ShortName -Packages $Packages -InstallDir $InstallDir -Manifest $Manifest
 
     Write-Host ""
@@ -141,8 +141,8 @@ function Uninstall-Component {
     return $true
 }
 
-# 孤立した隠し依存パッケージを削除する
-# [CmdletBinding()] により、引数名の取り違えは実行時エラーになる
+# 参照元が存在しなくなった非表示の依存パッケージを削除します。
+# [CmdletBinding()] により、引数名の不一致を実行時エラーとして検出します。
 function Remove-OrphanDependencies {
     [CmdletBinding()]
     param(
@@ -152,7 +152,7 @@ function Remove-OrphanDependencies {
         [hashtable]$Manifest
     )
 
-    # アンインストールされたパッケージの依存先を確認
+    # アンインストール対象パッケージの依存先を確認します。
     $pkg = Get-PackageByShortName -ShortName $UninstalledShortName -Packages $Packages
     if (-not $pkg) { return }
 
@@ -162,14 +162,14 @@ function Remove-OrphanDependencies {
         $depPkg = Get-PackageByShortName -ShortName $dep -Packages $Packages
         if (-not $depPkg) { continue }
 
-        # 隠しパッケージのみ自動削除対象
+        # 非表示 (Hidden) パッケージのみを自動削除の対象とします。
         $isHidden = $depPkg.ContainsKey("Hidden") -and $depPkg.Hidden
         if (-not $isHidden) { continue }
 
-        # インストール済みか確認
+        # 依存先パッケージがインストール済みであるか確認します。
         if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $dep)) { continue }
 
-        # 他に依存元がないか確認
+        # 当該依存先を参照している他のコンポーネントが存在しないか確認します。
         $remainingDependents = Get-Dependents -ShortName $dep -Packages $Packages -Manifest $Manifest
         if ($remainingDependents.Count -eq 0) {
             Write-Host ""

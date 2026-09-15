@@ -1,5 +1,5 @@
 ﻿# ComponentSource.ps1
-# 導入に必要なファイルの配置場所と、不足時の取得を扱う
+# インストール対象ソースファイルの配置確認および不足時の取得処理
 
 function Get-PackagesDirectory {
     param([string]$ScriptDir)
@@ -13,8 +13,8 @@ function Get-PackagesDirectory {
     return "packages"
 }
 
-# 導入中に不足したキャッシュを取得する
-# 取得スクリプトと同じ Invoke-PackageAcquisition を通す
+# 不足しているパッケージアーカイブやキャッシュを取得します。
+# パッケージ取得スクリプトと共通の Invoke-PackageAcquisition を経由して取得します。
 function Invoke-PackageAcquisitionForShortNames {
     param(
         [string[]]$ShortNames,
@@ -26,12 +26,12 @@ function Invoke-PackageAcquisitionForShortNames {
 
     $context = New-DevbinContext -InstallDir $InstallDir -SubscriptsDir $ScriptDir
     $originalPath = $env:PATH
-    # Python の配置先はパッケージ定義の TargetDirectory から取得する
+    # Python のインストール先ディレクトリはパッケージ定義の TargetDirectory から取得します。
     $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $InstallDir
     $pythonScriptsDir = if ([string]::IsNullOrWhiteSpace($pythonDir)) { "" } else { Join-Path $pythonDir "Scripts" }
 
     try {
-        # 導入済みの Python を使用して wheel を取得できるよう PATH の先頭へ配置する
+        # インストール済みの Python を使用して wheel を取得できるよう、環境変数 PATH の先頭に追加します。
         if ($WithInstalledPython -and -not [string]::IsNullOrWhiteSpace($pythonDir) -and (Test-Path (Join-Path $pythonDir "python.exe"))) {
             $pathEntries = @($pythonDir, $pythonScriptsDir) | Where-Object { Test-Path $_ }
             if ($pathEntries.Count -gt 0) {
@@ -52,8 +52,8 @@ function Invoke-PackageAcquisitionForShortNames {
     }
 }
 
-# 導入に必要なファイル (アーカイブ、npm キャッシュ、pip wheel) を用意する
-# 見つからない場合は取得を試み、それでも揃わなければ Success = $false を返す
+# インストールに必要なソースファイル (アーカイブ、npm キャッシュ、pip wheel) を検証・準備します。
+# ファイルが存在しない場合は自動取得を試行し、取得できない場合は Success = $false を返します。
 function Resolve-ComponentSource {
     param(
         [string]$ShortName,
@@ -111,7 +111,7 @@ function Resolve-ComponentSource {
         }
     }
     elseif ($PackageConfig.ExtractStrategy -ne "VSBuildTools" -and $PackageConfig.ExtractStrategy -ne "PipInstall") {
-        # 保存ファイル名の判定は取得側 (Get-Packages) と同じ実装を使用する
+        # 保存ファイル名の判定ロジックはパッケージ取得側 (Get-Packages) と同一の実装を使用します。
         $baseFileName = Get-PackageBaseFileName -Package $PackageConfig
         $downloadFileName = ""
         if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {
@@ -136,7 +136,7 @@ function Resolve-ComponentSource {
                 $archiveFile = $fallbackPath
                 Write-Host "  Warning: ArchivePattern に一致しないため元ファイル名へフォールバックします: $(Split-Path $fallbackPath -Leaf)" -ForegroundColor Yellow
             } else {
-                # アーカイブが見つからない場合はダウンロードを試みる
+                # アーカイブが存在しない場合はダウンロードを試行します。
                 Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
                 $resolution = Resolve-DependencyOrder -ShortNames @($ShortName) -Packages $Packages
                 if (-not $resolution.Success) {

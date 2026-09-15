@@ -1,11 +1,11 @@
 ﻿# NpmCacheDownload.ps1
-# npm オフラインキャッシュの作成
+# npm オフラインキャッシュのダウンロード・作成エントリーポイント
 #
-# キャッシュの作成・検証・オフライン導入の実装は Packages/Npm の子モジュールにあり、
-# ここでは取得側から呼ぶための入口だけを持つ。
+# キャッシュの作成・検証・オフラインインストールの実体は Packages/Npm 配下の子モジュールに委譲し、
+# 本スクリプトはパッケージ取得処理 (Get-Packages) から呼び出されるインターフェースを提供します。
 
-# NpmInstall 戦略のパッケージについて、オフラインキャッシュを作る
-# 戻り値: Success / Skipped / FailedShortNames / Message
+# NpmInstall 戦略のパッケージを対象にオフラインキャッシュを構築
+# 戻り値: Success / Skipped / FailedShortNames / Message を持つ結果オブジェクト
 function Invoke-NpmCacheDownload {
     param(
         [array]$NpmInstallPackages,

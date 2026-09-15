@@ -16,14 +16,16 @@ from [https://nodejs.org/en](https://nodejs.org/en)
 from [marp-team/marp-cli](https://github.com/marp-team/marp-cli)
 
 - [v4.4.0](https://www.npmjs.com/package/@marp-team/marp-cli/v/4.4.0)
-    - `@marp-team/marp-cli@4.4.0` を検証済み依存木から `npm install --offline` で配置します。依存木は `packages/npm-packages/marp-cli/` に lock/manifest 付きで保存し、既存 Edge を使用します。
+    - `@marp-team/marp-cli@4.4.0` を検証済みの依存関係ツリーから `npm install --offline` で配置します。
+      依存関係ツリーは `packages/npm-packages/marp-cli/` に lock/manifest 付きで保存し、既存の Microsoft Edge を使用します。
 
 ### Mermaid CLI
 
 from [mermaid-js/mermaid-cli](https://github.com/mermaid-js/mermaid-cli)
 
 - [v11.15.0](https://www.npmjs.com/package/@mermaid-js/mermaid-cli/v/11.15.0)
-    - `@mermaid-js/mermaid-cli@11.15.0` (`mmdc`)。依存木は `packages/npm-packages/mermaid-cli/` に保存し、既存 Edge を使用します。
+    - `@mermaid-js/mermaid-cli@11.15.0` (`mmdc`) を配置します。
+      依存関係ツリーは `packages/npm-packages/mermaid-cli/` に保存し、既存の Microsoft Edge を使用します。
 
 ### Widdershins
 
@@ -39,8 +41,9 @@ from [puppeteer/puppeteer](https://github.com/puppeteer/puppeteer)
     - Google Chrome はダウンロードしません。Windows では Microsoft Edge を使用します。
 
 ### MiniSearch / @plantuml/core / sharp / minimist
-
-npm グローバル配置パッケージです。バージョンは `subscripts/config/packages.psd1` を参照してください。
+ 
+npm グローバル配置パッケージです。
+バージョンは `subscripts/config/packages.psd1` を参照してください。
 
 ### textlint
 
@@ -57,7 +60,9 @@ from [textlint/textlint](https://github.com/textlint/textlint)
 .\subscripts\Get-Packages.ps1
 ```
 
-`packages/npm-packages/<ShortName>/` に `package-lock.json`、`npm-cache-manifest.json`、依存パッケージの `.tgz` が生成されます。生成後は `packages` フォルダーを含めてリポジトリ全体をオフライン環境へコピーし、`Manage-Bin.cmd` を実行してください。導入時の npm install は検証済みのローカル キャッシュに対して `--offline` で実行されます。
+`packages/npm-packages/<ShortName>/` に `package-lock.json`、`npm-cache-manifest.json`、依存パッケージの `.tgz` が生成されます。
+生成後は `packages` フォルダーを含めてリポジトリ全体をオフライン環境へコピーし、`Manage-Bin.cmd` を実行してください。
+導入時の npm install は検証済みのローカル キャッシュに対して `--offline` で実行されます。
 
 ### pandoc
 
@@ -118,7 +123,9 @@ from [python.org](https://www.python.org/)
 - [pip 26.1.1](https://pypi.org/project/pip/26.1.1/)
     - [pip-26.1.1.tar.gz](https://files.pythonhosted.org/packages/b6/48/cb9b7a682f6fe01a4221e1728941dd4ac3cd9090a17db3779d6ff490b602/pip-26.1.1.tar.gz)
 
-完全オフライン環境での pip インストールに対応しています。pip のソース tarball は Get-Packages.ps1 の実行により `packages` フォルダーへ保存され、pip wheel ファイルは `packages/pip-packages` に自動ダウンロードされます。詳細は [offline-pip-design.md](./docs/offline-pip-design.md) を参照してください。
+完全オフライン環境での pip インストールに対応しています。
+pip のソース tarball は Get-Packages.ps1 の実行により `packages` フォルダーへ保存され、pip wheel ファイルは `packages/pip-packages` に自動ダウンロードされます。
+詳細は [offline-pip-design.md](./docs/offline-pip-design.md) を参照してください。
 
 ### .NET SDK
 
@@ -133,7 +140,9 @@ from [PowerShell 7 installation on Windows](https://learn.microsoft.com/ja-jp/po
 
 - [PowerShell 7.6.3 x64 ZIP](https://github.com/PowerShell/PowerShell/releases/download/v7.6.3/PowerShell-7.6.3-win-x64.zip)
 
-ZIP アーカイブを `bin\pwsh` に展開して `pwsh` コマンドを提供します。Windows PowerShell 5.1 を置き換えずに共存します。外部の `pwsh` が PATH に存在する場合は、そちらのインストール環境を優先します。
+ZIP アーカイブを `bin\pwsh` に展開して `pwsh` コマンドを提供します。
+Windows PowerShell 5.1 を置き換えずに共存します。
+外部の `pwsh` が PATH に存在する場合は、そちらのインストール環境を優先します。
 
 ### Git
 
@@ -156,7 +165,8 @@ from [Microsoft Sysinternals](https://learn.microsoft.com/sysinternals/)
 - [PsTools](https://learn.microsoft.com/ja-jp/sysinternals/downloads/pstools)
     - [PSTools.zip](https://download.sysinternals.com/files/PSTools.zip)
 
-`packages` フォルダーには `PSTools-2.43.zip` のように、バージョンを付与して保存します。インストール時の実バージョンは ZIP 内の `psversion.txt` から読み取り、インストール後に Sysinternals EULA を `-accepteula` で自動受諾します。
+`packages` フォルダーには `PSTools-2.43.zip` のように、バージョンを付与して保存します。
+インストール時の実バージョンは ZIP 内の `psversion.txt` から読み取り、インストール後に Sysinternals EULA を `-accepteula` で自動受諾します。
 
 ### Inkscape
 
@@ -169,7 +179,8 @@ from [Inkscape](https://inkscape.org/)
 
 from [MSYS2 Packages](https://packages.msys2.org/)
 
-make.exe と実行に必要な DLL を MSYS2 MinGW パッケージから取得します。mingw32-make.exe を make.exe に名前を変更して配置します。
+make.exe と実行に必要な DLL を MSYS2 MinGW パッケージから取得します。
+mingw32-make.exe のファイル名を make.exe に変更して配置します。
 
 - [mingw-w64-x86_64-gcc-libs](https://packages.msys2.org/packages/mingw-w64-x86_64-gcc-libs) (GCC ランタイム DLL)
     - [mingw-w64-x86_64-gcc-libs-16.1.0-2-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-16.1.0-2-any.pkg.tar.zst)
@@ -184,7 +195,8 @@ make.exe と実行に必要な DLL を MSYS2 MinGW パッケージから取得�
 
 from [MSYS2 Packages](https://packages.msys2.org/)
 
-iconv.exe を MSYS2 MinGW パッケージから取得します。実行に必要な `libiconv-2.dll` は GNU Make の依存として配置済みです。
+iconv.exe を MSYS2 MinGW パッケージから取得します。
+実行に必要な `libiconv-2.dll` は GNU Make の依存関係として配置済みです。
 
 - [mingw-w64-x86_64-iconv](https://packages.msys2.org/packages/mingw-w64-x86_64-iconv) (iconv コマンド)
     - [mingw-w64-x86_64-iconv-1.19-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-iconv-1.19-1-any.pkg.tar.zst)
@@ -206,7 +218,8 @@ from [lexxmark/winflexbison](https://github.com/lexxmark/winflexbison)
 - [/releases/tag/v2.5.25](https://github.com/lexxmark/winflexbison/releases/tag/v2.5.25)
     - [win_flex_bison-2.5.25.zip](https://github.com/lexxmark/winflexbison/releases/download/v2.5.25/win_flex_bison-2.5.25.zip)
 
-ZIP アーカイブを `bin\winflexbison` に展開し、同じディレクトリへ `flex.exe` と `bison.exe` の別名コピーを配置します。bison が参照する `data/` は実行ファイルと同じ場所に保持します。
+ZIP アーカイブを `bin\winflexbison` に展開し、同一ディレクトリへ `flex.exe` と `bison.exe` の別名コピーを配置します。
+bison が参照する `data/` は実行ファイルと同じ場所に保持します。
 
 ### clang-format
 
@@ -294,7 +307,10 @@ from [github/copilot-cli](https://github.com/github/copilot-cli)
 - [/releases/tag/v1.0.81](https://github.com/github/copilot-cli/releases/tag/v1.0.81)
     - [copilot-win32-x64.zip](https://github.com/github/copilot-cli/releases/download/v1.0.81/copilot-win32-x64.zip)
 
-Windows 版は PowerShell 6 以降が必要です。devbin-win では PowerShell 7 を依存コンポーネントとして導入します。Copilot CLI は既定では選択されていないため、コンポーネント マネージャーで選択して導入してください。利用には GitHub Copilot の契約と初回認証 (`copilot login`) が必要です。
+Windows 版は PowerShell 6 以降が必要です。
+devbin-win では PowerShell 7 を依存コンポーネントとして導入します。
+Copilot CLI は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
+利用には GitHub Copilot の契約と初回認証 (`copilot login`) が必要です。
 
 ### GitLab CLI
 

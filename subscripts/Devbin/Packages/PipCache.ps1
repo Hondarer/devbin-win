@@ -1,8 +1,8 @@
 ﻿# PipCache.ps1
-# pip wheel キャッシュの取得と検証
+# pip wheel キャッシュのダウンロードおよび整合性検証
 
-# pip download で wheel を取得する
-# 戻り値: pip の終了コード
+# pip download コマンドを実行してバイナリ wheel を取得
+# 戻り値: pip プロセスの終了コード
 function Save-PipWheelPackages {
     param(
         [string]$PythonCommandPath,
@@ -28,11 +28,11 @@ function Save-PipWheelPackages {
     $pipArgs += @("--dest", $DestinationDir)
 
     & $PythonCommandPath @pipArgs | Out-Host
-    # 外部コマンドの終了コードは実行直後に確認する
+    # 外部プロセスの終了コード ($LASTEXITCODE) を直ちに返却
     return $LASTEXITCODE
 }
 
-# packages.psd1 の python 定義からターゲットの Python 版 (major.minor) を求める
+# packages.psd1 の python 定義から対象 Python バージョン (メジャー.マイナー) を抽出
 function Get-TargetPythonVersion {
     param([array]$Packages)
 
@@ -48,9 +48,9 @@ function Get-TargetPythonVersion {
     return "$($versionParts[0]).$($versionParts[1])"
 }
 
-# wheel キャッシュを取得して検証する
-# IncludeCorePackages は Python 初期設定に必要な wheel を対象へ加える
-# 戻り値: Success / Skipped / Missing / Message
+# wheel キャッシュの取得および存在検証を実行
+# IncludeCorePackages 指定時は Python 初期セットアップ用コア wheel を取得対象に追加
+# 戻り値: Success / Skipped / Missing / Message を持つ結果オブジェクト
 function Invoke-PipWheelDownload {
     param(
         [array]$Packages,

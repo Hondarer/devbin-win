@@ -1,8 +1,8 @@
 ﻿# ArchivePackage.ps1
-# アーカイブパッケージの取得対象の選択、取得、旧ファイルの整理
+# アーカイブパッケージの取得対象絞り込み、ダウンロード実行、および旧世代資材のクリーンアップ
 
-# 取得対象のパッケージを ShortName で絞り込む
-# 指定が無ければ全件を返す。未定義の ShortName は例外にする
+# ShortName に基づいて取得対象パッケージを絞り込み
+# 引数未指定時は全件を返却。未定義の ShortName が指定された場合は例外を送出
 function Select-TargetPackages {
     param(
         [array]$Packages,
@@ -16,7 +16,7 @@ function Select-TargetPackages {
     $targets = @()
     $seen = @{}
 
-    # cmd 経由の powershell.exe -File はカンマ区切りを単一文字列として渡す。
+    # cmd 経由の powershell.exe -File 実行時にカンマ区切りが単一文字列として渡されるケースに対応
     foreach ($shortName in @($ShortNames | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() })) {
         if ([string]::IsNullOrWhiteSpace($shortName)) { continue }
         if ($seen.ContainsKey($shortName)) { continue }
@@ -33,7 +33,7 @@ function Select-TargetPackages {
     return @($targets)
 }
 
-# DownloadUrl を持つパッケージから取得対象の一覧を作る
+# DownloadUrl が定義されたパッケージからダウンロード対象オブジェクト配列を生成
 function Get-ArchiveDownloadTargets {
     param([array]$Packages)
 
@@ -51,7 +51,7 @@ function Get-ArchiveDownloadTargets {
     return @($targets)
 }
 
-# 過去バージョンのファイルと、不要になった元ファイル名を削除する
+# 過去バージョンのアーカイブファイルおよび不要になったベースファイル名を削除
 function Remove-OldPackageFiles {
     param(
         [hashtable]$Package,
@@ -98,9 +98,9 @@ function Remove-OldPackageFiles {
     }
 }
 
-# アーカイブを取得する
-# 取得に成功したものだけ旧ファイルを整理する (失敗時は旧資材を保持する)
-# 戻り値: Success / SuccessCount / TotalCount / FailedShortNames
+# アーカイブパッケージのダウンロードを実行
+# ダウンロード成功時のみ旧世代ファイルを削除 (失敗時は既存資材を保持)
+# 戻り値: Success / SuccessCount / TotalCount / FailedShortNames を持つ結果オブジェクト
 function Invoke-ArchiveDownload {
     param(
         [array]$Targets,

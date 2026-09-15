@@ -1,15 +1,15 @@
 ﻿# Get-Packages.ps1
-# packages ディレクトリにパッケージを取得するスクリプト
+# packages ディレクトリへ各種パッケージアーカイブをダウンロード・配置するスクリプト
 #
-# 引数処理とモジュール呼び出し、終了コードへの変換だけを行う。
-# 取得・検証・旧ファイル整理の実装は Devbin/Packages にある。
+# パラメーターの解析、内部モジュールの呼び出し、および終了コードの返却を行います。
+# パッケージの取得・検証・旧バージョン整理の実処理は Devbin/Packages モジュールが担当します。
 
 param(
     [switch]$Force = $false,
     [string[]]$PackageShortNames = @()
 )
 
-# スクリプトのディレクトリを取得
+# スクリプトの格納先ディレクトリを取得
 $ScriptDir = if ($PSScriptRoot) {
     $PSScriptRoot
 } elseif ($MyInvocation.MyCommand.Path) {
@@ -18,7 +18,7 @@ $ScriptDir = if ($PSScriptRoot) {
     Get-Location | Select-Object -ExpandProperty Path
 }
 
-# Devbin モジュールを読み込む
+# Devbin モジュールをインポート
 try {
     Import-Module (Join-Path $ScriptDir "Devbin") -Force -ErrorAction Stop
 } catch {
@@ -28,7 +28,7 @@ try {
 
 $DevbinContext = New-DevbinContext -SubscriptsDir $ScriptDir
 
-# パッケージ設定を読み込む
+# パッケージ定義の読み込み
 $catalog = Import-PackageCatalog -Path $DevbinContext.ConfigPath
 if (-not $catalog.Success) {
     Write-Host "Error: パッケージ定義に問題があります" -ForegroundColor Red

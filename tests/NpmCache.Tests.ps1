@@ -1,10 +1,10 @@
 ﻿# NpmCache.Tests.ps1
-# npm オフラインキャッシュの検証 (Get-NpmCacheStatus) の回帰テスト
+# npm オフラインキャッシュの検証処理 (Get-NpmCacheStatus) に関する回帰テスト
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
 
-# 検証を通る最小構成のキャッシュを組み立てる
+# 検証に合格する最小構成のテスト用キャッシュを生成します。
 function New-TestNpmCache {
     param(
         [string]$PackagesDir,

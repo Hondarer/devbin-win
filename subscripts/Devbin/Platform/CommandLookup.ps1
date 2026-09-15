@@ -1,7 +1,7 @@
 ﻿# CommandLookup.ps1
-# コマンドの実体解決と存在判定
+# コマンドの実体解決および存在確認
 
-# コマンド情報から実体パスを取得する
+# コマンド情報オブジェクトから実行ファイルの実体パスを取得
 function Get-CommandSourcePath {
     param(
         [System.Management.Automation.CommandInfo]$CommandInfo
@@ -22,7 +22,7 @@ function Get-CommandSourcePath {
     return $null
 }
 
-# PATH 比較用にディレクトリ文字列を正規化する
+# PATH 比較用にディレクトリパス文字列を正規化
 function Get-NormalizedPathString {
     param(
         [string]$PathValue
@@ -50,7 +50,7 @@ function Get-NormalizedPathString {
     return $normalized
 }
 
-# Python コマンド候補が実体を持つかどうかを判定する
+# Python コマンド候補が実体を持つ有効なインストールかを判定 (Windows Store プロキシの除外)
 function Test-PythonCommandCandidate {
     param(
         [string]$CommandPath
@@ -104,7 +104,7 @@ function Test-PythonCommandCandidate {
     }
 }
 
-# コマンド候補が有効かどうかを判定する
+# コマンド候補が有効に機能するかを判定
 function Test-CommandCandidate {
     param(
         [string]$CommandName,
@@ -122,7 +122,7 @@ function Test-CommandCandidate {
     return $true
 }
 
-# PATH 上の有効なコマンド候補を列挙する
+# PATH 上の有効なコマンド候補を列挙
 function Get-ValidCommandCandidates {
     param(
         [string]$CommandName
@@ -131,7 +131,7 @@ function Get-ValidCommandCandidates {
     return @(Get-Command $CommandName -All -ErrorAction SilentlyContinue)
 }
 
-# コマンドが PATH で既に利用可能かどうかをチェックする
+# コマンドが PATH 上で利用可能であるかを確認
 function Test-CommandExists {
     param([string]$CommandName)
 
@@ -144,7 +144,7 @@ function Test-CommandExists {
     return $false
 }
 
-# devbin-win 外部のコマンドが利用可能かどうかをチェックする
+# devbin-win の管理外で外部コマンドが利用可能かを確認
 function Test-ExternalCommandExists {
     param(
         [string]$CommandName,

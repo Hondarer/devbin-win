@@ -1,7 +1,7 @@
 ﻿# ComponentStatus.ps1
-# 版の比較と、コンポーネントの総合ステータス判定
+# バージョン比較ロジックおよびコンポーネントの総合状態判定
 
-# バージョン文字列を比較用トークンに分割する
+# バージョン文字列を比較用トークン配列へ分割
 function Get-VersionTokens {
     param([string]$Version)
 
@@ -17,8 +17,8 @@ function Get-VersionTokens {
     return @($tokens)
 }
 
-# バージョン文字列を比較する
-# 戻り値: 1 (左が新しい), 0 (同じ), -1 (右が新しい), $null (比較不能)
+# 2 つのバージョン文字列をセマンティックに比較
+# 戻り値: 1 (左辺が新しい)、0 (等しい)、-1 (右辺が新しい)、$null (比較不能)
 function Compare-PackageVersion {
     param(
         [string]$LeftVersion,
@@ -88,7 +88,7 @@ function Compare-PackageVersion {
     return 0
 }
 
-# パッケージ定義のバージョンがインストール済みバージョンより新しいかを確認する
+# パッケージ定義のバージョンがインストール済みバージョンより新しいかを判定
 function Test-ComponentUpdateable {
     param(
         [hashtable]$Manifest,
@@ -113,7 +113,7 @@ function Test-ComponentUpdateable {
     return $comparison -eq 1
 }
 
-# コンポーネントの総合ステータスを返す: Installed / Updateable / NotInstalled / Broken / Legacy
+# コンポーネントの総合状態を判定 (戻り値: Installed / Updateable / NotInstalled / Broken / Legacy)
 function Get-ComponentStatus {
     param(
         [hashtable]$Manifest,
@@ -125,7 +125,7 @@ function Get-ComponentStatus {
     $shortName = $PackageConfig.ShortName
     $inManifest = Test-ComponentInstalled -Manifest $Manifest -ShortName $shortName
 
-    # DetectFiles が未指定の場合はマニフェストのみで判断
+    # DetectFiles が未指定の場合はマニフェストの登録情報のみで判定
     $detectFiles = if ($PackageConfig.ContainsKey("DetectFiles")) { @($PackageConfig.DetectFiles) } else { @() }
 
     if ($inManifest) {
@@ -145,7 +145,7 @@ function Get-ComponentStatus {
             return "Broken"
         }
     } else {
-        # マニフェストにないがファイルが存在する = レガシーインストール
+        # マニフェスト未登録かつファイルが存在する場合はレガシー導入状態と判定
         if ($detectFiles.Count -gt 0) {
             $filesExist = Test-ComponentFiles -InstallDir $InstallDir -DetectFiles $detectFiles
             if ($filesExist) {

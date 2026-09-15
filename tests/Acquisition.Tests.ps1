@@ -1,6 +1,6 @@
 ﻿# Acquisition.Tests.ps1
-# 取得処理 (対象選択・取得・検証・旧ファイル整理) のテスト
-# 通信は行わず、Save-DownloadedFile をモックする
+# パッケージ取得処理 (対象選択、取得、検証、旧ファイル整理) のテスト
+# 外部通信は行わず、Save-DownloadedFile をモックして検証します。
 
 . (Join-Path $PSScriptRoot "TestHelpers.ps1")
 Import-DevbinModules
@@ -399,7 +399,7 @@ Describe "取得処理の一本化" {
         $source = ((Get-ChildItem $installDir -Filter "*.ps1" | ForEach-Object { Get-Content $_.FullName -Raw }) -join "`n")
 
         ($source -match "Invoke-PackageAcquisition") | Should Be $true
-        # 案内メッセージ以外で取得スクリプトを起動していないこと
+        # 案内メッセージ出力以外のパッケージ取得処理が自動実行されていないことを確認します。
         ($source -match 'getPackagesScript') | Should Be $false
     }
 
