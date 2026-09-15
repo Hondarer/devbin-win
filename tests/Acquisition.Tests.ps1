@@ -311,10 +311,14 @@ param(
     [string]$Target,
     [string]$HostArch,
     [string]$OutputPath,
+    [string]$DownloadsPath,
     [switch]$AcceptLicense,
+    [switch]$OfflineMode,
     [switch]$SkipDevbinModuleImport
 )
 $global:DevbinTestVsbtExtractSkippedImport = [bool]$SkipDevbinModuleImport
+$global:DevbinTestVsbtExtractOfflineMode = [bool]$OfflineMode
+$global:DevbinTestVsbtExtractDownloadsPath = [string]$DownloadsPath
 '@
             Set-Content -LiteralPath (Join-Path $dir "Setup-VSBT.ps1") -Value $fakeScript -Encoding UTF8
             $global:DevbinTestVsbtExtractSkippedImport = $false
@@ -340,12 +344,31 @@ $global:DevbinTestVsbtExtractSkippedImport = [bool]$SkipDevbinModuleImport
             }
 
             $global:DevbinTestVsbtExtractSkippedImport | Should Be $true
+            $global:DevbinTestVsbtExtractOfflineMode | Should Be $false
+            $expectedDownloads = Join-Path (Split-Path -Parent $dir) "packages\vsbt"
+            $global:DevbinTestVsbtExtractDownloadsPath | Should Be $expectedDownloads
         } finally {
             Remove-Variable -Name DevbinTestVsbtExtractSkippedImport -Scope Global -ErrorAction SilentlyContinue
+            Remove-Variable -Name DevbinTestVsbtExtractOfflineMode -Scope Global -ErrorAction SilentlyContinue
+            Remove-Variable -Name DevbinTestVsbtExtractDownloadsPath -Scope Global -ErrorAction SilentlyContinue
             Remove-Variable -Name DevbinTestVsbtExtractDir -Scope Global -ErrorAction SilentlyContinue
             Remove-Variable -Name DevbinTestVsbtExtractConfig -Scope Global -ErrorAction SilentlyContinue
             Remove-TestDirectory -Path $dir
         }
+    }
+
+    It "マニフェスト取得は終了エラーにしない" {
+        $vsbtPath = Join-Path (Get-DevbinSubscriptsDir) "Setup-VSBT.ps1"
+        $source = Get-Content -LiteralPath $vsbtPath -Raw
+        $extractPath = Join-Path (Get-DevbinSubscriptsDir) "Devbin\Extract\InstallerStrategy.ps1"
+        $extractSource = Get-Content -LiteralPath $extractPath -Raw
+
+        ($source -match 'function Get-VsbtRemoteJson') | Should Be $true
+        ($source -match 'Invoke-RestMethod -Uri \$Uri -UseBasicParsing -ErrorAction SilentlyContinue') | Should Be $true
+        ($source -match 'Invoke-RestMethod -Uri \$MANIFEST_URL -UseBasicParsing -ErrorAction Stop') | Should Be $false
+        ($source -match '\$preferCache = \$OfflineMode -or \(\$cacheReady -and -not \$DownloadOnly\)') | Should Be $true
+        ($source -match 'Failed to download VSBT manifest from \$MANIFEST_URL and no cached manifest was found') | Should Be $true
+        ($extractSource -match 'OfflineMode\s*=\s*\$true') | Should Be $false
     }
 
     It "単独実行では従来どおり Devbin を Force インポートする" {

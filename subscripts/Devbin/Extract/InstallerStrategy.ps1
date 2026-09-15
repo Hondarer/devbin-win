@@ -134,6 +134,7 @@ function Invoke-VSBuildToolsExtract {
 
     $vsbtConfig = $Config.VSBTConfig
     $outputPath = Join-Path $BinDir $Config.ExtractedName
+    $downloadsPath = Join-Path (Split-Path -Parent $ScriptDir) "packages\vsbt"
 
     $params = @{
         MSVCVersion = $vsbtConfig.MSVCVersion
@@ -141,6 +142,7 @@ function Invoke-VSBuildToolsExtract {
         Target = $vsbtConfig.Target
         HostArch = $vsbtConfig.HostArch
         OutputPath = $outputPath
+        DownloadsPath = $downloadsPath
         AcceptLicense = $true
         SkipDevbinModuleImport = $true
     }

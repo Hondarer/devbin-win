@@ -147,6 +147,24 @@ function Write-ColorMessage {
     Write-Host $Message -ForegroundColor $Color
 }
 
+# aka.ms が解決できないとき、Stop だと Transcript に終了エラーが残る
+function Get-VsbtRemoteJson {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Uri
+    )
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    try {
+        return Invoke-RestMethod -Uri $Uri -UseBasicParsing -ErrorAction SilentlyContinue
+    } catch {
+        return $null
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
 function Get-FileHash256 {
     param([byte[]]$Data)
     
@@ -301,16 +319,22 @@ try {
     $manifestCachePath = Join-Path $DownloadsPath "manifest_$manifestType.json"
 
     # Download manifest
+    # 導入でキャッシュが揃っているときはネットに出ない (完全オフラインで赤字を出さない)。
+    # 取得 (-DownloadOnly) は従来どおり更新を試み、失敗時だけキャッシュへ退く。
+    # キャッシュも無く取得にも失敗したら想定外なので終了する。
     $channelData = $null
     $vsManifest = $null
     $useCache = $false
+    $cacheReady = (Test-Path -LiteralPath $channelCachePath) -and (Test-Path -LiteralPath $manifestCachePath)
+    $preferCache = $OfflineMode -or ($cacheReady -and -not $DownloadOnly)
 
-    if (-not $OfflineMode) {
-        try {
-            Write-ColorMessage "`nChecking manifest..."
-            $channelData = Invoke-RestMethod -Uri $MANIFEST_URL -UseBasicParsing -ErrorAction Stop
-
-            # Save channel data to cache
+    if ($preferCache) {
+        Write-ColorMessage "`nUsing cached manifest..."
+        $useCache = $true
+    } else {
+        Write-ColorMessage "`nChecking manifest..."
+        $channelData = Get-VsbtRemoteJson -Uri $MANIFEST_URL
+        if ($channelData) {
             $channelData | ConvertTo-Json -Depth 100 | Set-Content -Path $channelCachePath -Encoding UTF8
 
             $itemName = if ($Preview) {
@@ -320,25 +344,32 @@ try {
             }
 
             $vsItem = $channelData.channelItems | Where-Object { $_.id -eq $itemName } | Select-Object -First 1
-            $manifestUrl = $vsItem.payloads[0].url
+            $manifestUrl = $null
+            if ($vsItem -and $vsItem.payloads) {
+                $payload = @($vsItem.payloads)[0]
+                if ($payload) {
+                    $manifestUrl = [string]$payload.url
+                }
+            }
 
-            $vsManifest = Invoke-RestMethod -Uri $manifestUrl -UseBasicParsing -ErrorAction Stop
+            if ($manifestUrl) {
+                $vsManifest = Get-VsbtRemoteJson -Uri $manifestUrl
+            }
+        }
 
-            # Save manifest to cache
+        if ($channelData -and $vsManifest) {
             $vsManifest | ConvertTo-Json -Depth 100 | Set-Content -Path $manifestCachePath -Encoding UTF8
-
-        } catch {
+        } elseif ($cacheReady) {
             Write-ColorMessage "Failed to download manifest. Checking cache..."
             $useCache = $true
+        } else {
+            throw "Failed to download VSBT manifest from $MANIFEST_URL and no cached manifest was found."
         }
-    } else {
-        Write-ColorMessage "`nOffline mode: Using cached manifest..."
-        $useCache = $true
     }
 
     # Load from cache
     if ($useCache) {
-        if ((Test-Path $channelCachePath) -and (Test-Path $manifestCachePath)) {
+        if ((Test-Path -LiteralPath $channelCachePath) -and (Test-Path -LiteralPath $manifestCachePath)) {
             Write-ColorMessage "Loading manifest from cache..."
             $channelData = Get-Content -Path $channelCachePath -Encoding UTF8 | ConvertFrom-Json
             $vsManifest = Get-Content -Path $manifestCachePath -Encoding UTF8 | ConvertFrom-Json
