@@ -1,5 +1,5 @@
 ﻿# MinGW PATH 動的削除スクリプト (PowerShell)
-# Git MinGW バイナリを現在のセッションの PATH から削除します
+# Git MinGW バイナリを現在のセッションの PATH から削除します。
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $baseDir = $scriptDir
@@ -23,14 +23,14 @@ foreach ($entry in $currentPathEntries) {
         }
     }
     
-    # 削除対象でない場合、かつ空でない場合のみ追加
+    # 削除対象ではなく、かつ空文字でないエントリのみ保持
     if (-not $shouldRemove -and $entry.Trim() -ne "") {
         $newPathEntries += $entry
     }
 }
 
 if ($pathChanged) {
-    # 新しい PATH を設定
+    # フィルタリング後の新しい PATH を環境変数に設定
     $env:PATH = $newPathEntries -join ';'
     Write-Host "MinGW PATH removal completed."
 } else {

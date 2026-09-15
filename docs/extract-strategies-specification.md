@@ -2,14 +2,23 @@
 
 ## 概要
 
-Extract Strategies (抽出戦略) は、パッケージのアーカイブファイルを展開し、bin ディレクトリに配置する際の処理パターンを定義したものです。各戦略は Setup-Strategies.psm1 に実装されており、packages.psd1 の `ExtractStrategy` プロパティで指定されます。
+Extract Strategies (抽出戦略) は、パッケージのアーカイブ ファイルを展開し、bin ディレクトリに配置する際の処理パターンを定義したものです。
+各戦略は `subscripts/Devbin/Extract` に実装されており、`packages.psd1` の `ExtractStrategy` プロパティで指定されます。
 
 定義駆動アーキテクチャの中核を担い、新しい戦略を追加することで、複数のパッケージに適用可能な処理パターンを標準化できます。
 
 ## 実装の場所
 
 ```text
-subscripts/Setup-Strategies.psm1
+subscripts/Devbin/Extract/
++- ArchiveExtraction.ps1        (共通の展開処理)
++- StandardStrategy.ps1         (Standard)
++- SubdirectoryStrategy.ps1     (Subdirectory, SubdirectoryToTarget)
++- TargetDirectoryStrategy.ps1  (VersionNormalized, TargetDirectory)
++- ExecutableStrategy.ps1       (JarWithWrapper, SingleExecutable)
++- InstallerStrategy.ps1        (SelfExtractingArchive, InnoSetup, VSBuildTools)
++- PackageManagerStrategy.ps1   (PipInstall, NpmInstall)
++- ExtractStrategy.ps1          (戦略の呼び分け)
 ```
 
 ## 戦略一覧
@@ -24,18 +33,19 @@ subscripts/Setup-Strategies.psm1
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
-| InnoSetup | innoextract で Inno Setup インストーラを解凍 | OpenCppCoverage |
+| InnoSetup | innoextract で Inno Setup インストーラーを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 | PipInstall | python -m pip install でパッケージをインストール | yamllint |
-| NpmInstall | 検証済み依存木を npm のオフライン一時 prefix へ展開 | pnpm, @antfu/ni |
+| NpmInstall | 検証済み依存ツリーを npm のオフライン一時 prefix へ展開 | pnpm, @antfu/ni |
 
 ## 共通関数
 
-Setup-Strategies.psm1 では、複数の戦略で共有される共通関数を提供しています。
+`ArchiveExtraction.ps1` では、複数の戦略で共有される共通関数を提供しています。
 
 ### Unblock-ArchiveFile
 
-アーカイブファイルをブロック解除します。ダウンロードしたファイルに付加される Zone.Identifier を削除します。
+アーカイブ ファイルのブロックを解除します。
+ダウンロードしたファイルに付加される Zone.Identifier 代替データ ストリームを削除します。
 
 ```powershell
 function Unblock-ArchiveFile {
@@ -46,7 +56,8 @@ function Unblock-ArchiveFile {
 
 ### Expand-ArchiveToTemp
 
-アーカイブを一時ディレクトリに展開します。ZIP、7z、zstd 圧縮 tar (.pkg.tar.zst)、xz 圧縮 tar (.tar.xz) 形式をサポートします。
+アーカイブを一時ディレクトリに展開します。
+ZIP、7z、zstd 圧縮 tar (.pkg.tar.zst)、および xz 圧縮 tar (.tar.xz) 形式に対応しています。
 
 ```powershell
 function Expand-ArchiveToTemp {
@@ -60,7 +71,8 @@ function Expand-ArchiveToTemp {
 
 ### Get-ExtractedSourcePath
 
-展開されたアーカイブの実際のソースパスを取得します。単一フォルダの場合はそのフォルダを、複数フォルダまたはファイルのみの場合は TempDir を返します。
+展開されたアーカイブの実際のソース パスを取得します。
+単一フォルダーの場合はそのフォルダー パスを返し、複数フォルダーまたはファイルのみで構成される場合は TempDir を返します。
 
 ```powershell
 function Get-ExtractedSourcePath {
@@ -75,7 +87,7 @@ function Get-ExtractedSourcePath {
 
 ZIP を展開し、すべてのファイルを bin ディレクトリに配置します。
 
-#### パラメータ
+#### パラメーター
 
 なし (共通プロパティのみ)
 
@@ -104,11 +116,12 @@ Node.js, Pandoc, pandoc-crossref, Doxygen
 
 ### Subdirectory 戦略
 
-アーカイブを展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) や tar.xz 形式にも対応しています。
+アーカイブの展開後、指定されたサブディレクトリの内容のみを bin ディレクトリに配置します。
+ZIP に加え、MSYS2 パッケージ形式 (.pkg.tar.zst) や tar.xz 形式にも対応しています。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | ExtractPath | 抽出するサブディレクトリのパス | string | ✅ |
 | FilePattern | 抽出するファイル名のパターン (正規表現) | string | ❌ |
@@ -184,9 +197,10 @@ RenameFiles を使用してファイル名を変更する例:
 }
 ```
 
-この例では、`mingw32-make.exe` が `make.exe` にリネームされて bin ディレクトリに配置されます。
+この例では、`mingw32-make.exe` のファイル名を `make.exe` に変更して bin ディレクトリに配置します。
 
-MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。`Get-ExtractedSourcePath` が `mingw64` を単一フォルダとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
+MSYS2 パッケージは展開すると `mingw64/` をルートとするディレクトリ構造になります。
+`Get-ExtractedSourcePath` が `mingw64` を単一フォルダーとして認識するため、`ExtractPath` には `mingw64` を含めず、その配下のパス (例: `"bin"`) を指定します。
 
 tar.xz アーカイブと PostSetupScript を使用した例:
 
@@ -203,7 +217,7 @@ tar.xz アーカイブと PostSetupScript を使用した例:
 }
 ```
 
-この例では、大きな LLVM アーカイブから 3 ファイルのみを抽出し、`clang-format-setup.ps1` で `git-clang-format.bat` 内の `py` コマンドを `python3` に置換します。
+この例では、大規模な LLVM アーカイブから 3 ファイルのみを抽出し、`clang-format-setup.ps1` で `git-clang-format.bat` 内の `py` コマンドを `python3` に置換します。
 
 #### 適用パッケージ
 
@@ -211,11 +225,12 @@ nkf, CMake, GNU Make, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, 
 
 ### SubdirectoryToTarget 戦略
 
-ZIP を展開後、指定されたサブディレクトリの内容を指定のターゲットディレクトリに配置します。Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin 内の特定のサブディレクトリになる点です。
+ZIP を展開後、指定されたサブディレクトリの内容を指定のターゲット ディレクトリに配置します。
+Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin 内の特定のサブディレクトリになる点です。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | ExtractPath | 抽出するサブディレクトリのパス | string | ✅ |
 | TargetDirectory | 配置先のディレクトリ名 (bin からの相対パス) | string | ✅ |
@@ -243,7 +258,8 @@ ZIP を展開後、指定されたサブディレクトリの内容を指定の�
 }
 ```
 
-この例では、アーカイブ内の `bin` フォルダが `bin/graphviz` に配置されます。FFmpeg も同じ戦略で、アーカイブ内の `bin` フォルダを `bin/ffmpeg` に配置します。
+この例では、アーカイブ内の `bin` フォルダーが `bin/graphviz` に配置されます。
+FFmpeg も同一の戦略により、アーカイブ内の `bin` フォルダーを `bin/ffmpeg` に配置します。
 
 #### 適用パッケージ
 
@@ -251,11 +267,12 @@ Graphviz, FFmpeg
 
 ### VersionNormalized 戦略
 
-ZIP を展開後、バージョン番号を含むディレクトリ名を正規化します。パッケージのバージョンが変わっても、一貫したディレクトリ名を維持できます。
+ZIP を展開後、バージョン番号を含むディレクトリ名を正規化します。
+パッケージのバージョンが更新された場合でも、一貫したディレクトリ名を維持できます。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | VersionPattern | バージョン番号を抽出する正規表現 | string | ✅ |
 | TargetDirectory | ターゲットディレクトリ名 (プレースホルダー `{0}` にバージョンが埋め込まれる) | string | ✅ |
@@ -293,9 +310,9 @@ Microsoft JDK
 
 ZIP を展開後、指定されたディレクトリ名で配置します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | TargetDirectory | ターゲットディレクトリ名 | string | ✅ |
 | UseLongPathSupport | 長いパス対応を有効化 | bool | ❌ |
@@ -314,7 +331,7 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
 
 #### PostExtract サポート
 
-PostExtract では以下の後処理がサポートされています。
+PostExtract では次の後処理をサポートしています。
 
 - `CreateDirectories`: ディレクトリ作成
   ```powershell
@@ -331,7 +348,9 @@ PostExtract では以下の後処理がサポートされています。
   )
   ```
 
-`CopyFiles.Source` の相対パスは、まずリポジトリルートを基準に解決されます。見つからない場合は、既存定義との互換性のため現在の作業ディレクトリを基準に解決します。Portable Git の MinGW PATH スクリプトなど、リポジトリで管理する追加ファイルは `subscripts` を正本として指定します。
+`CopyFiles.Source` の相対パスは、まずリポジトリ ルートを基準に解決されます。
+ファイルが検出されない場合は、既存定義との互換性を保つため、現在の作業ディレクトリを基準に解決します。
+Portable Git の MinGW PATH スクリプトなど、リポジトリで管理する追加ファイルは `subscripts` を正本として指定します。
 
 #### 使用例
 
@@ -384,9 +403,9 @@ PostSetupScript を使用した例:
 
 JAR ファイルをコピーし、実行用の cmd ラッパースクリプトを生成します。Java アプリケーションの実行を簡素化します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | JarName | JAR ファイル名 | string | ✅ |
 | WrapperName | ラッパースクリプト名 | string | ✅ |
@@ -430,9 +449,9 @@ PlantUML
 
 実行ファイルを直接 bin ディレクトリにコピーします。アーカイブではなく、単一の実行ファイルをダウンロードする場合に使用します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | TargetName | コピー先のファイル名 | string | ❌ |
 
@@ -462,9 +481,9 @@ NuGet, cloc, vswhere
 
 自己解凍実行ファイルを実行して展開します。7z.exe や Setup.exe などの自己解凍アーカイブに対応します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | TargetDirectory | 展開先ディレクトリ名 | string | ✅ |
 | ExtractArgs | 実行時の引数 | string | ✅ |
@@ -508,24 +527,26 @@ Portable Git
 
 ### InnoSetup 戦略
 
-innoextract を使用して Inno Setup インストーラを解凍します。Inno Setup で作成されたインストーラからファイルを抽出します。
+`innoextract` を使用して Inno Setup インストーラーを展開します。
+Inno Setup で作成されたインストーラーからファイルを抽出します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
-| ExtractPath | 解凍後に抽出するサブディレクトリのパス | string | ✅ |
+| ExtractPath | 展開後に抽出するサブディレクトリのパス | string | ✅ |
 | TargetDirectory | 配置先のディレクトリ名 (bin からの相対パス) | string | ✅ |
 
 #### 処理フロー
 
-1. bin ディレクトリ内の innoextract.exe を使用してインストーラを一時ディレクトリに解凍
+1. bin ディレクトリ内の innoextract.exe を使用してインストーラーを一時ディレクトリに展開
 2. ExtractPath で指定されたサブディレクトリを特定
 3. TargetDirectory で指定された名前のディレクトリとして bin に配置
 
 #### 依存関係
 
-innoextract パッケージが先にインストールされている必要があります。packages.psd1 での定義順序により、この依存関係は自動的に満たされます。
+`innoextract` パッケージが事前にインストールされている必要があります。
+`packages.psd1` における定義順序により、この依存関係は自動的に満たされます。
 
 #### 使用例
 
@@ -541,7 +562,7 @@ innoextract パッケージが先にインストールされている必要が�
 }
 ```
 
-この例では、Inno Setup インストーラから `app` フォルダが抽出され、`bin/OpenCppCoverage` に配置されます。
+この例では、Inno Setup インストーラーから `app` フォルダーが抽出され、`bin/OpenCppCoverage` に配置されます。
 
 #### 適用パッケージ
 
@@ -549,11 +570,12 @@ OpenCppCoverage
 
 ### VSBuildTools 戦略
 
-Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアップします。MSVC と Windows SDK をポータブル形式でダウンロード・展開します。
+`Setup-VSBT.ps1` を呼び出して Visual Studio Build Tools をセットアップします。
+MSVC と Windows SDK をポータブル形式でダウンロードおよび展開します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | DisplayName | 表示名 | string | ✅ |
 | ExtractedName | 展開先ディレクトリ名 | string | ✅ |
@@ -601,11 +623,12 @@ Visual Studio Build Tools
 
 ### PipInstall 戦略
 
-`python -m pip install` を実行して Python パッケージをインストールします。アーカイブファイルを使わず、`packages/pip-packages/` の wheel を正本として読み込みます。
+`python -m pip install` を実行して Python パッケージをインストールします。
+アーカイブ ファイルを使用せず、`packages/pip-packages/` の wheel を正本として読み込みます。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | PipPackage | pip パッケージ名 | string | ✅ |
 | PipDependencies | オフライン用に一緒に取得・確認する pip 依存パッケージ名 | string[] | ❌ |
@@ -616,11 +639,13 @@ Visual Studio Build Tools
 1. `$BinDir\python-3.13\python.exe` を特定
 2. `packages\pip-packages\` に `PipPackage` と `PipDependencies` の wheel が揃っていることを確認
 3. `--no-index --find-links` でオフラインインストール
-4. wheel が不足していれば PyPI へ直接 fallback せずエラー
+4. wheel が不足している場合は PyPI へ直接フォールバックせずエラー終了
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に Python が利用可能であれば、`PipPackage` と `PipDependencies` の wheel が `packages/pip-packages/` に保存されます。インストール時に不足があれば `Get-Packages.ps1` で取得を試み、取得後も不足する場合はエラーで停止します。`PipInstall` は PyPI への直接 fallback は行いません。
+`Get-Packages.ps1` 実行時に Python が利用可能であれば、`PipPackage` と `PipDependencies` の wheel が `packages/pip-packages/` に保存されます。
+インストール時に不足している場合は `Get-Packages.ps1` による取得を試行し、取得後も不足する場合はエラーで停止します。
+`PipInstall` は PyPI への直接フォールバックを行いません。
 
 #### 使用例
 
@@ -644,15 +669,16 @@ yamllint
 
 ### NpmInstall 戦略
 
-検証済み依存木を一時プロジェクトへ `npm install --offline` し、生成された `node_modules` と command shim を devbin-win のインストール先へマージします。npm パッケージは ShortName ごとの dependency tree cache から、常にオフラインで導入します。
+検証済みの依存関係ツリーを一時プロジェクトへ `npm install --offline` でインストールし、生成された `node_modules` とコマンド shim を devbin-win のインストール先へマージします。
+npm パッケージは ShortName ごとの依存関係ツリー キャッシュから、常にオフラインで導入します。
 
-#### パラメータ
+#### パラメーター
 
-| パラメータ | 説明 | 型 | 必須 |
+| パラメーター | 説明 | 型 | 必須 |
 |-----------|------|-----|------|
 | NpmPackage | npm パッケージ名 | string | ✅ |
 | Version | インストールするバージョン (指定時は `@Version` として渡す) | string | ❌ |
-| NpmDependencies | 本体の依存木とは別に一緒に取得・導入する npm package spec | string[] | ❌ |
+| NpmDependencies | 本体の依存ツリーとは別に一緒に取得・導入する npm package spec | string[] | ❌ |
 | NpmIgnoreScripts | npm lifecycle scripts を無効化するか。未指定時は `$true` | bool | ❌ |
 | Browser | `Edge` の場合、既存 Microsoft Edge を検出してブラウザ関連環境変数を設定 | string | ❌ |
 
@@ -667,7 +693,9 @@ yamllint
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージの依存木、`package-lock.json`、`npm-cache-manifest.json` が `packages\npm-packages\<ShortName>\` に保存されます。キャッシュ不足時は `Get-Packages.ps1 -PackageShortNames <ShortName>` の自動実行を試み、取得後も不足する場合はエラーで停止します。`NpmInstall` 自体は npm registry へ直接 fallback しません。
+`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージの依存関係ツリー、`package-lock.json`、および `npm-cache-manifest.json` が `packages\npm-packages\<ShortName>\` に保存されます。
+キャッシュ不足時は `Get-Packages.ps1 -PackageShortNames <ShortName>` の自動実行を試行し、取得後も不足する場合はエラーで停止します。
+`NpmInstall` 自体は npm レジストリへ直接フォールバックしません。
 
 #### 使用例
 
@@ -685,7 +713,9 @@ yamllint
 }
 ```
 
-`Get-Packages.ps1` は一時 prefix へ `npm install --ignore-scripts --package-lock=true` したあと、配下の各 package を `npm pack` します。archive 作成後に manifest を最後に書き込むため、未完成の cache は有効とみなされません。既存 cache は `-Force` 指定時のみ再生成します。
+`Get-Packages.ps1` は一時 prefix に対して `npm install --ignore-scripts --package-lock=true` を実行後、配下の各パッケージを `npm pack` します。
+アーカイブ作成の完了後にマニフェストを書き込むため、未完了のキャッシュは有効と判定されません。
+既存キャッシュは `-Force` 指定時のみ再生成します。
 
 #### 適用パッケージ
 
@@ -693,13 +723,14 @@ pnpm, @antfu/ni, Marp CLI, Mermaid CLI, Widdershins, Puppeteer, MiniSearch, @pla
 
 #### 注意事項
 
-PowerShell の `ni` は `New-Item` alias と衝突します。devbin-win は profile を自動変更しないため、PowerShell で `ni` コマンドを優先したい場合は `Remove-Item Alias:ni -Force` を実行してください。
+PowerShell の `ni` は、標準エイリアス `New-Item` と衝突します。
+devbin-win はプロファイルを自動変更しないため、PowerShell で `ni` コマンドを優先したい場合は、セッション内で `Remove-Item Alias:ni -Force` を実行してください。
 
 ## 新しい戦略の追加
 
-新しい抽出パターンが必要な場合、以下の手順で新しい戦略を追加できます。
+新しい抽出パターンが必要な場合、次の手順で新しい戦略を追加できます。
 
-### 1. Setup-Strategies.psm1 に戦略関数を追加
+### 1. Devbin/Extract に戦略関数を追加
 
 ```powershell
 # NewStrategy 戦略: 新しい抽出パターン
@@ -755,7 +786,7 @@ function Invoke-ExtractStrategy {
     ShortName = "newtool"
     ArchivePattern = "newtool-.*\.zip$"
     ExtractStrategy = "NewStrategy"
-    # 新しい戦略のパラメータ
+    # 新しい戦略のパラメーター
     CustomParam = "value"
     DownloadUrl = "https://example.com/newtool.zip"
 }

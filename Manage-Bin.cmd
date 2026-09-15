@@ -4,6 +4,10 @@ setlocal enabledelayedexpansion
 REM Development Tools Component Manager Bootstrap Script
 REM Interactive menu for selective setup/unsetup of components
 
+REM Operation logs: %ProgramData%\%USERNAME%\devbin-win-operation-yyyyMMdd-HHmmss.log
+REM how to debug:
+REM cmd /k powershell.exe -NoExit -ExecutionPolicy Bypass -Command "Start-Transcript -Path $env:TEMP\devbin-install.log -Force; & '.\subscripts\Setup-Bin.ps1' -Manage -InstallDir \"$env:ProgramData\$env:USERNAME\devbin-win\bin\"; Stop-Transcript"
+
 echo Development Tools Component Manager
 echo =====================================
 echo.

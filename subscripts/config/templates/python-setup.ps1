@@ -1,6 +1,6 @@
-﻿# Python Post-Setup Script
-# Python 埋め込みパッケージのセットアップを実行
-# パラメータ: $TargetPath - Python がインストールされたディレクトリ
+﻿# Python 事後セットアップ スクリプト
+# Python 組み込みパッケージ (embeddable package) のセットアップを実行
+# パラメーター: $TargetPath - Python のインストール先ディレクトリ
 
 param(
     [Parameter(Mandatory=$true)]
@@ -8,6 +8,20 @@ param(
 )
 
 Write-Host "Running Python post-setup..."
+
+# 共通処理は Devbin モジュールに集約し、カレントディレクトリに依存しない絶対パスで処理します。
+# セットアップ実行中に -Force で再インポートすると、呼び出し元の未公開関数が失われるため避けます。
+$devbinModulePath = Join-Path $PSScriptRoot "..\..\Devbin"
+$expectedDevbinModulePath = [System.IO.Path]::GetFullPath((Join-Path $devbinModulePath "Devbin.psm1"))
+$loadedDevbinModule = Get-Module -Name Devbin | Where-Object {
+    $_.Path -and
+    [System.IO.Path]::GetFullPath($_.Path).Equals($expectedDevbinModulePath, [System.StringComparison]::OrdinalIgnoreCase)
+} | Select-Object -First 1
+
+if (-not $loadedDevbinModule) {
+    Import-Module $devbinModulePath -Force -ErrorAction Stop
+}
+$devbinContext = New-DevbinContext -SubscriptsDir (Join-Path $PSScriptRoot "..\..")
 
 function Set-PthFileContent {
     param(
@@ -33,11 +47,11 @@ function Get-NormalizedPthContent {
         if ($line -match "^#.*import.*site") {
             continue
         }
-        # "Uncomment to run site.main()" コメントをスキップ
+        # "Uncomment to run site.main()" コメント行をスキップ
         elseif ($line -match "^#.*Uncomment.*site\.main") {
             continue
         }
-        # 最後に追加するため既存の import site 行をスキップ
+        # ファイル末尾で再追加するため既存の import site 行をスキップ
         elseif ($line -match "^import\s+site") {
             continue
         } else {
@@ -49,7 +63,7 @@ function Get-NormalizedPthContent {
         }
     }
 
-    # 見つからない場合は site-packages を追加
+    # 記述が存在しない場合は site-packages を追加
     if (-not $sitePackagesAdded) {
         $newContent += "Lib\site-packages"
     }
@@ -66,29 +80,7 @@ function Get-NormalizedPthContent {
     return $newContent
 }
 
-function Test-PipWheelPackages {
-    param(
-        [string]$DirectoryPath
-    )
-
-    $requiredPatterns = @(
-        "pip-*.whl",
-        "setuptools-*.whl",
-        "wheel-*.whl",
-        "packaging-*.whl"
-    )
-
-    $missing = @()
-    foreach ($pattern in $requiredPatterns) {
-        if (-not (Get-ChildItem -Path $DirectoryPath -Filter $pattern -File -ErrorAction SilentlyContinue | Select-Object -First 1)) {
-            $missing += $pattern
-        }
-    }
-
-    return $missing
-}
-
-# python3.exe のコピーを作成
+# python3.exe の複製を生成
 $pythonExe = Join-Path $TargetPath "python.exe"
 $python3Exe = Join-Path $TargetPath "python3.exe"
 
@@ -101,7 +93,7 @@ if ((Test-Path $pythonExe) -and !(Test-Path $python3Exe)) {
     }
 }
 
-# site-packages を有効にするため pth ファイルをパッチ
+# site-packages を有効化するため ._pth ファイルにパッチを適用
 $pthFiles = Get-ChildItem -Path $TargetPath -Filter "*._pth"
 foreach ($pthFile in $pthFiles) {
     Write-Host "Patching pth file: $($pthFile.Name)"
@@ -110,7 +102,7 @@ foreach ($pthFile in $pthFiles) {
     $newContent = Get-NormalizedPthContent -Content $pthContent
     $hadSitePackagesPath = $pthContent -contains "Lib\site-packages"
 
-    # 標準ライブラリの zip を最初に追加
+    # 標準ライブラリの ZIP アーカイブを先頭に追加
     $zipFiles = Get-ChildItem -Path $TargetPath -Filter "python*.zip"
     if ($zipFiles) {
         $zipFile = $zipFiles[0].Name
@@ -128,7 +120,7 @@ foreach ($pthFile in $pthFiles) {
     Set-PthFileContent -Path $pthFile.FullName -Lines $newContent
 }
 
-$pipArchiveFile = Get-ChildItem "packages\pip-*.tar.gz" | Select-Object -First 1
+$pipArchiveFile = Get-ChildItem (Join-Path $devbinContext.PackagesDir "pip-*.tar.gz") | Select-Object -First 1
 $pipArchivePath = if ($pipArchiveFile) { $pipArchiveFile.FullName } else { "" }
 if (-not $pipArchivePath -or -not (Test-Path $pipArchivePath)) {
     Write-Host "Warning: pip source tarball not found at $pipArchivePath, skipping pip installation"
@@ -136,7 +128,7 @@ if (-not $pipArchivePath -or -not (Test-Path $pipArchivePath)) {
     return
 }
 
-# pip をインストール
+# pip のインストール処理
 Write-Host "Installing pip..."
 $pythonExe = Join-Path $TargetPath "python.exe"
 if (Test-Path $pythonExe) {
@@ -186,13 +178,14 @@ with tarfile.open(archive_path, 'r:gz') as archive:
         }
         Write-Host "Temporarily added pip source path to embedded Python search paths"
 
-        # pip-packages フォルダが存在する場合はオフラインインストール
-        $pipPackagesDir = "packages\pip-packages"
+        # pip-packages ディレクトリが存在する場合はオフラインインストールを実行
+        $pipPackagesDir = $devbinContext.PipPackagesDir
+        $corePackages = @(Get-PipWheelPackageNames -IncludeCorePackages)
         $offlineMode = Test-Path $pipPackagesDir
         $missingWheels = @()
 
         if ($offlineMode) {
-            $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir
+            $missingWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $corePackages)
             if ($missingWheels.Count -gt 0) {
                 Write-Host "Warning: Offline wheel cache is incomplete: $($missingWheels -join ', ')"
                 Write-Host "Falling back to online installation."
@@ -201,19 +194,27 @@ with tarfile.open(archive_path, 'r:gz') as archive:
         }
 
         if ($offlineMode) {
-            Write-Host "Using offline installation with local wheel files..."
-            $pipPackagesAbsPath = (Resolve-Path $pipPackagesDir).Path
-            & $pythonExe -m pip install --no-warn-script-location `
-                --no-index --find-links=$pipPackagesAbsPath pip setuptools wheel
+            Write-Host "Using offline installation with local wheel files (including pytest)..."
+            $pipPackagesAbsPath = $pipPackagesDir
+            $pipInstallArgs = @("-m", "pip", "install", "--no-warn-script-location", "--no-index", "--find-links=$pipPackagesAbsPath")
+            $pipInstallArgs += $corePackages
+            & $pythonExe @pipInstallArgs
+            $installExitCode = $LASTEXITCODE
         } else {
-            Write-Host "Using online installation (downloading from PyPI)..."
-            & $pythonExe -m pip install --no-warn-script-location pip setuptools wheel
+            Write-Host "Using online installation (downloading core packages including pytest from PyPI)..."
+            $pipInstallArgs = @("-m", "pip", "install", "--no-warn-script-location")
+            $pipInstallArgs += $corePackages
+            & $pythonExe @pipInstallArgs
+            $installExitCode = $LASTEXITCODE
 
-            # インストール後に wheel を取得して次回オフライン用に保存
+            # インストール完了後に wheel パッケージを取得し、次回のオフライン導入用に保存
             $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "devbin-pip-wheels"
             New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
-            & $pythonExe -m pip download --only-binary=:all: pip setuptools wheel --dest $tempDir 2>$null
+            $pipDownloadArgs = @("-m", "pip", "download", "--only-binary=:all:")
+            $pipDownloadArgs += $corePackages
+            $pipDownloadArgs += @("--dest", $tempDir)
+            & $pythonExe @pipDownloadArgs 2>$null
 
             if (Test-Path $tempDir) {
                 New-Item -ItemType Directory -Path $pipPackagesDir -Force | Out-Null
@@ -223,10 +224,10 @@ with tarfile.open(archive_path, 'r:gz') as archive:
             }
         }
 
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "pip installed successfully"
+        if ($installExitCode -eq 0) {
+            Write-Host "Python core packages including pytest installed successfully"
         } else {
-            Write-Host "Warning: pip installation may have issues (exit code: $LASTEXITCODE)"
+            Write-Host "Warning: Python core package installation may have issues (exit code: $installExitCode)"
         }
     } catch {
         Write-Host "Warning: Failed to install pip: $($_.Exception.Message)"

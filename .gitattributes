@@ -1,0 +1,8 @@
+# Keep line endings as LF in the repository and on checkout.
+.gitattributes text eol=lf
+*.md        text eol=lf
+*.ps1       text eol=lf
+*.psm1      text eol=lf
+*.psd1      text eol=lf
+*.cmd       text eol=lf
+*.template  text eol=lf

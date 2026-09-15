@@ -333,7 +333,7 @@ endlocal
             DefaultChecked = $true
         },
 
-        # pip source tarball (Python に関連するが独立したダウンロード)
+        # pip ソースアーカイブ (Python ランタイムとは独立して取得・配置)
         @{
             Name = "pip source tarball"
             ShortName = "get-pip"
@@ -479,7 +479,6 @@ endlocal
                     Arguments = @("-InstallDir", "<InstallDir>")
                 }
             )
-            RunPostInstallInBatch = $true
             DetectFiles = @("pstools\PsExec.exe", "pstools\PsPing.exe")
             DefaultChecked = $true
         },
@@ -509,7 +508,7 @@ endlocal
             DefaultChecked = $true
         },
 
-        # mingw-w64-x86_64-gcc-libs - Subdirectory extraction (MinGW package, make の依存)
+        # mingw-w64-x86_64-gcc-libs - サブディレクトリ抽出 (MinGW パッケージ、make の依存コンポーネント)
         @{
             Name = "mingw-w64-x86_64-gcc-libs"
             ShortName = "mingw64-gcc-libs"
@@ -526,7 +525,7 @@ endlocal
             Hidden = $true
         },
 
-        # mingw-w64-x86_64-libiconv - Subdirectory extraction (MinGW package, make の依存)
+        # mingw-w64-x86_64-libiconv - サブディレクトリ抽出 (MinGW パッケージ、make の依存コンポーネント)
         @{
             Name = "mingw-w64-x86_64-libiconv"
             ShortName = "mingw64-libiconv"
@@ -543,7 +542,7 @@ endlocal
             Hidden = $true
         },
 
-        # mingw-w64-x86_64-gettext-runtime - Subdirectory extraction (MinGW package, make の依存)
+        # mingw-w64-x86_64-gettext-runtime - サブディレクトリ抽出 (MinGW パッケージ、make の依存コンポーネント)
         @{
             Name = "mingw-w64-x86_64-gettext-runtime"
             ShortName = "mingw64-gettext-runtime"
@@ -560,7 +559,7 @@ endlocal
             Hidden = $true
         },
 
-        # iconv - Subdirectory extraction (mingw-w64-x86_64-iconv パッケージの iconv.exe を抽出)
+        # iconv - サブディレクトリ抽出 (mingw-w64-x86_64-iconv パッケージから iconv.exe を抽出)
         @{
             Name = "iconv"
             ShortName = "iconv"

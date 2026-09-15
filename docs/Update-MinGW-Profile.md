@@ -27,7 +27,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 .\Update-MinGW-Profile.ps1 -Uninstall
 ```
 
-## パラメータ
+## パラメーター
 
 - `-Install`: MinGW PowerShell プロファイルを Windows Terminal に追加
 - `-Uninstall`: MinGW PowerShell プロファイルを Windows Terminal から削除
@@ -35,7 +35,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ## MinGW PowerShell プロファイル設定
 
-追加されるプロファイルの設定内容:
+追加されるプロファイルの設定内容は次のとおりです。
 
 - **GUID**: `{d48c104b-44a7-4180-be8d-b542db93a384}`
 - **名前**: Windows PowerShell (w/MinGW)
@@ -47,7 +47,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ### 設定ファイルの検索
 
-以下の場所から Windows Terminal の設定ファイルを自動検索します。
+次の場所から Windows Terminal の設定ファイルを自動検索します。
 
 - `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json`
 - `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json`
@@ -55,34 +55,34 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ### バックアップ機能
 
-- 操作前に自動的に設定ファイルのバックアップを作成します。
-- バックアップファイル名: `settings.json.yyMMddHHmmss`
+- 操作前に、設定ファイルのバックアップを自動的に作成します。
+- バックアップ ファイル名: `settings.json.yyMMddHHmmss`
 
 ### 重複チェック
 
 - GUID または名前が重複するプロファイルの存在を確認します。
-- `-Force` オプションなしでは既存プロファイルが存在した場合は処理を中断します。
+- `-Force` オプションを指定しない場合、既存プロファイルが存在するときは処理を中断します。
 
 ### Add-MinGW-Path.ps1 存在確認
 
 - PATH 内で `Add-MinGW-Path.ps1` スクリプトの存在を確認します。
-- 存在しない場合は警告を表示 (処理は継続) します。
+- スクリプトが存在しない場合は警告を表示しますが、処理は継続します。
 
 ## 動作について
 
-このプロファイルで PowerShell を起動すると、自動的に以下が実行されます。
+このプロファイルで PowerShell を起動すると、自動的に次の処理が実行されます。
 
-1. `Add-MinGW-Path.ps1` スクリプトが実行される
-2. Git に含まれる MinGW ツール (`awk`, `diff`, `grep` など) が PATH に追加される
-3. 通常の PowerShell コマンドに加えて MinGW ツールが利用可能になる
+1. `Add-MinGW-Path.ps1` スクリプトが実行されます
+2. Git に含まれる MinGW ツール (`awk`, `diff`, `grep` など) が PATH に追加されます
+3. 通常の PowerShell コマンドに加えて MinGW ツールが利用可能になります
 
 ## 前提条件
 
-- Windows Terminal がインストールされている
-- `Add-MinGW-Path.ps1` が PATH に含まれるディレクトリに配置されている
-- PowerShell の実行ポリシーが適切に設定されている
+- Windows Terminal がインストールされていること
+- `Add-MinGW-Path.ps1` が PATH に含まれるディレクトリに配置されていること
+- PowerShell の実行ポリシーが適切に設定されていること
 
 ## 注意事項
 
 - Windows Terminal を再起動して変更を反映してください。
-- `Add-MinGW-Path.ps1` が PATH で見つからない場合でもプロファイルは作成されますが、MinGW ツールは利用できません。
+- `Add-MinGW-Path.ps1` が PATH 内で検出されない場合でもプロファイルは作成されますが、MinGW ツールは利用できません。

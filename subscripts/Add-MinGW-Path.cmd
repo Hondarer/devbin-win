@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 REM MinGW PATH 動的追加スクリプト
-REM Git MinGW バイナリを現在のセッションの PATH に追加します
+REM Git MinGW バイナリを現在のセッションの PATH に追加します。
 
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
@@ -24,7 +24,7 @@ if not exist "%USR_PATH%" (
 
 set "PATH_CHANGED=0"
 
-REM 既存の PATH に MinGW パスが含まれているかチェック
+REM 既存の PATH に MinGW パスが含まれているか確認
 echo %PATH% | findstr /C:"%MINGW_PATH%" >nul
 if %ERRORLEVEL% neq 0 (
     set "PATH=%MINGW_PATH%;%PATH%"

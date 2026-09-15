@@ -1,11 +1,25 @@
 ﻿# Windows Terminal MinGW PowerShell プロファイル管理スクリプト
 param(
-    [switch]$Install,      # プロファイルをインストール
-    [switch]$Uninstall,    # プロファイルをアンインストール
-    [switch]$Force = $false # 強制実行
+    [switch]$Install,      # プロファイルの登録
+    [switch]$Uninstall,    # プロファイルの削除
+    [switch]$Force = $false # 既存プロファイルの上書き登録
 )
 
-# 使用方法を表示
+$ScriptDir = if ($PSScriptRoot) {
+    $PSScriptRoot
+} else {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+
+# Windows Terminal の設定操作処理は Devbin/Platform モジュールと共通化
+try {
+    Import-Module (Join-Path $ScriptDir "Devbin") -Force -ErrorAction Stop
+} catch {
+    Write-Host "Error importing Devbin: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+# コマンドラインの使用方法を表示
 function Show-Usage {
     Write-Host "`n=== Windows Terminal MinGW PowerShell Profile Manager ==="
     Write-Host "`nUsage:"
@@ -25,70 +39,14 @@ function Show-Usage {
     Write-Host "  .\Update-MinGW-Profile.ps1 -Install -Force`n"
 }
 
-# Settings.json のパスを特定
-function Get-WindowsTerminalSettingsPath {
-    $possiblePaths = @(
-        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json",
-        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json",
-        "$env:APPDATA\Microsoft\Windows Terminal\settings.json"
-    )
-    
-    foreach ($path in $possiblePaths) {
-        if (Test-Path $path) {
-            return $path
-        }
-    }
-    
-    Write-Warning "Windows Terminal settings.json not found. Skipping MinGW profile update."
-    return $null
-}
-
-# バックアップを作成
-function New-SettingsBackup {
-    param([string]$SettingsPath)
-    
-    $backupPath = $SettingsPath + ".$(Get-Date -Format 'yyMMddHHmmss')"
-    Copy-Item -Path $SettingsPath -Destination $backupPath
-    return $backupPath
-}
-
-# JSON 設定を読み込み
-function Get-TerminalSettings {
-    param([string]$SettingsPath)
-    
-    $jsonContent = Get-Content -Path $SettingsPath -Raw -Encoding UTF8
-    $settings = $jsonContent | ConvertFrom-Json
-    
-    # profiles.list が存在するか確認・作成
-    if (-not $settings.profiles) {
-        $settings | Add-Member -MemberType NoteProperty -Name "profiles" -Value ([PSCustomObject]@{})
-    }
-    if (-not $settings.profiles.list) {
-        $settings.profiles | Add-Member -MemberType NoteProperty -Name "list" -Value @()
-    }
-    
-    return $settings
-}
-
-# JSON 設定を保存
-function Save-TerminalSettings {
-    param(
-        [PSCustomObject]$Settings,
-        [string]$SettingsPath
-    )
-    
-    $jsonOutput = $Settings | ConvertTo-Json -Depth 10
-    [System.IO.File]::WriteAllText($SettingsPath, $jsonOutput, [System.Text.Encoding]::UTF8)
-}
-
-# MinGW PowerShell プロファイルをインストール
+# MinGW PowerShell プロファイルの登録処理
 function Install-MinGWProfile {
     param(
         [string]$SettingsPath,
         [bool]$ForceUpdate = $false
     )
     
-    # 追加したいプロファイル設定
+    # 登録対象のプロファイル定義
     $newProfile = @{
         guid = "{d48c104b-44a7-4180-be8d-b542db93a384}"
         name = "Windows PowerShell (w/MinGW)"
@@ -98,13 +56,13 @@ function Install-MinGWProfile {
     }
     
     try {
-        # バックアップ作成
+        # 設定ファイルのバックアップを作成
         $backupPath = New-SettingsBackup -SettingsPath $SettingsPath
         
-        # 設定を読み込み
+        # 現在の設定を読み込み
         $settings = Get-TerminalSettings -SettingsPath $SettingsPath
         
-        # 既存プロファイルをチェック
+        # 既存プロファイルの存在確認
         $existingProfile = $settings.profiles.list | Where-Object { 
             $_.guid -eq $newProfile.guid -or $_.name -eq $newProfile.name 
         }
@@ -113,7 +71,7 @@ function Install-MinGWProfile {
             Write-Host "Profile '$($newProfile.name)' (GUID: $($newProfile.guid)) already exists."
             Write-Host "Use -Force parameter to force update."
             
-            # 既存プロファイルの詳細を表示
+            # 既存プロファイルの詳細情報を表示
             Write-Host "`nExisting profile information:"
             Write-Host "  Name: $($existingProfile.name)"
             Write-Host "  GUID: $($existingProfile.guid)"
@@ -124,7 +82,7 @@ function Install-MinGWProfile {
         
         if ($existingProfile -and $ForceUpdate) {
             Write-Host "Updating existing profile..."
-            # 既存プロファイルを削除
+            # 既存プロファイルを削除 (上書き更新用)
             $settings.profiles.list = @($settings.profiles.list | Where-Object { 
                 $_.guid -ne $newProfile.guid -and $_.name -ne $newProfile.name 
             })
@@ -134,7 +92,7 @@ function Install-MinGWProfile {
         $addMinGWScript = "Add-MinGW-Path.ps1"
         $scriptFound = $false
         
-        # PATH 内で Add-MinGW-Path.ps1 を検索
+        # PATH 環境変数から Add-MinGW-Path.ps1 を検索
         $pathDirs = $env:PATH -split ';'
         foreach ($dir in $pathDirs) {
             if ($dir -and (Test-Path (Join-Path $dir $addMinGWScript))) {
@@ -153,7 +111,7 @@ function Install-MinGWProfile {
         $newProfileObject = [PSCustomObject]$newProfile
         $settings.profiles.list = @($settings.profiles.list) + @($newProfileObject)
         
-        # 設定を保存
+        # 更新後の設定を保存
         Save-TerminalSettings -Settings $settings -SettingsPath $SettingsPath
         
         #Write-Host "MinGW PowerShell profile installation completed successfully!"
@@ -172,7 +130,7 @@ function Install-MinGWProfile {
     } catch {
         Write-Error "Error occurred during installation: $($_.Exception.Message)"
         
-        # バックアップから復元を提案
+        # エラー発生時のバックアップ復元手順を表示
         if (Test-Path $backupPath) {
             Write-Host "`nTo restore from backup if needed:"
             Write-Host "Copy-Item -Path '$backupPath' -Destination '$SettingsPath' -Force"
@@ -182,7 +140,7 @@ function Install-MinGWProfile {
     }
 }
 
-# MinGW PowerShell プロファイルをアンインストール
+# MinGW PowerShell プロファイルの削除処理
 function Uninstall-MinGWProfile {
     param([string]$SettingsPath)
     
@@ -190,10 +148,10 @@ function Uninstall-MinGWProfile {
     $targetName = "Windows PowerShell (w/MinGW)"
     
     try {
-        # バックアップ作成
+        # 設定ファイルのバックアップを作成
         $backupPath = New-SettingsBackup -SettingsPath $SettingsPath
         
-        # 設定を読み込み
+        # 現在の設定を読み込み
         $settings = Get-TerminalSettings -SettingsPath $SettingsPath
         
         # 削除対象プロファイルを検索
@@ -205,7 +163,7 @@ function Uninstall-MinGWProfile {
             return $false
         }
         
-        # 削除対象の詳細を表示
+        # 削除対象プロファイルの詳細情報を表示
         #Write-Host "`nProfiles to be removed:"
         #foreach ($profile in $targetProfiles) {
         #    Write-Host "  Name: $($profile.name)"
@@ -213,7 +171,7 @@ function Uninstall-MinGWProfile {
         #    Write-Host "  Command: $($profile.commandline)"
         #}
         
-        # プロファイルを削除
+        # 対象プロファイルを削除
         $originalCount = $settings.profiles.list.Count
         $settings.profiles.list = @($settings.profiles.list | Where-Object { 
             $_.guid -ne $targetGuid -and $_.name -ne $targetName 
@@ -226,7 +184,7 @@ function Uninstall-MinGWProfile {
             return $true
         }
         
-        # 設定を保存
+        # 更新後の設定を保存
         Save-TerminalSettings -Settings $settings -SettingsPath $SettingsPath
         
         #Write-Host "`nMinGW PowerShell profile uninstallation completed successfully!"
@@ -239,7 +197,7 @@ function Uninstall-MinGWProfile {
     } catch {
         Write-Error "Error occurred during uninstallation: $($_.Exception.Message)"
         
-        # バックアップから復元を提案
+        # エラー発生時のバックアップ復元手順を表示
         if (Test-Path $backupPath) {
             Write-Host "`nTo restore from backup if needed:"
             Write-Host "Copy-Item -Path '$backupPath' -Destination '$SettingsPath' -Force"
@@ -251,7 +209,7 @@ function Uninstall-MinGWProfile {
 
 # メイン処理
 function Main {
-    # パラメータの検証
+    # パラメーターの検証
     if (-not $Install -and -not $Uninstall) {
         Show-Usage
         exit 0
@@ -263,13 +221,13 @@ function Main {
         exit 1
     }
     
-    # Settings.jsonのパスを取得
-    $settingsPath = Get-WindowsTerminalSettingsPath
+    # settings.json の配置パスを取得
+    $settingsPath = Get-WindowsTerminalSettingsPath -ProfileLabel "MinGW profile"
     if (-not $settingsPath) {
         exit 0
     }
     
-    # 操作実行
+    # 指定された操作を実行
     $success = $false
     
     if ($Install) {
@@ -288,5 +246,5 @@ function Main {
     }
 }
 
-# スクリプト実行
+# エントリーポイントの呼び出し
 Main

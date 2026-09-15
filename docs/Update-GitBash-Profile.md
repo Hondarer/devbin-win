@@ -30,7 +30,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 .\Update-GitBash-Profile.ps1 -Uninstall
 ```
 
-## パラメータ
+## パラメーター
 
 - `-Install`: Git Bash プロファイルを Windows Terminal に追加
 - `-Uninstall`: Git Bash プロファイルを Windows Terminal から削除
@@ -39,7 +39,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ## Git Bash プロファイル設定
 
-追加されるプロファイルの設定内容:
+追加されるプロファイルの設定内容は次のとおりです。
 
 - **GUID**: `{b2e42366-5d93-4fb7-be22-177d0a5850d1}`
 - **名前**: Git Bash
@@ -51,7 +51,7 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ### 設定ファイルの検索
 
-以下の場所から Windows Terminal の設定ファイルを自動検索します。
+次の場所から Windows Terminal の設定ファイルを自動検索します。
 
 - `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json`
 - `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json`
@@ -59,18 +59,18 @@ Windows Terminal の設定ファイル (`settings.json`) を自動的に編集�
 
 ### バックアップ機能
 
-- 操作前に自動的に設定ファイルのバックアップを作成します。
-- バックアップファイル名: `settings.json.yyMMddHHmmss`
+- 操作前に、設定ファイルのバックアップを自動的に作成します。
+- バックアップ ファイル名: `settings.json.yyMMddHHmmss`
 
 ### 重複チェック
 
 - GUID または名前が重複するプロファイルの存在を確認します。
-- `-Force` オプションなしでは既存プロファイルが存在した場合は処理を中断します。
+- `-Force` オプションを指定しない場合、既存プロファイルが存在するときは処理を中断します。
 
 ### ファイル存在確認
 
-- Git Bash 実行ファイルとアイコンファイルの存在を確認します。
-- 存在しない場合は警告を表示 (処理は継続) します。
+- Git Bash 実行ファイルとアイコン ファイルの存在を確認します。
+- ファイルが存在しない場合は警告を表示しますが、処理は継続します。
 
 ## 注意事項
 

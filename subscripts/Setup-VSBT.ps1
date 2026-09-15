@@ -63,35 +63,40 @@ param(
     [switch]$AcceptLicense,
     [switch]$Preview,
     [switch]$OfflineMode,
-    [switch]$DownloadOnly
+    [switch]$DownloadOnly,
+    [Parameter(DontShow = $true)]
+    [switch]$SkipDevbinModuleImport
 )
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = 'SilentlyContinue' # Disable progress bar for performance
 
-# スクリプトのディレクトリを取得
+# スクリプトの格納先ディレクトリを取得
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# 共通モジュールをインポート (まだロードされていない場合のみ)
-$commonModulePath = Join-Path $ScriptDir "Setup-Common.psm1"
-$moduleLoaded = Get-Module -Name "Setup-Common" -ErrorAction SilentlyContinue
+# Devbin モジュールをインポート
+# 内部モジュールから呼び出された場合は、実行中のモジュールインスタンスを -Force で置換しない
+if ($SkipDevbinModuleImport) {
+    $expectedDevbinModulePath = [System.IO.Path]::GetFullPath((Join-Path $ScriptDir "Devbin\Devbin.psm1"))
+    $loadedDevbinModule = Get-Module -Name Devbin | Where-Object {
+        $_.Path -and
+        [System.IO.Path]::GetFullPath($_.Path).Equals($expectedDevbinModulePath, [System.StringComparison]::OrdinalIgnoreCase)
+    } | Select-Object -First 1
 
-if (-not $moduleLoaded) {
-    if (-not (Test-Path $commonModulePath)) {
-        Write-Host "Error: Setup-Common.psm1 not found at: $commonModulePath" -ForegroundColor Red
-        exit 1
+    if (-not $loadedDevbinModule) {
+        throw "SkipDevbinModuleImport requires the repository Devbin module to be loaded: $expectedDevbinModulePath"
     }
-
+} else {
     try {
-        Import-Module $commonModulePath -Force -ErrorAction Stop
+        Import-Module (Join-Path $ScriptDir "Devbin") -Force -ErrorAction Stop
     } catch {
-        Write-Host "Error importing Setup-Common: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Error importing Devbin: $($_.Exception.Message)" -ForegroundColor Red
         exit 1
     }
 }
 
-# Temporary download directory
-$TempExtractPath = "temp_extract"
+# 実行単位で独立した一時作業領域を生成
+$TempExtractPath = New-DevbinTempDirectory -Prefix "devbin-vsbt"
 
 # URL definition
 $MANIFEST_URL = if ($Preview) {
@@ -102,12 +107,62 @@ $MANIFEST_URL = if ($Preview) {
 
 $script:TotalDownload = 0
 
+# 環境設定スクリプトのテンプレートを読み込み、プレースホルダーを置換する
+# テンプレート定義ファイルは config/templates/vsbt-env.*.template を参照
+function Expand-VsbtTemplate {
+    param(
+        [string]$TemplateName,
+        [string]$TargetArch,
+        [string]$MsvcVersion,
+        [string]$MsvcMajorMinor,
+        [string]$SdkVersion
+    )
+
+    $templatePath = Join-Path $PSScriptRoot "config\templates\$TemplateName"
+    if (-not (Test-Path $templatePath -PathType Leaf)) {
+        throw "Template not found: $templatePath"
+    }
+
+    $content = [System.IO.File]::ReadAllText($templatePath)
+    $content = $content.Replace("{{TARGET_ARCH}}", $TargetArch)
+    $content = $content.Replace("{{HOST_ARCH}}", $HostArch)
+    $content = $content.Replace("{{MSVC_VERSION}}", $MsvcVersion)
+    $content = $content.Replace("{{MSVC_MAJOR_MINOR}}", $MsvcMajorMinor)
+    $content = $content.Replace("{{SDK_VERSION}}", $SdkVersion)
+
+    # テンプレートファイル末尾の改行文字は出力内容から除外
+    if ($content.EndsWith("`r`n")) {
+        $content = $content.Substring(0, $content.Length - 2)
+    } elseif ($content.EndsWith("`n")) {
+        $content = $content.Substring(0, $content.Length - 1)
+    }
+    return $content
+}
+
 function Write-ColorMessage {
     param(
         [string]$Message,
         [ConsoleColor]$Color = [ConsoleColor]::White
     )
     Write-Host $Message -ForegroundColor $Color
+}
+
+# ホスト名解決に失敗した際、ErrorActionPreference が Stop だと Transcript ログに終了エラーが記録されるため一時的に抑制する
+function Get-VsbtRemoteJson {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Uri
+    )
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    try {
+        return Invoke-RestMethod -Uri $Uri -UseBasicParsing -ErrorAction SilentlyContinue
+    } catch {
+        return $null
+    } finally {
+        $ErrorActionPreference = $previous
+    }
 }
 
 function Get-FileHash256 {
@@ -146,7 +201,7 @@ function Invoke-Download {
         }
     }
 
-    # Build temp path in temp_extract
+    # Build temp path in the temporary extract directory
     if ($SubFolder) {
         $tempDir = Join-Path $TempExtractPath $SubFolder
         if (-not (Test-Path $tempDir)) {
@@ -217,10 +272,10 @@ try {
             Unregister-VswhereInstance
         }
 
-        # Clean up temp_extract, batch files, and final output
+        # Clean up the temporary extract directory, batch files, and final output
         if (Test-Path $TempExtractPath) {
             Write-ColorMessage "`nCleaning up temporary download folder..."
-            Remove-Item $TempExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-DevbinTempDirectory -Path $TempExtractPath
         }
 
         # Skip cleanup of output directory in DownloadOnly mode
@@ -264,16 +319,22 @@ try {
     $manifestCachePath = Join-Path $DownloadsPath "manifest_$manifestType.json"
 
     # Download manifest
+    # インストール時にキャッシュが存在する場合は外部通信を行わない (完全オフライン環境でエラー表示を抑止するため)。
+    # ダウンロード時 (-DownloadOnly) は最新情報の取得を試み、通信失敗時のみ既存キャッシュへフォールバックする。
+    # キャッシュが存在せずダウンロードにも失敗した場合は処理を中断する。
     $channelData = $null
     $vsManifest = $null
     $useCache = $false
+    $cacheReady = (Test-Path -LiteralPath $channelCachePath) -and (Test-Path -LiteralPath $manifestCachePath)
+    $preferCache = $OfflineMode -or ($cacheReady -and -not $DownloadOnly)
 
-    if (-not $OfflineMode) {
-        try {
-            Write-ColorMessage "`nChecking manifest..."
-            $channelData = Invoke-RestMethod -Uri $MANIFEST_URL -UseBasicParsing -ErrorAction Stop
-
-            # Save channel data to cache
+    if ($preferCache) {
+        Write-ColorMessage "`nUsing cached manifest..."
+        $useCache = $true
+    } else {
+        Write-ColorMessage "`nChecking manifest..."
+        $channelData = Get-VsbtRemoteJson -Uri $MANIFEST_URL
+        if ($channelData) {
             $channelData | ConvertTo-Json -Depth 100 | Set-Content -Path $channelCachePath -Encoding UTF8
 
             $itemName = if ($Preview) {
@@ -283,25 +344,32 @@ try {
             }
 
             $vsItem = $channelData.channelItems | Where-Object { $_.id -eq $itemName } | Select-Object -First 1
-            $manifestUrl = $vsItem.payloads[0].url
+            $manifestUrl = $null
+            if ($vsItem -and $vsItem.payloads) {
+                $payload = @($vsItem.payloads)[0]
+                if ($payload) {
+                    $manifestUrl = [string]$payload.url
+                }
+            }
 
-            $vsManifest = Invoke-RestMethod -Uri $manifestUrl -UseBasicParsing -ErrorAction Stop
+            if ($manifestUrl) {
+                $vsManifest = Get-VsbtRemoteJson -Uri $manifestUrl
+            }
+        }
 
-            # Save manifest to cache
+        if ($channelData -and $vsManifest) {
             $vsManifest | ConvertTo-Json -Depth 100 | Set-Content -Path $manifestCachePath -Encoding UTF8
-
-        } catch {
+        } elseif ($cacheReady) {
             Write-ColorMessage "Failed to download manifest. Checking cache..."
             $useCache = $true
+        } else {
+            throw "Failed to download VSBT manifest from $MANIFEST_URL and no cached manifest was found."
         }
-    } else {
-        Write-ColorMessage "`nOffline mode: Using cached manifest..."
-        $useCache = $true
     }
 
     # Load from cache
     if ($useCache) {
-        if ((Test-Path $channelCachePath) -and (Test-Path $manifestCachePath)) {
+        if ((Test-Path -LiteralPath $channelCachePath) -and (Test-Path -LiteralPath $manifestCachePath)) {
             Write-ColorMessage "Loading manifest from cache..."
             $channelData = Get-Content -Path $channelCachePath -Encoding UTF8 | ConvertFrom-Json
             $vsManifest = Get-Content -Path $manifestCachePath -Encoding UTF8 | ConvertFrom-Json
@@ -384,8 +452,7 @@ try {
         $licenseUrl = $resource.license
 
         Write-Host "`nLicense: $licenseUrl"
-        $response = Read-Host "Do you accept the license? [Y/N]"
-        if ($response -notmatch '^[Yy]') {
+        if (-not (Read-ConfirmationKey -Prompt "Do you accept the license? [y/N/Esc] ")) {
             Write-Host "Aborted"
             return
         }
@@ -492,7 +559,7 @@ try {
             "Universal CRT Headers Libraries and Sources-x86_en-us.msi"
         )
 
-        # 全アーキテクチャのヘッダー
+        # 全アーキテクチャ共通のヘッダーファイル
         foreach ($arch in @("x64", "x86", "arm", "arm64")) {
             $sdkPackages[$t] += @(
                 "Windows SDK Desktop Headers $arch-x86_en-us.msi",
@@ -500,7 +567,7 @@ try {
             )
         }
 
-        # ターゲット固有のライブラリ
+        # ターゲットアーキテクチャ固有のライブラリ
         $sdkPackages[$t] += "Windows SDK Desktop Libs $t-x86_en-us.msi"
     }
 
@@ -744,194 +811,16 @@ try {
     }
 
     foreach ($t in $targets) {
-        # MSVC major.minor を抽出
+        # MSVC バージョンのメジャー・マイナー番号を抽出
         $msvcMajorMinor = if ($msvcFullVer -match '^(\d+\.\d+)') { $matches[1] } else { "" }
 
         # Generate batch file (CMD)
-        $cmdContent = @"
-@echo off
-setlocal enabledelayedexpansion
-
-REM VSBT PATH 動的追加スクリプト (CMD)
-REM MSVC と Windows SDK を現在のセッションの環境変数に追加します
-REM vswhere を使用してインスタンスを自動検出します
-
-set "TARGET_ARCH=$t"
-set "HOST_ARCH=$HostArch"
-set "TARGET_MSVC_VERSION=$msvcFullVer"
-set "TARGET_MSVC_MAJOR_MINOR=$msvcMajorMinor"
-set "TARGET_SDK_VERSION=$selectedSdkVer"
-
-set "SCRIPT_DIR=%~dp0"
-set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
-
-REM vswhere.exe を探す（スクリプトと同じディレクトリ、またはPATH上）
-set "VSWHERE=%SCRIPT_DIR%\vswhere.exe"
-if not exist "%VSWHERE%" (
-    where vswhere.exe >nul 2>&1
-    if !ERRORLEVEL! equ 0 (
-        set "VSWHERE=vswhere.exe"
-    ) else (
-        set "VSWHERE="
-    )
-)
-
-set "MSVC_BASE="
-set "MSVC_VERSION_PATH="
-set "SDK_BASE="
-set "SDK_VERSION_PATH="
-
-REM vswhere で MSVC インスタンスを検索
-if defined VSWHERE (
-    for /f "delims=" %%i in ('"%VSWHERE%" -products Microsoft.VisualStudio.Product.BuildTools -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath -format value 2^>nul') do (
-        set "INSTANCE_PATH=%%i"
-        set "MSVC_TOOLS_PATH=!INSTANCE_PATH!\VC\Tools\MSVC"
-        if exist "!MSVC_TOOLS_PATH!" (
-            REM 目標バージョンをチェック
-            for /d %%v in ("!MSVC_TOOLS_PATH!\%TARGET_MSVC_MAJOR_MINOR%*") do (
-                set "MSVC_BASE=!INSTANCE_PATH!"
-                set "MSVC_VERSION_PATH=%%~nxv"
-                goto :msvc_found
-            )
-        )
-    )
-)
-
-REM フォールバック: ローカルの vsbt フォルダを使用
-if not defined MSVC_BASE (
-    set "MSVC_BASE=%SCRIPT_DIR%\vsbt"
-    set "MSVC_TOOLS_PATH=!MSVC_BASE!\VC\Tools\MSVC"
-    if exist "!MSVC_TOOLS_PATH!" (
-        REM 目標バージョンをチェック
-        for /d %%v in ("!MSVC_TOOLS_PATH!\%TARGET_MSVC_MAJOR_MINOR%*") do (
-            set "MSVC_VERSION_PATH=%%~nxv"
-            goto :msvc_found
-        )
-        REM 目標バージョンがない場合は最新版を使用
-        for /f "delims=" %%v in ('dir /b /ad /o-n "!MSVC_TOOLS_PATH!" 2^>nul') do (
-            set "MSVC_VERSION_PATH=%%v"
-            goto :msvc_found
-        )
-    )
-)
-:msvc_found
-
-REM vswhere で Windows SDK インスタンスを検索
-if defined VSWHERE (
-    for /f "delims=" %%i in ('"%VSWHERE%" -products Microsoft.VisualStudio.Product.BuildTools -property installationPath -format value 2^>nul') do (
-        set "INSTANCE_PATH=%%i"
-        set "SDK_BIN_PATH=!INSTANCE_PATH!\Windows Kits\10\bin"
-        if exist "!SDK_BIN_PATH!\%TARGET_SDK_VERSION%" (
-            set "SDK_BASE=!INSTANCE_PATH!"
-            set "SDK_VERSION_PATH=%TARGET_SDK_VERSION%"
-            goto :sdk_found
-        )
-    )
-)
-
-REM フォールバック: ローカルの vsbt フォルダを使用
-if not defined SDK_BASE (
-    set "SDK_BASE=%SCRIPT_DIR%\vsbt"
-    set "SDK_BIN_PATH=!SDK_BASE!\Windows Kits\10\bin"
-    if exist "!SDK_BIN_PATH!" (
-        REM 目標バージョンをチェック
-        if exist "!SDK_BIN_PATH!\%TARGET_SDK_VERSION%" (
-            set "SDK_VERSION_PATH=%TARGET_SDK_VERSION%"
-            goto :sdk_found
-        )
-        REM 目標バージョンがない場合は最新版を使用
-        for /f "delims=" %%v in ('dir /b /ad /o-n "!SDK_BIN_PATH!" 2^>nul') do (
-            set "SDK_VERSION_PATH=%%v"
-            goto :sdk_found
-        )
-    )
-)
-:sdk_found
-
-REM バージョン検証
-if "%MSVC_VERSION_PATH%"=="" (
-    echo Error: MSVC version not detected
-    exit /b 1
-)
-if "%SDK_VERSION_PATH%"=="" (
-    echo Error: Windows SDK version not detected
-    exit /b 1
-)
-
-REM パスを構築
-set "MSVC_BIN=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\bin\Host%HOST_ARCH%\%TARGET_ARCH%"
-set "SDK_BIN=%SDK_BASE%\Windows Kits\10\bin\%SDK_VERSION_PATH%\%HOST_ARCH%"
-set "SDK_UCRT_BIN=%SDK_BASE%\Windows Kits\10\bin\%SDK_VERSION_PATH%\%HOST_ARCH%\ucrt"
-set "DIA_BIN=%MSVC_BASE%\DIA SDK\bin"
-
-set "MSVC_INCLUDE=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\include"
-set "SDK_UCRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\ucrt"
-set "SDK_SHARED_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\shared"
-set "SDK_UM_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\um"
-set "SDK_WINRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\winrt"
-set "SDK_CPPWINRT_INCLUDE=%SDK_BASE%\Windows Kits\10\Include\%SDK_VERSION_PATH%\cppwinrt"
-set "DIA_INCLUDE=%MSVC_BASE%\DIA SDK\include"
-
-set "MSVC_LIB=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%\lib\%TARGET_ARCH%"
-set "SDK_UCRT_LIB=%SDK_BASE%\Windows Kits\10\Lib\%SDK_VERSION_PATH%\ucrt\%TARGET_ARCH%"
-set "SDK_UM_LIB=%SDK_BASE%\Windows Kits\10\Lib\%SDK_VERSION_PATH%\um\%TARGET_ARCH%"
-set "DIA_LIB=%MSVC_BASE%\DIA SDK\lib"
-
-REM MSVC パスの存在確認
-if not exist "%MSVC_BIN%" (
-    echo Error: MSVC path not found: %MSVC_BIN%
-    exit /b 1
-)
-
-REM 環境変数を設定 (常に上書き)
-set "VSCMD_ARG_HOST_ARCH=%HOST_ARCH%"
-set "VSCMD_ARG_TGT_ARCH=%TARGET_ARCH%"
-set "VCToolsVersion=%MSVC_VERSION_PATH%"
-set "WindowsSDKVersion=%SDK_VERSION_PATH%"
-set "VCToolsInstallDir=%MSVC_BASE%\VC\Tools\MSVC\%MSVC_VERSION_PATH%"
-set "WindowsSdkBinPath=%SDK_BASE%\Windows Kits\10\bin"
-
-set "PATH_CHANGED=0"
-
-REM PATH に追加 (重複チェック)
-echo %PATH% | findstr /C:"%MSVC_BIN%" >nul
-if %ERRORLEVEL% neq 0 (
-    set "PATH=%MSVC_BIN%;%PATH%"
-    set "PATH_CHANGED=1"
-)
-
-echo %PATH% | findstr /C:"%SDK_BIN%" >nul
-if %ERRORLEVEL% neq 0 (
-    set "PATH=%SDK_BIN%;%PATH%"
-    set "PATH_CHANGED=1"
-)
-
-echo %PATH% | findstr /C:"%SDK_UCRT_BIN%" >nul
-if %ERRORLEVEL% neq 0 (
-    set "PATH=%SDK_UCRT_BIN%;%PATH%"
-    set "PATH_CHANGED=1"
-)
-
-echo %PATH% | findstr /C:"%DIA_BIN%" >nul
-if %ERRORLEVEL% neq 0 (
-    set "PATH=%DIA_BIN%;%PATH%"
-    set "PATH_CHANGED=1"
-)
-
-REM INCLUDE に追加 (常に上書き)
-set "INCLUDE=%MSVC_INCLUDE%;%SDK_UCRT_INCLUDE%;%SDK_SHARED_INCLUDE%;%SDK_UM_INCLUDE%;%SDK_WINRT_INCLUDE%;%SDK_CPPWINRT_INCLUDE%;%DIA_INCLUDE%"
-
-REM LIB に追加 (常に上書き)
-set "LIB=%MSVC_LIB%;%SDK_UCRT_LIB%;%SDK_UM_LIB%;%DIA_LIB%"
-
-if %PATH_CHANGED%==1 (
-    echo VSBT PATH addition completed.
-) else (
-    echo VSBT PATH already set.
-)
-
-endlocal & set "PATH=%PATH%" & set "INCLUDE=%INCLUDE%" & set "LIB=%LIB%" & set "VSCMD_ARG_HOST_ARCH=%VSCMD_ARG_HOST_ARCH%" & set "VSCMD_ARG_TGT_ARCH=%VSCMD_ARG_TGT_ARCH%" & set "VCToolsVersion=%VCToolsVersion%" & set "WindowsSDKVersion=%WindowsSDKVersion%" & set "VCToolsInstallDir=%VCToolsInstallDir%" & set "WindowsSdkBinPath=%WindowsSdkBinPath%"
-"@
+        $cmdContent = Expand-VsbtTemplate `
+            -TemplateName "vsbt-env.cmd.template" `
+            -TargetArch $t `
+            -MsvcVersion $msvcFullVer `
+            -MsvcMajorMinor $msvcMajorMinor `
+            -SdkVersion $selectedSdkVer
 
         $cmdPath = Join-Path $scriptDir "Add-VSBT-Env-$t.cmd"
         $utf8 = New-Object System.Text.UTF8Encoding $false
@@ -939,215 +828,15 @@ endlocal & set "PATH=%PATH%" & set "INCLUDE=%INCLUDE%" & set "LIB=%LIB%" & set "
         Write-Host "  Generated: Add-VSBT-Env-$t.cmd"
 
         # Generate PowerShell script
-        $ps1Content = @"
-# VSBT PATH 動的追加スクリプト (PowerShell)
-# MSVC と Windows SDK を現在のセッションの環境変数に追加します
-# vswhere を使用してインスタンスを自動検出します
-
-`$ErrorActionPreference = "Stop"
-`$TargetArch = "$t"
-`$HostArch = "$HostArch"
-`$TargetMsvcVersion = "$msvcFullVer"
-`$TargetSdkVersion = "$selectedSdkVer"
-
-# スクリプトと同じディレクトリの vswhere.exe を使用
-`$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
-`$vswhere = Join-Path `$scriptDir "vswhere.exe"
-
-# vswhere.exe が見つからない場合は PATH 上の vswhere を試す
-if (-not (Test-Path `$vswhere)) {
-    try {
-        `$null = Get-Command vswhere.exe -ErrorAction Stop
-        `$vswhere = "vswhere.exe"
-    } catch {
-        `$vswhere = `$null
-    }
-}
-
-`$msvcBase = `$null
-`$msvcVersionPath = `$null
-`$sdkBase = `$null
-`$sdkVersionPath = `$null
-
-# MSVC バージョンの major.minor を抽出 (例: "14.44.35207" -> "14.44")
-`$targetMsvcMajorMinor = if (`$TargetMsvcVersion -match '^(\d+\.\d+)') { `$matches[1] } else { `$null }
-
-# vswhere で MSVC インスタンスを検索
-if (`$vswhere) {
-    try {
-        `$instances = & `$vswhere -products Microsoft.VisualStudio.Product.BuildTools ``
-            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 ``
-            -format json | ConvertFrom-Json
-
-        if (`$instances -and `$instances.Count -gt 0) {
-            # 目標バージョンを持つインスタンスを探す
-            `$instanceArray = if (`$instances -is [Array]) { `$instances } else { @(`$instances) }
-            foreach (`$instance in `$instanceArray) {
-                `$msvcToolsPath = Join-Path `$instance.installationPath "VC\Tools\MSVC"
-                if (Test-Path `$msvcToolsPath) {
-                    # 目標 major.minor に一致するバージョンを探す
-                    `$foundVersions = Get-ChildItem `$msvcToolsPath | Where-Object {
-                        `$_.Name -like "`$targetMsvcMajorMinor*"
-                    } | Sort-Object Name -Descending
-
-                    if (`$foundVersions -and `$foundVersions.Count -gt 0) {
-                        `$msvcBase = `$instance.installationPath
-                        `$msvcVersionPath = `$foundVersions[0].Name
-                        break
-                    }
-                }
-            }
-        }
-    } catch {
-        Write-Warning "vswhere failed to find MSVC: `$_"
-    }
-}
-
-# フォールバック: MSVC
-if (-not `$msvcBase) {
-    `$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
-    `$msvcBase = Join-Path `$scriptDir "vsbt"
-
-    if (Test-Path `$msvcBase) {
-        # 目標バージョンを検出
-        `$msvcToolsPath = Join-Path `$msvcBase "VC\Tools\MSVC"
-        if (Test-Path `$msvcToolsPath) {
-            # 目標 major.minor に一致するバージョンを探す
-            `$foundVersions = Get-ChildItem `$msvcToolsPath | Where-Object {
-                `$_.Name -like "`$targetMsvcMajorMinor*"
-            } | Sort-Object Name -Descending
-
-            if (`$foundVersions -and `$foundVersions.Count -gt 0) {
-                `$msvcVersionPath = `$foundVersions[0].Name
-            } else {
-                # 目標バージョンがない場合は最新版を使用
-                `$msvcVersionPath = Get-ChildItem `$msvcToolsPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
-            }
-        }
-    }
-}
-
-# vswhere で Windows SDK インスタンスを検索
-if (`$vswhere) {
-    try {
-        `$instances = & `$vswhere -products Microsoft.VisualStudio.Product.BuildTools ``
-            -format json | ConvertFrom-Json
-
-        if (`$instances -and `$instances.Count -gt 0) {
-            # 目標 SDK バージョンを持つインスタンスを探す
-            `$instanceArray = if (`$instances -is [Array]) { `$instances } else { @(`$instances) }
-            foreach (`$instance in `$instanceArray) {
-                `$sdkBinPath = Join-Path `$instance.installationPath "Windows Kits\10\bin"
-                if (Test-Path `$sdkBinPath) {
-                    # 目標バージョンのディレクトリが存在するかチェック
-                    `$targetSdkPath = Join-Path `$sdkBinPath `$TargetSdkVersion
-                    if (Test-Path `$targetSdkPath) {
-                        `$sdkBase = `$instance.installationPath
-                        `$sdkVersionPath = `$TargetSdkVersion
-                        break
-                    }
-                }
-            }
-        }
-    } catch {
-        Write-Warning "vswhere failed to find Windows SDK: `$_"
-    }
-}
-
-# フォールバック: Windows SDK
-if (-not `$sdkBase) {
-    `$scriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path
-    `$sdkBase = Join-Path `$scriptDir "vsbt"
-
-    if (Test-Path `$sdkBase) {
-        # 目標 SDK バージョンを検出
-        `$sdkBinPath = Join-Path `$sdkBase "Windows Kits\10\bin"
-        if (Test-Path `$sdkBinPath) {
-            # 目標バージョンのディレクトリが存在するかチェック
-            `$targetSdkPath = Join-Path `$sdkBinPath `$TargetSdkVersion
-            if (Test-Path `$targetSdkPath) {
-                `$sdkVersionPath = `$TargetSdkVersion
-            } else {
-                # 目標バージョンがない場合は最新版を使用
-                `$sdkVersionPath = Get-ChildItem `$sdkBinPath | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
-            }
-        }
-    }
-}
-
-# バージョン検証
-if (-not `$msvcVersionPath) {
-    Write-Host "Error: MSVC version not detected"
-    exit 1
-}
-if (-not `$sdkVersionPath) {
-    Write-Host "Error: Windows SDK version not detected"
-    exit 1
-}
-
-# パスを構築
-`$msvcBin = Join-Path `$msvcBase "VC\Tools\MSVC\`$msvcVersionPath\bin\Host`$HostArch\`$TargetArch"
-`$sdkBin = Join-Path `$sdkBase "Windows Kits\10\bin\`$sdkVersionPath\`$HostArch"
-`$sdkUcrtBin = Join-Path `$sdkBase "Windows Kits\10\bin\`$sdkVersionPath\`$HostArch\ucrt"
-`$diaBin = Join-Path `$msvcBase "DIA SDK\bin"
-
-`$msvcInclude = Join-Path `$msvcBase "VC\Tools\MSVC\`$msvcVersionPath\include"
-`$sdkUcrtInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\ucrt"
-`$sdkSharedInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\shared"
-`$sdkUmInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\um"
-`$sdkWinrtInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\winrt"
-`$sdkCppWinrtInclude = Join-Path `$sdkBase "Windows Kits\10\Include\`$sdkVersionPath\cppwinrt"
-`$diaInclude = Join-Path `$msvcBase "DIA SDK\include"
-
-`$msvcLib = Join-Path `$msvcBase "VC\Tools\MSVC\`$msvcVersionPath\lib\`$TargetArch"
-`$sdkUcrtLib = Join-Path `$sdkBase "Windows Kits\10\Lib\`$sdkVersionPath\ucrt\`$TargetArch"
-`$sdkUmLib = Join-Path `$sdkBase "Windows Kits\10\Lib\`$sdkVersionPath\um\`$TargetArch"
-`$diaLib = Join-Path `$msvcBase "DIA SDK\lib"
-
-# MSVC パスの存在確認
-if (-not (Test-Path `$msvcBin)) {
-    Write-Host "Error: MSVC path not found: `$msvcBin"
-    exit 1
-}
-
-# 環境変数を設定 (常に上書き)
-`$env:VSCMD_ARG_HOST_ARCH = `$HostArch
-`$env:VSCMD_ARG_TGT_ARCH = `$TargetArch
-`$env:VCToolsVersion = `$msvcVersionPath
-`$env:WindowsSDKVersion = `$sdkVersionPath
-`$env:VCToolsInstallDir = Join-Path `$msvcBase "VC\Tools\MSVC\`$msvcVersionPath"
-`$env:WindowsSdkBinPath = Join-Path `$sdkBase "Windows Kits\10\bin"
-
-`$pathsToAdd = @(`$msvcBin, `$sdkBin, `$sdkUcrtBin, `$diaBin)
-`$currentPath = `$env:PATH
-`$pathChanged = `$false
-
-foreach (`$pathToAdd in `$pathsToAdd) {
-    # 既存の PATH にパスが含まれているかチェック
-    `$pathExists = `$currentPath -split ';' | Where-Object { `$_ -eq `$pathToAdd }
-
-    if (`$pathExists) {
-        # Write-Host "PATH already set: `$pathToAdd"
-    } else {
-        # パスを先頭に追加
-        `$env:PATH = "`$pathToAdd;`$env:PATH"
-        `$pathChanged = `$true
-    }
-}
-
-# INCLUDE と LIB は常に上書き
-`$env:INCLUDE = "`$msvcInclude;`$sdkUcrtInclude;`$sdkSharedInclude;`$sdkUmInclude;`$sdkWinrtInclude;`$sdkCppWinrtInclude;`$diaInclude"
-`$env:LIB = "`$msvcLib;`$sdkUcrtLib;`$sdkUmLib;`$diaLib"
-
-if (`$pathChanged) {
-    Write-Host "VSBT PATH addition completed."
-} else {
-    Write-Host "VSBT PATH already set."
-}
-"@
+        $ps1Content = Expand-VsbtTemplate `
+            -TemplateName "vsbt-env.ps1.template" `
+            -TargetArch $t `
+            -MsvcVersion $msvcFullVer `
+            -MsvcMajorMinor $msvcMajorMinor `
+            -SdkVersion $selectedSdkVer
 
         $ps1Path = Join-Path $scriptDir "Add-VSBT-Env-$t.ps1"
-        # BOM 付き UTF-8 で保存
+        # UTF-8 with BOM で保存 (PowerShell 5.1 互換性維持のため)
         $utf8BOM = New-Object System.Text.UTF8Encoding $true
         [System.IO.File]::WriteAllText($ps1Path, $ps1Content, $utf8BOM)
         Write-Host "  Generated: Add-VSBT-Env-$t.ps1"
@@ -1172,9 +861,9 @@ if (`$pathChanged) {
     Write-Error $_.ScriptStackTrace
     exit 1
 } finally {
-    # Clean up temp_extract (skip for ShowVersions mode)
-    if (-not $ShowVersions -and (Test-Path $TempExtractPath)) {
+    # Clean up the temporary extract directory (skip for ShowVersions mode)
+    if (-not $ShowVersions) {
         Write-ColorMessage "`nCleaning up temporary download folder..."
-        Remove-Item $TempExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-DevbinTempDirectory -Path $TempExtractPath
     }
 }
