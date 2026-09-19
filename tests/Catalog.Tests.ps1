@@ -58,6 +58,17 @@ Describe "packages.psd1" {
         @($result.Order).Count | Should Be $packages.Count
     }
 
+    It "git と vscode は Git のグローバル設定スクリプトを後処理に持つ" {
+        $scriptPath = Join-Path (Get-DevbinSubscriptsDir) "Update-Git-Config.ps1"
+        Test-Path $scriptPath -PathType Leaf | Should Be $true
+
+        foreach ($shortName in @("git", "vscode")) {
+            $package = $packages | Where-Object { $_.ShortName -eq $shortName }
+            $paths = @($package.PostInstallScripts | ForEach-Object { $_.Path })
+            ($paths -contains "Update-Git-Config.ps1") | Should Be $true
+        }
+    }
+
     It "copilot と agy は DisableIfCommand で外部検出する" {
         $copilot = $packages | Where-Object { $_.ShortName -eq "copilot" }
         $agy = $packages | Where-Object { $_.ShortName -eq "agy" }

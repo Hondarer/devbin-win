@@ -37,5 +37,6 @@ powershell.exe -ExecutionPolicy Bypass -File tests\Run-Tests.ps1
 + [Setup-Home](./docs/Setup-Home.md) - HOME 環境変数とホーム ディレクトリのセットアップ
 + [Update-GitBash-Profile](./docs/Update-GitBash-Profile.md) - Git Bash プロファイル更新
 + [Update-MinGW-Profile](./docs/Update-MinGW-Profile.md) - MinGW プロファイル更新
++ [Update-Git-Config](./docs/Update-Git-Config.md) - Git のグローバル設定の初期値
 + [vscode_portable_setup_report](./docs/vscode_portable_setup_report.md) - VSCode ポータブル セットアップ レポート
 + [offline-pip-design](./docs/offline-pip-design.md) - 完全オフライン pip インストール設計

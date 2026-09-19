@@ -284,6 +284,7 @@ HOME (`C:\ProgramData\home\<ユーザー>` および XDG 関連の環境変数) 
 
 - システムに `git.exe` が存在する場合、Portable Git への PATH は追加されません
 - 既存の Git インストールが優先されます
+- インストール後に `core.editor`、`http.sslBackend`、`core.autocrlf` のうち未設定の項目を設定します。詳細については、[Update-Git-Config](./Update-Git-Config.md) を参照してください
 
 ### VS Code
 

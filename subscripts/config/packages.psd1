@@ -414,6 +414,12 @@ endlocal
                 @{
                     Path = "Update-MinGW-Profile.ps1"
                     Arguments = @("-Install", "-Force")
+                },
+                # core.editor は VS Code を先に導入している場合のみ設定されます。
+                # 同時に導入する場合に備えて、VS Code 側の後処理からも同じスクリプトを実行します。
+                @{
+                    Path = "Update-Git-Config.ps1"
+                    Arguments = @("-Install", "-InstallDir", "<InstallDir>")
                 }
             )
             PostUninstallScripts = @(
@@ -448,6 +454,13 @@ endlocal
             DependsOn = @()
             PathDirs = @("vscode\bin")
             EnvVars = @{}
+            # Git を先に導入している場合に、未設定の core.editor を設定します。
+            PostInstallScripts = @(
+                @{
+                    Path = "Update-Git-Config.ps1"
+                    Arguments = @("-Install", "-InstallDir", "<InstallDir>")
+                }
+            )
             DetectFiles = @("vscode\Code.exe")
             SkipIfCommand = "code"
             DisableIfCommand = "code"
