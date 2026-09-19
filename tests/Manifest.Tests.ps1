@@ -93,6 +93,20 @@ Describe "Get-ComponentStatus" {
         }
     }
 
+    It "SelfUpdating のパッケージは定義の版が新しくても Installed" {
+        $installDir = New-TestDirectory
+        try {
+            New-Item -ItemType File -Path (Join-Path $installDir "app.exe") -Force | Out-Null
+            $package = New-TestPackage -ShortName "app" -Version "2.0.0" -DetectFiles @("app.exe") -Extra @{ SelfUpdating = $true }
+            $manifest = New-TestManifest -Components @{ app = (New-TestManifestEntry -Version "1.0.0") }
+
+            Get-ComponentStatus -Manifest $manifest -InstallDir $installDir -PackageConfig $package -PackagesDir $installDir |
+                Should Be "Installed"
+        } finally {
+            Remove-TestDirectory -Path $installDir
+        }
+    }
+
     It "マニフェストにあるのに検出ファイルが無ければ Broken" {
         $installDir = New-TestDirectory
         try {

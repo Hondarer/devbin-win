@@ -43,7 +43,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 |-----------|------|-----|------|
 | Name | パッケージの表示名 | string | ✅ |
 | ShortName | パッケージの短縮名 (識別子) | string | ✅ |
-| Version | パッケージのバージョン番号。マニフェストに記録され、`Manage-Bin.cmd` ではこの値とマニフェスト記録値を比較して `Updateable` 判定に使用する。バージョン管理の対象外の場合は `""` を指定する | string | ✅ |
+| Version | パッケージのバージョン番号。マニフェストに記録され、`Manage-Bin.cmd` ではこの値とマニフェスト記録値を比較して `Updateable` 判定に使用する (`SelfUpdating = $true` の場合は比較しない)。バージョン管理の対象外の場合は `""` を指定する | string | ✅ |
 | DownloadVersion | ダウンロード保存名を固定するためのバージョン。配布ファイル名にバージョンが含まれない場合に、`DownloadFileName` と組み合わせて使用する | string | ❌ |
 | VersionSource | インストール時/更新判定時にアーカイブ内容から実バージョンを読み取る定義 | hashtable | ❌ |
 | ArchivePattern | アーカイブファイルのパターン (正規表現) | string | ✅ |
@@ -70,6 +70,8 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |
 | DisableIfFont | このフォント名を持つ登録が HKCU/HKLM にあり、かつ HKCU の value data が devbin-win 配下を指していない場合、メニューでのインストール操作を無効化する。UI 表示は `External` に統一 | string | なし (常に有効) |
 | Hidden | `$true` なら CLI メニューに表示しない | bool | `$false` (表示) |
+| SelfUpdating | `$true` なら、導入後にツール自身が実行ファイルを更新するものとして扱い、`Updateable` 判定を行わない | bool | `$false` (更新判定あり) |
+| CleanupPatterns | ツールが実行時に生成し、マニフェストに記録されないファイルのパターン ($InstallDir からの相対パス)。アンインストール時と再インストール時に削除する | string[] | `@()` (追加削除なし) |
 
 ### DependsOn
 
@@ -143,6 +145,28 @@ GNU Make が依存する MinGW ランタイム DLL パッケージ (`mingw64-gcc
 
 ```powershell
 Hidden = $true   # メニュー非表示・自動管理
+```
+
+### SelfUpdating と CleanupPatterns
+
+導入後にツール自身が実行ファイルを入れ替えて更新する (自己更新する) パッケージに使用します。
+自己更新後は、マニフェストに記録した版と実際の版が一致しなくなります。
+このため `SelfUpdating = $true` を指定すると、定義の `Version` がマニフェストの記録値より新しくても `Updateable` と判定しません。
+これにより、定義の版を上げたときに、自己更新で新しくなった実行ファイルを古い版で上書きする事態を防ぎます。
+
+この場合の `Version` は、初回導入と明示的な再インストールで packages フォルダーから導入する版を示します。
+packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
+
+`CleanupPatterns` には、ツールが実行時に生成するファイルをパターンで指定します。
+これらのファイルはマニフェストのファイル一覧に含まれないため、指定しないとアンインストール後に残ります。
+ワイルドカードはファイル名の部分にだけ使用できます。
+他のコンポーネントがマニフェストに記録しているファイルは削除しません。
+実行中のプロセスが使用しているファイルは削除できないため、警告を表示して処理を続けます。
+
+```powershell
+# GitHub Copilot CLI の例: 自己更新時に旧版を copilot.exe.old-<数値>-<数値> へ退避する
+SelfUpdating = $true
+CleanupPatterns = @("copilot.exe.old-*")
 ```
 
 ### DisableIfFont

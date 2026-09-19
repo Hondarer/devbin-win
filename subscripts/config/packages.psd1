@@ -862,6 +862,10 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("copilot.exe")
+            # 導入後は copilot.exe 自身が自己更新するため、Version は初回導入および明示的な再インストールで使用する版を示します。
+            SelfUpdating = $true
+            # 自己更新時に旧版を copilot.exe.old-<数値>-<数値> へ退避するため、アンインストールおよび再インストール時に削除します。
+            CleanupPatterns = @("copilot.exe.old-*")
             DefaultChecked = $false
         },
 

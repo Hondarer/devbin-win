@@ -169,12 +169,17 @@ GitHub Copilot CLI は、ターミナルから GitHub Copilot を利用するた
 
 - **用途**: ターミナル上でのコード調査、編集、デバッグ、GitHub 操作
 - **配置ファイル**: `bin\copilot.exe`
-- **バージョン**: 1.0.81
+- **バージョン**: 1.0.81 (初回導入時。導入後は自己更新する)
 - **プロジェクト**: [github/copilot-cli](https://github.com/github/copilot-cli)
 - **前提条件**: PowerShell 6 以上、GitHub Copilot の有効な契約
 
 Copilot CLI は既定値では選択されていません。
 コンポーネント マネージャーで選択して導入し、初回起動時に `copilot login` または CLI 内の `/login` で認証してください。
+
+導入後は Copilot CLI 自身が `bin\copilot.exe` を新しい版に入れ替えます。
+このため、packages フォルダーの版が新しくなっても、コンポーネント マネージャーは `Updateable` と表示しません。
+packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
+自己更新時に作られる `copilot.exe.old-*` は、アンインストール時と再インストール時に削除します。
 
 #### glab について
 
