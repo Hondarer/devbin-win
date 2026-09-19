@@ -176,6 +176,7 @@ GitHub Copilot CLI は、ターミナルから GitHub Copilot を利用するた
 
 Copilot CLI は既定値では選択されていません。
 コンポーネント マネージャーで選択して導入し、初回起動時に `copilot login` または CLI 内の `/login` で認証してください。
+システムに devbin-win 外の `copilot.exe` が存在する場合、コンポーネント マネージャーでは `External` と表示して導入を無効化し、既存の Copilot CLI を優先します。
 
 導入後は Copilot CLI 自身が `bin\copilot.exe` を新しい版に入れ替えます。
 このため、packages フォルダーの版が新しくなっても、コンポーネント マネージャーは `Updateable` と表示しません。
@@ -194,6 +195,7 @@ agy は、ターミナルから Google Antigravity のエージェントを利�
 
 Antigravity CLI は既定値では選択されていません。
 コンポーネント マネージャーで選択して導入し、初回起動時にブラウザーで Google アカウントにサインインしてください。
+システムに devbin-win 外の `agy.exe` が存在する場合、コンポーネント マネージャーでは `External` と表示して導入を無効化し、既存の Antigravity CLI を優先します。
 API キーで利用する場合は、`~/.gemini/antigravity-cli/settings.json` の `modelProvider` を `gemini` にし、環境変数 `GEMINI_API_KEY` を設定します。
 
 公式インストーラーは `agy install` を実行してユーザー PATH とシェル設定を変更しますが、devbin-win では実行しません。

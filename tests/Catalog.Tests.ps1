@@ -57,4 +57,12 @@ Describe "packages.psd1" {
         $result = Resolve-DependencyOrder -ShortNames $shortNames -Packages $packages
         @($result.Order).Count | Should Be $packages.Count
     }
+
+    It "copilot と agy は DisableIfCommand で外部検出する" {
+        $copilot = $packages | Where-Object { $_.ShortName -eq "copilot" }
+        $agy = $packages | Where-Object { $_.ShortName -eq "agy" }
+
+        $copilot.DisableIfCommand | Should Be "copilot"
+        $agy.DisableIfCommand | Should Be "agy"
+    }
 }
