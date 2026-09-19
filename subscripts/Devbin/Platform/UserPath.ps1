@@ -86,8 +86,6 @@ function Add-ToUserPath {
         [Environment]::SetEnvironmentVariable("PATH", $currentPath, "User")
         Write-Host "User PATH updated successfully."
         Write-Host "Note: Restart your terminal for PATH changes to take effect."
-    } else {
-        Write-Host "No PATH changes needed."
     }
 }
 
@@ -286,8 +284,8 @@ function Get-ManagedUserPathValue {
         }
 
         $skipCommand = if ($package.ContainsKey("SkipIfCommand")) { [string]$package.SkipIfCommand } else { "" }
+        # 外部に同じコマンドがある場合は PATH へ追加しません (通常の判定結果のため出力しません)。
         if (-not [string]::IsNullOrWhiteSpace($skipCommand) -and (Test-ExternalCommandExists -CommandName $skipCommand -InstallDir $InstallDir)) {
-            Write-Host "  Skipped (external '$skipCommand' already available): $shortName"
             continue
         }
 
@@ -295,7 +293,7 @@ function Get-ManagedUserPathValue {
         foreach ($relativeDir in $pathDirs) {
             $fullPath = Join-Path $InstallDir $relativeDir
             if (-not (Test-Path $fullPath)) {
-                Write-Host "  Directory not found: $relativeDir"
+                Write-Host "    Directory not found: $relativeDir"
                 continue
             }
 
@@ -385,9 +383,7 @@ function Sync-ManagedUserPath {
 
     if ($newPath -ne $currentPath) {
         [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
-        Write-Host "User PATH updated successfully."
-        Write-Host "Note: Restart your terminal for PATH changes to take effect."
-    } else {
-        Write-Host "No PATH changes needed."
+        Write-Host "    User PATH updated successfully."
+        Write-Host "    Note: Restart your terminal for PATH changes to take effect."
     }
 }

@@ -10,6 +10,8 @@ function Install-Component {
         [string]$ScriptDir,
         [hashtable]$Manifest,
         [switch]$SkipDeps,
+        # 再インストールの一部として呼ばれた場合は見出しを出さず、完了メッセージを再インストール向けにします。
+        [switch]$Reinstall,
         [hashtable]$InProgress = @{}
     )
 
@@ -55,7 +57,10 @@ function Install-Component {
     }
 
     Write-Host ""
-    Write-Host "=== $($pkg.Name) をインストール中 ==="
+    if (-not $Reinstall) {
+        Write-Host "=== $($pkg.Name) をインストール中 ==="
+        Write-Host ""
+    }
 
     # インストール先ディレクトリを作成
     if (-not (Test-Path $InstallDir)) {
@@ -109,7 +114,7 @@ function Install-Component {
         -Packages $Packages
 
     if (-not $result) {
-        Write-Host "Error: Extraction failed for '$ShortName'" -ForegroundColor Red
+        Write-Host "  Error: Extraction failed for '$ShortName'" -ForegroundColor Red
         return $false
     }
 
@@ -134,7 +139,7 @@ function Install-Component {
         try {
             $appliedEnvVars = Set-ComponentEnvVars -InstallDir $InstallDir -PackageConfig $pkg
         } catch {
-            Write-Host "Error: Failed to configure runtime environment: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "    Error: Failed to configure runtime environment: $($_.Exception.Message)" -ForegroundColor Red
             return $false
         }
     }
@@ -165,7 +170,11 @@ function Install-Component {
         -ScriptDir $ScriptDir
 
     Write-Host ""
-    Write-Host "  $($pkg.Name) のインストールが完了しました"
+    if ($Reinstall) {
+        Write-Host "  $($pkg.Name) の再インストールが完了しました"
+    } else {
+        Write-Host "  $($pkg.Name) のインストールが完了しました"
+    }
 
     return $true
 }
@@ -188,6 +197,7 @@ function Update-Component {
 
     Write-Host ""
     Write-Host "=== $($pkg.Name) を再インストール中 ==="
+    Write-Host ""
 
     # マニフェストから登録を解除し、PATH を更新します。
     Remove-ComponentFromManifest -Manifest $Manifest -ShortName $ShortName
@@ -195,6 +205,11 @@ function Update-Component {
     Sync-ComponentManagerPath -InstallDir $InstallDir -Packages $Packages -Manifest $Manifest
 
     # 自己更新時のバックアップ等、マニフェストに記録されない実行時の生成ファイルを削除します。
+    # 削除対象を持たないコンポーネントでは手順の見出しを出しません。
+    if ($pkg.ContainsKey("CleanupPatterns") -or $pkg.ContainsKey("TargetDirectory")) {
+        Write-Host ""
+        Write-Host "  既存のファイルを削除中..."
+    }
     Remove-ComponentCleanupFiles -ShortName $ShortName -PackageConfig $pkg -InstallDir $InstallDir -Manifest $Manifest
 
     # TargetDirectory 指定時はディレクトリをクリーンアップします。
@@ -209,7 +224,7 @@ function Update-Component {
             try {
                 Remove-Item -Path $targetPath -Recurse -Force -ErrorAction Stop
             } catch {
-                Write-Host "Warning: Could not remove '$targetDir': $($_.Exception.Message)" -ForegroundColor Yellow
+                Write-Host "    Warning: Could not remove '$targetDir': $($_.Exception.Message)" -ForegroundColor Yellow
             }
             if ($ShortName -eq "vscode" -and $vscodeBackup) {
                 $vscodeDir = Join-Path $InstallDir "vscode"
@@ -228,7 +243,8 @@ function Update-Component {
         -InstallDir $InstallDir `
         -ScriptDir $ScriptDir `
         -Manifest $Manifest `
-        -SkipDeps
+        -SkipDeps `
+        -Reinstall
 
     return $result
 }

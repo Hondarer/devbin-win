@@ -17,7 +17,7 @@ function Invoke-StandardExtract {
         throw "Extracted folder not found"
     }
 
-    Write-Host "Extracted folder: $sourcePath"
+    Write-Host "    Extracted folder: $sourcePath"
 
     Get-ChildItem -Path $sourcePath -Recurse | ForEach-Object {
         if ($sourcePath -eq $TempDir) {

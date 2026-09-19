@@ -176,12 +176,13 @@ function Write-NpmNativeOutput {
     param([object[]]$Output)
 
     foreach ($item in @($Output)) {
-        if ($null -eq $item) {
+        $text = [string]$item
+        if ([string]::IsNullOrWhiteSpace($text)) {
             continue
         }
 
-        # 標準エラー出力 (2>&1) の ErrorRecord によるコンソール赤字化を防ぎ、テキストのみを出力します。
-        Write-Host ([string]$item)
+        # 標準エラー出力 (2>&1) の ErrorRecord によるコンソール赤字化を防ぎ、テキストのみを手順の詳細として字下げして出力します。
+        Write-Host "    $text"
     }
 }
 
@@ -358,12 +359,12 @@ function Invoke-NpmInstallFromCache {
 
     $status = Get-NpmCacheStatus -PackageConfig $PackageConfig -PackagesDir $PackagesDir
     if (-not $status.IsValid) {
-        Write-Host "Error: npm cache is incomplete for '$($PackageConfig.ShortName)'" -ForegroundColor Red
+        Write-Host "    Error: npm cache is incomplete for '$($PackageConfig.ShortName)'" -ForegroundColor Red
         if ($status.Missing.Count -gt 0) {
-            Write-Host "  Missing: $($status.Missing -join ', ')" -ForegroundColor Red
+            Write-Host "      Missing: $($status.Missing -join ', ')" -ForegroundColor Red
         }
         if ($status.Invalid.Count -gt 0) {
-            Write-Host "  Invalid: $($status.Invalid -join ', ')" -ForegroundColor Red
+            Write-Host "      Invalid: $($status.Invalid -join ', ')" -ForegroundColor Red
         }
         return $false
     }
@@ -380,7 +381,7 @@ function Invoke-NpmInstallFromCache {
             $cacheAddExitCode = $LASTEXITCODE
             Write-NpmNativeOutput -Output $cacheAddOutput
             if ($cacheAddExitCode -ne 0 -and $null -ne $cacheAddExitCode) {
-                Write-Host "Error: npm cache add failed for $archivePath" -ForegroundColor Red
+                Write-Host "    Error: npm cache add failed for $archivePath" -ForegroundColor Red
                 return $false
             }
         }
@@ -396,12 +397,12 @@ function Invoke-NpmInstallFromCache {
             $args += "--ignore-scripts"
         }
 
-        Write-Host "  Installing $($PackageConfig.ShortName) from the offline npm cache..."
+        Write-Host "    Installing $($PackageConfig.ShortName) from the offline npm cache..."
         $installOutput = @(& $NpmCommandPath @args 2>&1)
         $installExitCode = $LASTEXITCODE
         Write-NpmNativeOutput -Output $installOutput
         if ($installExitCode -ne 0 -and $null -ne $installExitCode) {
-            Write-Host "Error: npm install failed for '$($PackageConfig.ShortName)' (exit code: $installExitCode)" -ForegroundColor Red
+            Write-Host "    Error: npm install failed for '$($PackageConfig.ShortName)' (exit code: $installExitCode)" -ForegroundColor Red
             return $false
         }
 
@@ -410,28 +411,28 @@ function Invoke-NpmInstallFromCache {
         $rootPackagePath = $rootPackage -replace '/', [System.IO.Path]::DirectorySeparatorChar
         $installedManifest = Join-Path (Join-Path $tempProjectDirectory "node_modules") (Join-Path $rootPackagePath "package.json")
         if (-not (Test-Path $installedManifest -PathType Leaf)) {
-            Write-Host "Error: installed npm package was not found: $installedManifest" -ForegroundColor Red
+            Write-Host "    Error: installed npm package was not found: $installedManifest" -ForegroundColor Red
             return $false
         }
         if (-not [string]::IsNullOrWhiteSpace($expectedVersion)) {
             try {
                 $installedJson = Get-Content $installedManifest -Raw -Encoding UTF8 | ConvertFrom-Json
                 if ([string]$installedJson.version -ne $expectedVersion) {
-                    Write-Host "Error: installed npm version mismatch for '$rootPackage': expected $expectedVersion, got $($installedJson.version)" -ForegroundColor Red
+                    Write-Host "    Error: installed npm version mismatch for '$rootPackage': expected $expectedVersion, got $($installedJson.version)" -ForegroundColor Red
                     return $false
                 }
             } catch {
-                Write-Host "Error: failed to inspect installed npm package: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "    Error: failed to inspect installed npm package: $($_.Exception.Message)" -ForegroundColor Red
                 return $false
             }
         }
 
         Copy-NpmOfflineInstallToPrefix -ProjectDirectory $tempProjectDirectory -BinDir $BinDir
 
-        Write-Host "$($PackageConfig.Name) installation completed."
+        Write-Host "    $($PackageConfig.Name) installation completed."
         return $true
     } catch {
-        Write-Host "Error: Failed to install $($PackageConfig.Name): $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    Error: Failed to install $($PackageConfig.Name): $($_.Exception.Message)" -ForegroundColor Red
         return $false
     } finally {
         if ($null -eq $previousSkip) {

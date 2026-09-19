@@ -49,15 +49,14 @@ function Remove-ComponentCleanupFiles {
         foreach ($item in @(Get-ChildItem -LiteralPath $searchDir -Filter $leafPattern -File -Force -ErrorAction SilentlyContinue)) {
             $relativePath = if ($relativeDir) { Join-Path $relativeDir $item.Name } else { $item.Name }
             if ($allOtherFiles.ContainsKey($relativePath)) {
-                Write-Host "  Skipped (shared): $relativePath"
                 continue
             }
             try {
                 Remove-Item -LiteralPath $item.FullName -Force -ErrorAction Stop
-                Write-Host "  Removed: $relativePath"
+                Write-Host "    Removed: $relativePath"
             } catch {
                 # 実行中のプロセスが使用しているファイルは削除できないため、警告にとどめます。
-                Write-Host "Warning: Failed to remove '$relativePath': $($_.Exception.Message)" -ForegroundColor Yellow
+                Write-Host "    Warning: Failed to remove '$relativePath': $($_.Exception.Message)" -ForegroundColor Yellow
             }
         }
     }
@@ -98,10 +97,10 @@ function Remove-ComponentInstalledFiles {
         if (Test-Path $targetPath) {
             try {
                 Remove-Item -Path $targetPath -Recurse -Force -ErrorAction Stop
-                Write-Host "  Removed: $targetDir"
+                Write-Host "    Removed: $targetDir"
                 $targetDirRemoved = $true
             } catch {
-                Write-Host "Warning: Failed to remove '$targetDir': $($_.Exception.Message)" -ForegroundColor Yellow
+                Write-Host "    Warning: Failed to remove '$targetDir': $($_.Exception.Message)" -ForegroundColor Yellow
             }
         }
     }
@@ -114,16 +113,15 @@ function Remove-ComponentInstalledFiles {
             # マニフェストのファイル一覧に基づく削除 (他コンポーネントとの共有判定を含む)
             foreach ($file in $Files) {
                 if ($allOtherFiles.ContainsKey($file)) {
-                    Write-Host "  Skipped (shared): $file"
                     continue
                 }
                 $fullPath = Join-Path $InstallDir $file
                 if (Test-Path $fullPath) {
                     try {
                         Remove-Item -Path $fullPath -Force -ErrorAction Stop
-                        Write-Host "  Removed: $file"
+                        Write-Host "    Removed: $file"
                     } catch {
-                        Write-Host "Warning: Failed to remove '$file': $($_.Exception.Message)" -ForegroundColor Yellow
+                        Write-Host "    Warning: Failed to remove '$file': $($_.Exception.Message)" -ForegroundColor Yellow
                     }
                 }
             }
@@ -140,9 +138,9 @@ function Remove-ComponentInstalledFiles {
                         } else {
                             Remove-Item -Path $fullPath -Force -ErrorAction Stop
                         }
-                        Write-Host "  Removed: $df"
+                        Write-Host "    Removed: $df"
                     } catch {
-                        Write-Host "Warning: Failed to remove '$df': $($_.Exception.Message)" -ForegroundColor Yellow
+                        Write-Host "    Warning: Failed to remove '$df': $($_.Exception.Message)" -ForegroundColor Yellow
                     }
                 }
             }
@@ -165,9 +163,9 @@ function Remove-ComponentInstalledFiles {
                     if (-not $hasOtherRefs) {
                         try {
                             Remove-Item -Path $rdPath -Recurse -Force -ErrorAction SilentlyContinue
-                            Write-Host "  Removed directory: $rd"
+                            Write-Host "    Removed directory: $rd"
                         } catch {
-                            Write-Host "Warning: Failed to remove directory '$rd': $($_.Exception.Message)" -ForegroundColor Yellow
+                            Write-Host "    Warning: Failed to remove directory '$rd': $($_.Exception.Message)" -ForegroundColor Yellow
                         }
                     }
                 }

@@ -39,11 +39,11 @@ function Invoke-PackageAcquisitionForShortNames {
             }
         }
 
-        Write-Host "  ダウンロード対象: $($ShortNames -join ', ')"
+        Write-Host "    ダウンロード対象: $($ShortNames -join ', ')"
         $result = Invoke-PackageAcquisition -Packages $Packages -Context $context -ShortNames $ShortNames
         if (-not $result.Success) {
             foreach ($message in $result.Messages) {
-                Write-Host "  $message" -ForegroundColor Yellow
+                Write-Host "    $message" -ForegroundColor Yellow
             }
         }
         return $result.Success
@@ -74,19 +74,19 @@ function Resolve-ComponentSource {
         $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $PackageConfig -PackagesDir $PackagesDir
         if (-not $npmCacheStatus.IsValid) {
             Write-Host "  npm パッケージアーカイブが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
-            Write-Host "  不足: $($npmCacheStatus.Missing -join ', ')"
+            Write-Host "    不足: $($npmCacheStatus.Missing -join ', ')"
             if ($npmCacheStatus.Invalid.Count -gt 0) {
-                Write-Host "  不正: $($npmCacheStatus.Invalid -join ', ')"
+                Write-Host "    不正: $($npmCacheStatus.Invalid -join ', ')"
             }
 
             Invoke-PackageAcquisitionForShortNames -ShortNames @($ShortName) -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages | Out-Null
 
             $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $PackageConfig -PackagesDir $PackagesDir
             if (-not $npmCacheStatus.IsValid) {
-                Write-Host "Error: npm package cache is not valid for '$ShortName'" -ForegroundColor Red
-                Write-Host "  Missing: $($npmCacheStatus.Missing -join ', ')" -ForegroundColor Red
-                Write-Host "  Invalid: $($npmCacheStatus.Invalid -join ', ')" -ForegroundColor Red
-                Write-Host "Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $ShortName" -ForegroundColor Yellow
+                Write-Host "    Error: npm package cache is not valid for '$ShortName'" -ForegroundColor Red
+                Write-Host "      Missing: $($npmCacheStatus.Missing -join ', ')" -ForegroundColor Red
+                Write-Host "      Invalid: $($npmCacheStatus.Invalid -join ', ')" -ForegroundColor Red
+                Write-Host "    Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $ShortName" -ForegroundColor Yellow
                 return $result
             }
         }
@@ -98,14 +98,14 @@ function Resolve-ComponentSource {
 
         if ($missingPipWheels.Count -gt 0) {
             Write-Host "  pip wheel ファイルが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
-            Write-Host "  不足: $($missingPipWheels -join ', ')"
+            Write-Host "    不足: $($missingPipWheels -join ', ')"
 
             Invoke-PackageAcquisitionForShortNames -ShortNames @($ShortName) -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages -WithInstalledPython | Out-Null
 
             $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
             if ($missingPipWheels.Count -gt 0) {
-                Write-Host "Error: pip wheel files not found for '$ShortName': $($missingPipWheels -join ', ')" -ForegroundColor Red
-                Write-Host "Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $ShortName" -ForegroundColor Yellow
+                Write-Host "    Error: pip wheel files not found for '$ShortName': $($missingPipWheels -join ', ')" -ForegroundColor Red
+                Write-Host "    Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $ShortName" -ForegroundColor Yellow
                 return $result
             }
         }
@@ -134,14 +134,14 @@ function Resolve-ComponentSource {
 
             if ($fallbackPath) {
                 $archiveFile = $fallbackPath
-                Write-Host "  Warning: ArchivePattern に一致しないため元ファイル名へフォールバックします: $(Split-Path $fallbackPath -Leaf)" -ForegroundColor Yellow
+                Write-Host "    Warning: ArchivePattern に一致しないため元ファイル名へフォールバックします: $(Split-Path $fallbackPath -Leaf)" -ForegroundColor Yellow
             } else {
                 # アーカイブが存在しない場合はダウンロードを試行します。
                 Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
                 $resolution = Resolve-DependencyOrder -ShortNames @($ShortName) -Packages $Packages
                 if (-not $resolution.Success) {
                     foreach ($message in $resolution.Errors) {
-                        Write-Host "Error: $message" -ForegroundColor Red
+                        Write-Host "    Error: $message" -ForegroundColor Red
                     }
                     return $result
                 }
@@ -158,7 +158,7 @@ function Resolve-ComponentSource {
                 if ($archiveFiles -and $archiveFiles.Count -gt 0) {
                     $archiveFile = $archiveFiles[0].FullName
                 } else {
-                    Write-Host "Error: Archive not found for '$ShortName' (pattern: $($PackageConfig.ArchivePattern))" -ForegroundColor Red
+                    Write-Host "    Error: Archive not found for '$ShortName' (pattern: $($PackageConfig.ArchivePattern))" -ForegroundColor Red
                     return $result
                 }
             }

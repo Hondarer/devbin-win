@@ -34,7 +34,7 @@ function Invoke-ExtractStrategy {
 
     $strategy = $PackageConfig.ExtractStrategy
 
-    Write-Host "Extracting $($PackageConfig.Name) using $strategy strategy..."
+    Write-Host "  Extracting $($PackageConfig.Name) using $strategy strategy..."
 
     $targetPath = $null
 
@@ -81,7 +81,7 @@ function Invoke-ExtractStrategy {
                 return Invoke-NpmInstallStrategy -BinDir $BinDir -Config $PackageConfig -PackagesDir $PackagesDir
             }
             default {
-                Write-Host "Unknown strategy: $strategy" -ForegroundColor Red
+                Write-Host "    Unknown strategy: $strategy" -ForegroundColor Red
                 return $false
             }
         }
@@ -92,7 +92,7 @@ function Invoke-ExtractStrategy {
             $scriptTargetPath = if ($targetPath) { $targetPath } else { $BinDir }
             $scriptPath = Join-Path $ScriptDir "config\templates\$($PackageConfig.PostSetupScript)"
             if (Test-Path $scriptPath) {
-                Write-Host "Running post-setup script: $($PackageConfig.PostSetupScript)"
+                Write-Host "    Running post-setup script: $($PackageConfig.PostSetupScript)"
                 $extension = [System.IO.Path]::GetExtension($scriptPath)
                 if ($extension -ieq ".ps1") {
                     & powershell.exe -ExecutionPolicy Bypass -File $scriptPath -TargetPath $scriptTargetPath
@@ -103,16 +103,16 @@ function Invoke-ExtractStrategy {
                     throw "Post-setup script failed with exit code ${LASTEXITCODE}: $($PackageConfig.PostSetupScript)"
                 }
             } else {
-                Write-Host "Warning: Post-setup script not found: $scriptPath" -ForegroundColor Yellow
+                Write-Host "    Warning: Post-setup script not found: $scriptPath" -ForegroundColor Yellow
             }
         }
 
-        Write-Host "$($PackageConfig.Name) extraction completed."
+        Write-Host "    $($PackageConfig.Name) extraction completed."
         return $true
     }
     catch {
-        Write-Host "Error: Failed to extract $($PackageConfig.Name)" -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Red
+        Write-Host "    Error: Failed to extract $($PackageConfig.Name)" -ForegroundColor Red
+        Write-Host "    $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
     finally {
