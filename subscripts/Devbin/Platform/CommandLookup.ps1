@@ -32,15 +32,25 @@ function Get-NormalizedPathString {
         return $null
     }
 
+    $trimmed = $PathValue.Trim()
+    # Windows Terminal の commandline など、パスではない文字列が渡ることがある。
+    # 引用符は無効なパス文字なので、Test-Path / GetFullPath には渡さない。
+    if ($trimmed.IndexOfAny([System.IO.Path]::GetInvalidPathChars()) -ge 0) {
+        if ($trimmed.Length -gt 3) {
+            return $trimmed.TrimEnd('\')
+        }
+        return $trimmed
+    }
+
     $normalized = $null
     try {
-        if (Test-Path $PathValue) {
-            $normalized = (Resolve-Path $PathValue -ErrorAction Stop).Path
+        if (Test-Path -LiteralPath $trimmed -ErrorAction Ignore) {
+            $normalized = (Resolve-Path -LiteralPath $trimmed -ErrorAction Stop).Path
         } else {
-            $normalized = [System.IO.Path]::GetFullPath($PathValue)
+            $normalized = [System.IO.Path]::GetFullPath($trimmed)
         }
     } catch {
-        $normalized = $PathValue.Trim()
+        $normalized = $trimmed
     }
 
     if ($normalized.Length -gt 3) {

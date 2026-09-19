@@ -19,6 +19,50 @@ Describe "Get-ValidCommandCandidates" {
     }
 }
 
+Describe "Get-NormalizedPathString" {
+
+    It "実在するパスはフルパスに正規化する" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $dir = New-TestDirectory
+            try {
+                $result = Get-NormalizedPathString -PathValue $dir
+                $expected = [System.IO.Path]::GetFullPath($dir).TrimEnd('\')
+                $result | Should Be $expected
+            } finally {
+                Remove-TestDirectory -Path $dir
+            }
+        }
+    }
+
+    It "引用符を含むコマンドラインではエラーを出さない" {
+        InModuleScope Devbin {
+            $commandline = "powershell.exe -NoExit -ExecutionPolicy Bypass -Command `"& 'Add-MinGW-Path.ps1'`""
+            $errorCountBefore = $Error.Count
+            { Get-NormalizedPathString -PathValue $commandline } | Should Not Throw
+            ($Error.Count - $errorCountBefore) | Should Be 0
+        }
+    }
+}
+
+Describe "Test-PathUnderRoot" {
+
+    It "引用符付きコマンドラインにルートが含まれると true" {
+        $root = "C:\ProgramData\tetsuo\devbin-win"
+        $commandline = '"C:\ProgramData\tetsuo\devbin-win\bin\git\bin\bash.exe" -i -l'
+        Test-PathUnderRoot -PathValue $commandline -Root $root | Should Be $true
+    }
+
+    It "MinGW プロファイルのコマンドラインではエラーを出さず false" {
+        $root = "C:\ProgramData\tetsuo\devbin-win"
+        $commandline = "powershell.exe -NoExit -ExecutionPolicy Bypass -Command `"& 'Add-MinGW-Path.ps1'`""
+        $errorCountBefore = $Error.Count
+        $result = Test-PathUnderRoot -PathValue $commandline -Root $root
+        ($Error.Count - $errorCountBefore) | Should Be 0
+        $result | Should Be $false
+    }
+}
+
 Describe "New-DevbinTempDirectory / Remove-DevbinTempDirectory" {
 
     It "呼び出しごとに別の一時ディレクトリを作る" {
