@@ -15,13 +15,13 @@ function Invoke-SelfExtractingArchiveExtract {
     $targetDirectory = $Config.TargetDirectory
     $targetPath = Join-Path $BinDir $targetDirectory
 
-    Write-Host "Creating target directory: $targetDirectory"
+    Write-Host "    Creating target directory: $targetDirectory"
 
     if (!(Test-Path $targetPath)) {
         New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
     }
 
-    Write-Host "Extracting (this may take a moment)..."
+    Write-Host "    Extracting (this may take a moment)..."
 
     $resolvedTargetPath = (Resolve-Path $targetPath).Path
     $extractArgs = @()
@@ -34,11 +34,11 @@ function Invoke-SelfExtractingArchiveExtract {
     $process = Start-Process -FilePath $ArchiveFile -ArgumentList $extractArgs -Wait -PassThru
 
     if ($process.ExitCode -eq 0) {
-        Write-Host "Extracted successfully to: $targetPath"
+        Write-Host "    Extracted successfully to: $targetPath"
 
         # 抽出後処理 (PostExtract): 追加ファイルのコピー
         if ($Config.PostExtract -and $Config.PostExtract.CopyFiles) {
-            Write-Host "Copying additional files..."
+            Write-Host "    Copying additional files..."
             foreach ($fileEntry in $Config.PostExtract.CopyFiles) {
                 $sourcePath = Resolve-PostExtractSourcePath `
                     -SourcePath ([string]$fileEntry.Source) `
@@ -47,9 +47,9 @@ function Invoke-SelfExtractingArchiveExtract {
 
                 if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
                     Copy-Item -LiteralPath $sourcePath -Destination $destPath -Force
-                    Write-Host "  Copied: $($fileEntry.Destination)"
+                    Write-Host "      Copied: $($fileEntry.Destination)"
                 } else {
-                    Write-Host "  Warning: File not found: $sourcePath" -ForegroundColor Yellow
+                    Write-Host "      Warning: File not found: $sourcePath" -ForegroundColor Yellow
                 }
             }
         }
@@ -82,7 +82,7 @@ function Invoke-InnoSetupExtract {
     New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
 
     # innoextract によるアーカイブ展開
-    Write-Host "  Extracting with innoextract..."
+    Write-Host "    Extracting with innoextract..."
     $innoextractArgs = @("-d", "`"$TempDir`"", "`"$ArchiveFile`"")
     $process = Start-Process -FilePath $innoextractPath -ArgumentList $innoextractArgs -Wait -PassThru -NoNewWindow
 
@@ -105,7 +105,7 @@ function Invoke-InnoSetupExtract {
 
     # 展開済みサブディレクトリを配置先へ移動
     Move-Item -Path $sourcePath -Destination $targetPath -Force
-    Write-Host "  Extracted to: $targetPath"
+    Write-Host "    Extracted to: $targetPath"
 
     # 一時ディレクトリの削除
     if (Test-Path $TempDir) {
@@ -123,12 +123,12 @@ function Invoke-VSBuildToolsExtract {
         [hashtable]$Config
     )
 
-    Write-Host "Processing: $($Config.DisplayName)"
+    Write-Host "    Processing: $($Config.DisplayName)"
 
     $vsbtScript = Join-Path $ScriptDir "Setup-VSBT.ps1"
 
     if (-not (Test-Path $vsbtScript)) {
-        Write-Host "  Error: Setup-VSBT.ps1 not found at: $vsbtScript" -ForegroundColor Red
+        Write-Host "    Error: Setup-VSBT.ps1 not found at: $vsbtScript" -ForegroundColor Red
         return $false
     }
 
@@ -147,24 +147,24 @@ function Invoke-VSBuildToolsExtract {
         SkipDevbinModuleImport = $true
     }
 
-    Write-Host "  Executing Setup-VSBT.ps1..."
-    Write-Host "    MSVC: $($params.MSVCVersion)"
-    Write-Host "    SDK: $($params.SDKVersion)"
-    Write-Host "    Target: $($params.Target)"
-    Write-Host "    Output: $outputPath`n"
+    Write-Host "    Executing Setup-VSBT.ps1..."
+    Write-Host "      MSVC: $($params.MSVCVersion)"
+    Write-Host "      SDK: $($params.SDKVersion)"
+    Write-Host "      Target: $($params.Target)"
+    Write-Host "      Output: $outputPath`n"
 
     try {
         & $vsbtScript @params
 
         if ($LASTEXITCODE -eq 0 -or $null -eq $LASTEXITCODE) {
-            Write-Host "  $($Config.DisplayName) setup completed" -ForegroundColor Green
+            Write-Host "    $($Config.DisplayName) setup completed" -ForegroundColor Green
             return $true
         } else {
-            Write-Host "  Setup-VSBT.ps1 exited with code $LASTEXITCODE" -ForegroundColor Yellow
+            Write-Host "    Setup-VSBT.ps1 exited with code $LASTEXITCODE" -ForegroundColor Yellow
             return $false
         }
     } catch {
-        Write-Host "  Error executing Setup-VSBT.ps1: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    Error executing Setup-VSBT.ps1: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }

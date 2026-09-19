@@ -23,11 +23,11 @@ function Invoke-VersionNormalizedExtract {
 
     if ((Split-Path $sourcePath -Leaf) -match $VersionPattern) {
         $sourceFolder = Get-Item $sourcePath
-        Write-Host "Source path matches pattern: $($sourceFolder.Name)"
+        Write-Host "    Source path matches pattern: $($sourceFolder.Name)"
     } else {
         $sourceFolder = Get-ChildItem -Path $sourcePath -Directory | Where-Object { $_.Name -match $VersionPattern } | Select-Object -First 1
         if ($sourceFolder) {
-            Write-Host "Found folder matching pattern: $($sourceFolder.Name)"
+            Write-Host "    Found folder matching pattern: $($sourceFolder.Name)"
         }
     }
 
@@ -40,7 +40,7 @@ function Invoke-VersionNormalizedExtract {
         $targetFolderName = $TargetDirectory -replace '\{0\}', $versionPart
         $targetPath = Join-Path $BinDir $targetFolderName
 
-        Write-Host "Creating target directory: $targetFolderName"
+        Write-Host "    Creating target directory: $targetFolderName"
 
         if (!(Test-Path $targetPath)) {
             New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
@@ -60,7 +60,7 @@ function Invoke-VersionNormalizedExtract {
             }
         }
 
-        Write-Host "Installed to: $targetPath"
+        Write-Host "    Installed to: $targetPath"
         return $targetPath
     }
 
@@ -83,14 +83,14 @@ function Invoke-TargetDirectoryExtract {
     $targetPath = Join-Path $BinDir $targetFolderName
     $useLongPath = $Config.UseLongPathSupport
 
-    Write-Host "Creating target directory: $targetFolderName"
+    Write-Host "    Creating target directory: $targetFolderName"
 
     if (!(Test-Path $targetPath)) {
         New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
     }
 
     $absoluteTempDir = (Resolve-Path $TempDir).Path
-    Write-Host "Copying files from temp directory: $absoluteTempDir"
+    Write-Host "    Copying files from temp directory: $absoluteTempDir"
 
     Get-ChildItem -Path $absoluteTempDir -Recurse | ForEach-Object {
         $relativePath = $_.FullName.Substring($absoluteTempDir.Length + 1)
@@ -112,7 +112,7 @@ function Invoke-TargetDirectoryExtract {
             if ($useLongPath) {
                 $copyResult = Copy-LongPathFile -SourcePath $_.FullName -DestinationPath $destinationPath
                 if (-not $copyResult) {
-                    Write-Host "  Skipped: $relativePath"
+                    Write-Host "    Skipped: $relativePath"
                 }
             } else {
                 Copy-Item -Path $_.FullName -Destination $destinationPath -Force
@@ -120,7 +120,7 @@ function Invoke-TargetDirectoryExtract {
         }
     }
 
-    Write-Host "Installed to: $targetPath"
+    Write-Host "    Installed to: $targetPath"
 
     # 抽出後処理 (PostExtract): 追加ディレクトリの作成
     if ($Config.PostExtract -and $Config.PostExtract.CreateDirectories) {
@@ -128,7 +128,7 @@ function Invoke-TargetDirectoryExtract {
             $dirPath = Join-Path $targetPath $dir
             if (!(Test-Path $dirPath)) {
                 New-Item -ItemType Directory -Path $dirPath -Force | Out-Null
-                Write-Host "Created directory: $dir"
+                Write-Host "    Created directory: $dir"
             }
         }
     }

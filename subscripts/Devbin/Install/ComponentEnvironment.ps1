@@ -107,7 +107,7 @@ function Set-ComponentEnvVars {
     foreach ($key in $values.Keys) {
         $value = $values[$key]
         [Environment]::SetEnvironmentVariable($key, $value, "User")
-        Write-Host "  Set $key=$value"
+        Write-Host "    Set $key=$value"
         $appliedVars[$key] = $value
     }
 
@@ -124,8 +124,8 @@ function Set-ComponentEnvVars {
 
         [Environment]::SetEnvironmentVariable("BROWSER_PATH", $browserPath, "User")
         [Environment]::SetEnvironmentVariable("PUPPETEER_EXECUTABLE_PATH", $puppeteerPath, "User")
-        Write-Host "  Set BROWSER_PATH=$browserPath"
-        Write-Host "  Set PUPPETEER_EXECUTABLE_PATH=$puppeteerPath"
+        Write-Host "    Set BROWSER_PATH=$browserPath"
+        Write-Host "    Set PUPPETEER_EXECUTABLE_PATH=$puppeteerPath"
         $appliedVars["BROWSER_PATH"] = $browserPath
         $appliedVars["PUPPETEER_EXECUTABLE_PATH"] = $puppeteerPath
     }
@@ -160,7 +160,7 @@ function Remove-ComponentEnvVars {
         $currentValue = [Environment]::GetEnvironmentVariable($key, "User")
         if ($currentValue -eq $expectedValue) {
             [Environment]::SetEnvironmentVariable($key, $null, "User")
-            Write-Host "  Removed $key"
+            Write-Host "    Removed $key"
         }
     }
 }

@@ -15,14 +15,14 @@ function Invoke-PipInstallStrategy {
 
     $pipPackage = $Config.PipPackage
     if ([string]::IsNullOrWhiteSpace($pipPackage)) {
-        Write-Host "Error: PipPackage not specified in config" -ForegroundColor Red
+        Write-Host "    Error: PipPackage not specified in config" -ForegroundColor Red
         return $false
     }
 
     $version = if ($Config.ContainsKey("Version")) { $Config.Version } else { "" }
     $packageSpec = if (-not [string]::IsNullOrWhiteSpace($version)) { "$pipPackage==$version" } else { $pipPackage }
 
-    Write-Host "Installing $($Config.Name) via pip ($packageSpec)..."
+    Write-Host "    Installing $($Config.Name) via pip ($packageSpec)..."
 
     # Python の配置先パスをパッケージ定義の TargetDirectory から解決
     $pythonDir = Get-PythonDirectory -Packages $Packages -InstallDir $BinDir
@@ -31,7 +31,7 @@ function Invoke-PipInstallStrategy {
     }
     $pythonExe = Join-Path $pythonDir "python.exe"
     if (-not (Test-Path $pythonExe)) {
-        Write-Host "Error: Python not found at: $pythonExe" -ForegroundColor Red
+        Write-Host "    Error: Python not found at: $pythonExe" -ForegroundColor Red
         return $false
     }
 
@@ -41,26 +41,26 @@ function Invoke-PipInstallStrategy {
         $missingWheels = Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels
 
         if ($missingWheels.Count -gt 0) {
-            Write-Host "Error: pip wheel cache is incomplete: $($missingWheels -join ', ')" -ForegroundColor Red
-            Write-Host "Please run Get-Packages.ps1 to prepare packages\pip-packages." -ForegroundColor Yellow
+            Write-Host "    Error: pip wheel cache is incomplete: $($missingWheels -join ', ')" -ForegroundColor Red
+            Write-Host "    Please run Get-Packages.ps1 to prepare packages\pip-packages." -ForegroundColor Yellow
             return $false
         }
 
-        Write-Host "Using offline installation with local wheel files..."
+        Write-Host "    Using offline installation with local wheel files..."
         $pipPackagesAbsPath = $pipPackagesDir
         & $pythonExe -m pip install --no-warn-script-location `
             --no-index --find-links=$pipPackagesAbsPath $packageSpec
 
         if ($LASTEXITCODE -eq 0 -or $null -eq $LASTEXITCODE) {
-            Write-Host "$($Config.Name) installation completed."
+            Write-Host "    $($Config.Name) installation completed."
             return $true
         } else {
-            Write-Host "Warning: pip install may have issues (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+            Write-Host "    Warning: pip install may have issues (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
             return $false
         }
     } catch {
-        Write-Host "Error: Failed to install $($Config.Name): $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Red
+        Write-Host "    Error: Failed to install $($Config.Name): $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }
@@ -75,7 +75,7 @@ function Invoke-NpmInstallStrategy {
 
     $npmCmd = Join-Path $BinDir "npm.cmd"
     if (-not (Test-Path $npmCmd)) {
-        Write-Host "Error: npm not found at: $npmCmd" -ForegroundColor Red
+        Write-Host "    Error: npm not found at: $npmCmd" -ForegroundColor Red
         return $false
     }
 

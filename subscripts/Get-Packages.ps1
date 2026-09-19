@@ -46,6 +46,7 @@ $result = Invoke-PackageAcquisition `
 
 Write-Host ""
 Write-Host "=== 取得結果 ==="
+Write-Host ""
 foreach ($message in $result.Messages) {
     Write-Host "  $message"
 }

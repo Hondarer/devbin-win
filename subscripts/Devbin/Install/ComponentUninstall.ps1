@@ -45,6 +45,7 @@ function Uninstall-Component {
 
     Write-Host ""
     Write-Host "=== $($pkg.Name) をアンインストール中 ==="
+    Write-Host ""
 
     if ($pkg.ExtractStrategy -eq "NpmInstall") {
         $npmPackage = if ($pkg.ContainsKey("NpmPackage")) { [string]$pkg.NpmPackage } else { "" }
@@ -54,7 +55,7 @@ function Uninstall-Component {
             Write-Host "  npm uninstall を実行中: $npmPackage"
             & $npmCmd uninstall -g --prefix $InstallDir $npmPackage
             if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
-                Write-Host "Warning: npm uninstall exited with code $LASTEXITCODE" -ForegroundColor Yellow
+                Write-Host "    Warning: npm uninstall exited with code $LASTEXITCODE" -ForegroundColor Yellow
             }
         } else {
             Write-Host "  npm uninstall をスキップしました (npm または NpmPackage が見つかりません)" -ForegroundColor Yellow
@@ -67,6 +68,12 @@ function Uninstall-Component {
     if ($isVSCode) {
         $vscodeBackup = Backup-VSCodeData -InstallDirectory $InstallDir -Silent
     }
+
+    # 見出し直後の最初の手順には空行を入れません。
+    if ($pkg.ExtractStrategy -eq "NpmInstall") {
+        Write-Host ""
+    }
+    Write-Host "  ファイルを削除中..."
 
     # マニフェストに記録されたファイル一覧に基づいて配置ファイルを削除します。
     $componentData = $Manifest.components[$ShortName]

@@ -32,7 +32,7 @@ function Expand-ArchiveToTemp {
     elseif ($fileExtension -in @(".7z", ".zst", ".xz")) {
         $tarPath = "$env:WINDIR\System32\tar.exe"
         if (Test-Path $tarPath) {
-            Write-Host "Using Windows built-in tar.exe (libarchive) for $fileExtension extraction..."
+            Write-Host "    Using Windows built-in tar.exe (libarchive) for $fileExtension extraction..."
 
             $absoluteArchive = (Resolve-Path $ArchiveFile).Path
             $absoluteTempDir = (Resolve-Path $TempDir).Path
@@ -43,7 +43,7 @@ function Expand-ArchiveToTemp {
                 throw "tar.exe extraction failed with exit code: $LASTEXITCODE"
             }
 
-            Write-Host "Successfully extracted $fileExtension file using tar.exe"
+            Write-Host "    Successfully extracted $fileExtension file using tar.exe"
         } else {
             throw "tar.exe not found at expected location: $tarPath"
         }

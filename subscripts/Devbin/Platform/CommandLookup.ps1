@@ -64,9 +64,7 @@ function Test-PythonCommandCandidate {
         return $true
     }
 
-    Write-Host "  Detected Windows Store Python proxy: $CommandPath"
-    Write-Host "  Testing if Python is actually installed..."
-
+    # Windows Store プロキシは多くの環境に存在し毎回検出されるため、正常系の判定結果は出力しません。
     try {
         $null = Start-Process -FilePath $CommandPath -ArgumentList "--version" -NoNewWindow -Wait -PassThru -RedirectStandardError "stderr_temp.txt" -RedirectStandardOutput "stdout_temp.txt"
 
@@ -83,12 +81,10 @@ function Test-PythonCommandCandidate {
         }
 
         if ($stderrContent -match "^Python\s*$" -or ($stderrContent -match "Python" -and -not ($stderrContent -match "\d+\.\d+" -or $stdoutContent -match "\d+\.\d+"))) {
-            Write-Host "  Windows Store Python proxy detected - Python not actually installed"
             return $false
         }
 
         if ($stdoutContent -match "\d+\.\d+" -or $stderrContent -match "\d+\.\d+") {
-            Write-Host "  Valid Python installation detected"
             return $true
         }
 
