@@ -14,7 +14,7 @@
 Manage-Bin.cmd
 ```
 
-Git、VS Code、GitHub Copilot CLI は既定値では選択されません。
+Git、VS Code、GitHub Copilot CLI、Antigravity CLI は既定値では選択されません。
 必要な場合は Space キーで選択してから Enter キーを押してください。
 すべて導入する場合は A キーで全選択します。
 
@@ -55,6 +55,7 @@ bison --version
 editorconfig-checker --version
 gh --version
 copilot --version
+agy --version
 glab --version
 ```
 
@@ -180,6 +181,26 @@ Copilot CLI は既定値では選択されていません。
 このため、packages フォルダーの版が新しくなっても、コンポーネント マネージャーは `Updateable` と表示しません。
 packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
 自己更新時に作られる `copilot.exe.old-*` は、アンインストール時と再インストール時に削除します。
+
+#### agy について
+
+agy は、ターミナルから Google Antigravity のエージェントを利用するための公式 CLI (Antigravity CLI) です。
+
+- **用途**: ターミナル上でのコード調査、編集、コマンド実行
+- **配置ファイル**: `bin\agy.exe`
+- **バージョン**: 1.2.6 (初回導入時。導入後は自己更新する)
+- **プロジェクト**: [google-antigravity/antigravity-cli](https://github.com/google-antigravity/antigravity-cli)
+- **前提条件**: Google アカウント、または Gemini API キー
+
+Antigravity CLI は既定値では選択されていません。
+コンポーネント マネージャーで選択して導入し、初回起動時にブラウザーで Google アカウントにサインインしてください。
+API キーで利用する場合は、`~/.gemini/antigravity-cli/settings.json` の `modelProvider` を `gemini` にし、環境変数 `GEMINI_API_KEY` を設定します。
+
+公式インストーラーは `agy install` を実行してユーザー PATH とシェル設定を変更しますが、devbin-win では実行しません。
+導入後は Antigravity CLI 自身が `bin\agy.exe` を新しい版に入れ替えます。`agy update` で手動更新もできます。
+このため、packages フォルダーの版が新しくなっても、コンポーネント マネージャーは `Updateable` と表示しません。
+packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
+自己更新時に作られる `agy.exe.<数値>.old` は、アンインストール時と再インストール時に削除します。
 
 #### glab について
 
