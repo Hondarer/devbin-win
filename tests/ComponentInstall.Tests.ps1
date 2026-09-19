@@ -92,6 +92,82 @@ Describe "Get-ComponentRootDirectories" {
     }
 }
 
+Describe "Remove-ComponentCleanupFiles" {
+
+    It "CleanupPatterns に一致するファイルだけを削除する" {
+        $installDir = New-TestDirectory
+        try {
+            foreach ($name in @("app.exe", "app.exe.old-1-2", "app.exe.old-3-4", "other.exe")) {
+                New-Item -ItemType File -Path (Join-Path $installDir $name) -Force | Out-Null
+            }
+            $pkg = New-TestPackage -ShortName "app" -Extra @{ CleanupPatterns = @("app.exe.old-*") }
+            $manifest = New-TestManifest -Components @{ app = (New-TestManifestEntry -Files @("app.exe")) }
+
+            Remove-ComponentCleanupFiles -ShortName "app" -PackageConfig $pkg -InstallDir $installDir -Manifest $manifest | Out-Null
+
+            @(Get-ChildItem -LiteralPath $installDir -Name | Sort-Object) -join "," | Should Be "app.exe,other.exe"
+        } finally {
+            Remove-TestDirectory -Path $installDir
+        }
+    }
+
+    It "他コンポーネントが記録しているファイルは削除しない" {
+        $installDir = New-TestDirectory
+        try {
+            New-Item -ItemType File -Path (Join-Path $installDir "app.exe.old-1-2") -Force | Out-Null
+            $pkg = New-TestPackage -ShortName "app" -Extra @{ CleanupPatterns = @("app.exe.old-*") }
+            $manifest = New-TestManifest -Components @{ other = (New-TestManifestEntry -Files @("app.exe.old-1-2")) }
+
+            Remove-ComponentCleanupFiles -ShortName "app" -PackageConfig $pkg -InstallDir $installDir -Manifest $manifest | Out-Null
+
+            Test-Path (Join-Path $installDir "app.exe.old-1-2") | Should Be $true
+        } finally {
+            Remove-TestDirectory -Path $installDir
+        }
+    }
+
+    It "アンインストール時のファイル削除で CleanupPatterns も削除する" {
+        $installDir = New-TestDirectory
+        try {
+            New-Item -ItemType File -Path (Join-Path $installDir "app.exe") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $installDir "app.exe.old-1-2") -Force | Out-Null
+            $pkg = New-TestPackage -ShortName "app" -Extra @{ CleanupPatterns = @("app.exe.old-*") }
+            $manifest = New-TestManifest -Components @{ app = (New-TestManifestEntry -Files @("app.exe")) }
+
+            Remove-ComponentInstalledFiles -ShortName "app" -PackageConfig $pkg -InstallDir $installDir -Manifest $manifest -Files @("app.exe") | Out-Null
+
+            @(Get-ChildItem -LiteralPath $installDir).Count | Should Be 0
+        } finally {
+            Remove-TestDirectory -Path $installDir
+        }
+    }
+}
+
+Describe "Update-Component" {
+
+    It "再インストールでは生成ファイルを削除してからパッケージから導入する" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $installDir = New-TestDirectory
+            try {
+                New-Item -ItemType File -Path (Join-Path $installDir "app.exe.old-1-2") -Force | Out-Null
+                $packages = @(New-TestPackage -ShortName "app" -Extra @{ SelfUpdating = $true; CleanupPatterns = @("app.exe.old-*") })
+                $manifest = New-TestManifest -Components @{ app = (New-TestManifestEntry -Files @("app.exe")) }
+
+                Mock Sync-ComponentManagerPath { }
+                Mock Install-Component { return $true }
+
+                Update-Component -ShortName "app" -Packages $packages -InstallDir $installDir -ScriptDir $installDir -Manifest $manifest |
+                    Should Be $true
+                Test-Path (Join-Path $installDir "app.exe.old-1-2") | Should Be $false
+                Assert-MockCalled Install-Component -Scope It -Times 1 -Exactly -ParameterFilter { $ShortName -eq "app" }
+            } finally {
+                Remove-TestDirectory -Path $installDir
+            }
+        }
+    }
+}
+
 Describe "Resolve-ComponentSource" {
 
     It "ArchivePattern に一致するファイルを見つける" {

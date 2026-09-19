@@ -199,6 +199,7 @@ Export-ModuleMember -Function @(
     'Install-Component',
     'Get-OtherComponentFiles',
     'Get-ComponentRootDirectories',
+    'Remove-ComponentCleanupFiles',
     'Remove-ComponentInstalledFiles',
     'Uninstall-Component',
     'Update-Component',

@@ -194,6 +194,9 @@ function Update-Component {
     Write-Host "  PATH を更新中..."
     Sync-ComponentManagerPath -InstallDir $InstallDir -Packages $Packages -Manifest $Manifest
 
+    # 自己更新時のバックアップ等、マニフェストに記録されない実行時の生成ファイルを削除します。
+    Remove-ComponentCleanupFiles -ShortName $ShortName -PackageConfig $pkg -InstallDir $InstallDir -Manifest $Manifest
+
     # TargetDirectory 指定時はディレクトリをクリーンアップします。
     $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }
     if ($targetDir) {

@@ -20,6 +20,49 @@ function Get-OtherComponentFiles {
     return $result
 }
 
+# コンポーネント自身が実行時に生成するファイル (自己更新時のバックアップ等) を CleanupPatterns に基づいて削除します。
+# パターンは $InstallDir からの相対パスで、ファイル名部分にのみワイルドカードを使用できます。
+# 他コンポーネントがマニフェストに記録しているファイルは削除しません。
+function Remove-ComponentCleanupFiles {
+    param(
+        [string]$ShortName,
+        [hashtable]$PackageConfig,
+        [string]$InstallDir,
+        [hashtable]$Manifest
+    )
+
+    $patterns = if ($PackageConfig.ContainsKey("CleanupPatterns")) {
+        @($PackageConfig.CleanupPatterns) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    } else {
+        @()
+    }
+    if (@($patterns).Count -eq 0) { return }
+
+    $allOtherFiles = Get-OtherComponentFiles -Manifest $Manifest -ShortName $ShortName
+
+    foreach ($pattern in $patterns) {
+        $relativeDir = Split-Path $pattern -Parent
+        $leafPattern = Split-Path $pattern -Leaf
+        $searchDir = if ($relativeDir) { Join-Path $InstallDir $relativeDir } else { $InstallDir }
+        if (-not (Test-Path $searchDir -PathType Container)) { continue }
+
+        foreach ($item in @(Get-ChildItem -LiteralPath $searchDir -Filter $leafPattern -File -Force -ErrorAction SilentlyContinue)) {
+            $relativePath = if ($relativeDir) { Join-Path $relativeDir $item.Name } else { $item.Name }
+            if ($allOtherFiles.ContainsKey($relativePath)) {
+                Write-Host "  Skipped (shared): $relativePath"
+                continue
+            }
+            try {
+                Remove-Item -LiteralPath $item.FullName -Force -ErrorAction Stop
+                Write-Host "  Removed: $relativePath"
+            } catch {
+                # 実行中のプロセスが使用しているファイルは削除できないため、警告にとどめます。
+                Write-Host "Warning: Failed to remove '$relativePath': $($_.Exception.Message)" -ForegroundColor Yellow
+            }
+        }
+    }
+}
+
 # 相対パス一覧から、ルートディレクトリ名を重複なく抽出します。
 function Get-ComponentRootDirectories {
     param([string[]]$Paths)
@@ -43,6 +86,9 @@ function Remove-ComponentInstalledFiles {
     )
 
     $targetDir = if ($PackageConfig.ContainsKey("TargetDirectory")) { $PackageConfig.TargetDirectory } else { $null }
+
+    # マニフェストに記録されない実行時の生成ファイルを先に削除します。
+    Remove-ComponentCleanupFiles -ShortName $ShortName -PackageConfig $PackageConfig -InstallDir $InstallDir -Manifest $Manifest
 
     $targetDirRemoved = $false
     if ($targetDir) {

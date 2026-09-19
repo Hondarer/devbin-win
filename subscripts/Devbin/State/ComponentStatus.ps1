@@ -101,6 +101,12 @@ function Test-ComponentUpdateable {
         return $false
     }
 
+    # 自己更新するコンポーネントは、マニフェストの記録版と実物が一致しないため更新判定の対象外とします。
+    # 定義の版で入れ直す場合は、利用者が明示的に再インストールを選択します。
+    if ($PackageConfig.ContainsKey("SelfUpdating") -and [bool]$PackageConfig.SelfUpdating) {
+        return $false
+    }
+
     $installedComponent = $Manifest.components[$shortName]
     $installedVersion = if ($installedComponent.ContainsKey("version")) { [string]$installedComponent.version } else { "" }
     $packageVersion = Resolve-PackageVersion -PackageConfig $PackageConfig -PackagesDir $PackagesDir

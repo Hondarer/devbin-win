@@ -311,6 +311,7 @@ Windows 版は PowerShell 6 以降が必要です。
 devbin-win では PowerShell 7 を依存コンポーネントとして導入します。
 Copilot CLI は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
 利用には GitHub Copilot の契約と初回認証 (`copilot login`) が必要です。
+導入後は Copilot CLI 自身が `bin\copilot.exe` を更新するため、上記の版は初回導入と明示的な再インストールで使用する版です。
 
 ### GitLab CLI
 
