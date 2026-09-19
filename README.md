@@ -313,6 +313,18 @@ Copilot CLI は既定値では選択されていないため、コンポーネ�
 利用には GitHub Copilot の契約と初回認証 (`copilot login`) が必要です。
 導入後は Copilot CLI 自身が `bin\copilot.exe` を更新するため、上記の版は初回導入と明示的な再インストールで使用する版です。
 
+### Antigravity CLI
+
+from [google-antigravity/antigravity-cli](https://github.com/google-antigravity/antigravity-cli)
+
+- [/releases/tag/1.2.6](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.2.6)
+    - [agy_cli_windows_x64.zip](https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.6/agy_cli_windows_x64.zip)
+
+devbin-win は公式インストーラーを使わずに `bin\agy.exe` へ直接配置するため、`agy install` によるユーザー PATH とシェル設定の変更は行いません。
+Antigravity CLI は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
+利用には Google アカウントでのサインイン、または環境変数 `GEMINI_API_KEY` が必要です。
+導入後は Antigravity CLI 自身が更新するため、上記の版は初回導入と明示的な再インストールで使用する版です。
+
 ### GitLab CLI
 
 from [gitlab-org/cli](https://gitlab.com/gitlab-org/cli)

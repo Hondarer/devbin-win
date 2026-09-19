@@ -92,7 +92,7 @@ Devbin/Extract に実装された抽出パターンです。
 | 戦略名 | 説明 | 対象パッケージ |
 |--------|------|---------------|
 | Standard | ZIP を展開し、すべてを bin に配置 | Node.js, Pandoc, Doxygen |
-| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, clang-format, gh, copilot, glab |
+| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, clang-format, gh, copilot, agy, glab |
 | SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison |

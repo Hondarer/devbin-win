@@ -869,6 +869,30 @@ endlocal
             DefaultChecked = $false
         },
 
+        # Antigravity CLI - Subdirectory extraction
+        @{
+            Name = "Antigravity CLI"
+            ShortName = "agy"
+            Version = "1.2.6"
+            ArchivePattern = "^agy_cli_windows_x64-.*\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = ""
+            FilePattern = "^antigravity\.exe$"
+            # 公式インストーラーと同じく agy.exe の名前で配置します。
+            RenameFiles = @{ "antigravity.exe" = "agy.exe" }
+            DownloadUrl = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.6/agy_cli_windows_x64.zip"
+            DownloadFileName = "agy_cli_windows_x64-1.2.6.zip"
+            DependsOn = @()
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("agy.exe")
+            # 導入後は agy.exe 自身が自己更新するため、Version は初回導入および明示的な再インストールで使用する版を示します。
+            SelfUpdating = $true
+            # 自己更新時に旧版を agy.exe.<数値>.old へ退避するため、アンインストールおよび再インストール時に削除します。
+            CleanupPatterns = @("agy.exe.*.old")
+            DefaultChecked = $false
+        },
+
         # glab - Subdirectory extraction (GitLab CLI)
         @{
             Name = "GitLab CLI"
