@@ -435,7 +435,7 @@ endlocal
             DetectFiles = @("git\bin\git.exe")
             SkipIfCommand = "git"
             DisableIfCommand = "git"
-            DefaultChecked = $false
+            DefaultChecked = $true
         },
 
         # VS Code - TargetDirectory extraction

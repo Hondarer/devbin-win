@@ -14,7 +14,7 @@
 Manage-Bin.cmd
 ```
 
-Git、VS Code、GitHub Copilot CLI、Antigravity CLI は既定値では選択されません。
+VS Code、GitHub Copilot CLI、Antigravity CLI は既定値では選択されません。
 必要な場合は Space キーで選択してから Enter キーを押してください。
 すべて導入する場合は A キーで全選択します。
 

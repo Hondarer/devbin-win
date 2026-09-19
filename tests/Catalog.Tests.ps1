@@ -58,6 +58,12 @@ Describe "packages.psd1" {
         @($result.Order).Count | Should Be $packages.Count
     }
 
+    It "git は初回導入で既定選択する" {
+        $git = $packages | Where-Object { $_.ShortName -eq "git" }
+        $git.DefaultChecked | Should Be $true
+        $git.DisableIfCommand | Should Be "git"
+    }
+
     It "git と vscode は Git のグローバル設定スクリプトを後処理に持つ" {
         $scriptPath = Join-Path (Get-DevbinSubscriptsDir) "Update-Git-Config.ps1"
         Test-Path $scriptPath -PathType Leaf | Should Be $true
