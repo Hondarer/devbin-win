@@ -206,7 +206,6 @@ function Invoke-ProductUninstall {
     }
     Write-Host "data の削除: $([bool]$RemoveData) - $(Get-DevbinDataDirectory)"
     Write-Host "log の削除: $([bool]$RemoveLogs) - $(Get-DevbinLogDirectory) (記録中のログは残します)"
-    Write-Host "data の外にある HOME / XDG は削除しません。"
     Write-Host ""
 
     if (-not $Force) {

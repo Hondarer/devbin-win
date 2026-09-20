@@ -22,7 +22,8 @@ function Get-DevbinHomeLayout {
         [PSCustomObject]@{ EnvName = "COPILOT_HOME"; Path = (Join-Path $HomePath 'copilot'); Label = 'Copilot CLI'; ShortNames = @('copilot') }
         [PSCustomObject]@{ EnvName = "COPILOT_CACHE_HOME"; Path = (Join-Path $HomePath 'copilot\cache'); Label = 'Copilot CLI cache'; ShortNames = @('copilot') }
         # JETSKI_APP_DATA_DIR は Antigravity CLI の実行ファイルで確認した指定です (公式ドキュメントには記載がありません)。
-        [PSCustomObject]@{ EnvName = "JETSKI_APP_DATA_DIR"; Path = (Join-Path $HomePath 'agy'); Label = 'Antigravity CLI'; ShortNames = @('agy') }
+        # 既定の ~/.gemini/antigravity-cli と同じ相対配置を data 配下へ置く。
+        [PSCustomObject]@{ EnvName = "JETSKI_APP_DATA_DIR"; Path = (Join-Path $HomePath '.gemini\antigravity-cli'); Label = 'Antigravity CLI'; ShortNames = @('agy') }
         [PSCustomObject]@{ EnvName = "INKSCAPE_PROFILE_DIR"; Path = (Join-Path $HomePath 'inkscape'); Label = 'Inkscape'; ShortNames = @('inkscape') }
         [PSCustomObject]@{ EnvName = "DOTNET_CLI_HOME"; Path = (Join-Path $HomePath 'dotnet'); Label = '.NET CLI'; ShortNames = @('dotnet10sdk') }
         [PSCustomObject]@{ EnvName = "NUGET_PACKAGES"; Path = (Join-Path $HomePath 'nuget\packages'); Label = 'NuGet packages'; ShortNames = @('nuget', 'dotnet10sdk') }
