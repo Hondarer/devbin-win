@@ -217,7 +217,7 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
   "components": {
     "nodejs": {
       "installedAt": "2026-04-09T10:00:00Z",
-      "archiveFile": "node-v25.9.0-win-x64.zip",
+      "archiveFile": "node-v26.9.0-win-x64.zip",
       "files": ["node.exe", "npm.cmd"],
       "pathDirs": [],
       "envVars": {}
@@ -373,6 +373,8 @@ packages.psd1 からダウンロード URL を読み込み、必要なパッケ�
 4. 対象パッケージの `ArchivePattern` に一致する旧バージョンのファイル、および不要となった元のファイル名の一時ファイルを削除します。
 5. ダウンロードした `.exe` ファイルのゾーン識別子 (ブロック) を解除します。
 6. `NpmInstall` 定義のパッケージについては `Devbin/Packages/Npm/DevbinNpm.psm1` を呼び出し、ShortName ごとに依存ツリー、`package-lock.json`、`npm-cache-manifest.json` を `packages/npm-packages/<ShortName>/` 配下に保存します。
+7. Python が利用可能であれば、`packages/pip-packages` を一時ディレクトリへ取り直した wheel で置き換えます。
+8. 全件取得が成功した場合は、現行カタログの許可リストに無い `packages` 配下のファイルを削除します。
 
 `NpmInstall` による導入時は、マニフェスト、lockfile、および全アーカイブの SHA-512 ハッシュ値を検証した上で、一時 npm キャッシュへアーカイブを登録します。
 lockfile の `resolved` と `integrity` をローカルアーカイブへ差し替えた一時プロジェクトに対して `npm install --offline` を実行し、生成された `node_modules` およびコマンド shim をインストール先ディレクトリへマージします。
@@ -402,11 +404,17 @@ SourceForge の URL は、自動的に実際のダウンロード URL へ変換�
 
 ### 過去バージョンファイルのクリーンアップ
 
-`Get-Packages.ps1` は、ダウンロード対象となったパッケージについて、`packages` 直下の同一 `ArchivePattern` に一致する古いバージョンファイルを削除します。
-古いファイルを削除する際は、現在の保存ファイル名、削除対象件数、および対象ファイル名を表示します。
-バージョン付き保存名と URL 由来の元ファイル名が異なる場合は、ダウンロード成功後に元ファイル名側も削除します。
-現在の保存ファイル名と一致するファイルは保持し、ダウンロードに失敗した場合は旧ファイルおよび元ファイルも削除せず保持します。
-なお、`packages/vsbt` や `packages/pip-packages` などのサブディレクトリはクリーンアップの対象外です。
+`Get-Packages.ps1` は、取得に成功したパッケージについて現行資材の許可リストを組み立て、リスト外のファイルを削除します。
+通常アーカイブは、対象パッケージの `ArchivePattern` に一致する旧ファイルと、不要になった URL 由来の元ファイル名をその場で削除します。
+`pip-packages` は取得成功後にディレクトリごと置き換え、今回取得した wheel だけを残します。
+`npm-packages/<ShortName>/` はキャッシュ再生成時に差し替えます。
+`packages/vsbt` はマニフェストが参照しないペイロードを削除し、`channel_*.json` と `manifest_*.json` は残します。
+
+全件取得が成功したときは、`packages` 全体を許可リストで掃除します。残すのは `packages/OFFLINE`、現行アーカイブの保存名、カタログにある npm キャッシュ、`pip-packages`、`vsbt` の現行ファイルです。
+カタログに無い `npm-packages` 配下のディレクトリや、`packages` 直下の無関係なファイルもこのときに削除します。
+`-PackageShortNames` による部分取得、および取得失敗時は全域掃除を行いません。失敗したパッケージの旧ファイルは残します。
+
+`packages` は取得処理の管理下です。手動で置いたファイルも、許可リストに無ければ全件成功時に削除されます。導入先の `bin` は対象外です。
 
 `Version` が定義されているパッケージは、`DownloadFileName` が未指定であっても `packages` フォルダー上ではバージョン付きファイル名へ正規化して保存します (バージョン比較では `.`、`_`、`-` の区切り記号の差異を同一と見なします)。
 `ArchivePattern` は、この正規化後の保存名と一致するよう定義することを前提としています。

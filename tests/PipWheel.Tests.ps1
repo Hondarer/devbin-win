@@ -138,6 +138,65 @@ Describe "Test-PipWheelPackages" {
     }
 }
 
+Describe "Invoke-PipWheelDownload" {
+
+    It "取得成功後は pip-packages を今回の wheel だけにする" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $dir = New-TestDirectory
+            try {
+                $dest = Join-Path $dir "pip-packages"
+                New-Item -ItemType Directory -Path $dest -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $dest "pyyaml-6.0.3-cp313-cp313-win_amd64.whl") -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $dest "pip-26.1.1-py3-none-any.whl") -Force | Out-Null
+
+                Mock Get-Command {
+                    [PSCustomObject]@{ Source = "C:\Python\python.exe" }
+                } -ParameterFilter { $Name -eq "python.exe" }
+                Mock Save-PipWheelPackages {
+                    New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
+                    foreach ($name in @("pip-26.2.1-py3-none-any.whl", "setuptools-84.0.0-py3-none-any.whl", "wheel-0.48.0-py3-none-any.whl", "packaging-26.3-py3-none-any.whl", "pytest-9.1.1-py3-none-any.whl")) {
+                        New-Item -ItemType File -Path (Join-Path $DestinationDir $name) -Force | Out-Null
+                    }
+                    return 0
+                }
+
+                $result = Invoke-PipWheelDownload -Packages @() -PipInstallPackages @() -DestinationDir $dest -IncludeCorePackages
+                $result.Success | Should Be $true
+                $result.Skipped | Should Be $false
+                (Test-Path (Join-Path $dest "pip-26.2.1-py3-none-any.whl")) | Should Be $true
+                (Test-Path (Join-Path $dest "pyyaml-6.0.3-cp313-cp313-win_amd64.whl")) | Should Be $false
+                (Test-Path (Join-Path $dest "pip-26.1.1-py3-none-any.whl")) | Should Be $false
+            } finally {
+                Remove-TestDirectory -Path $dir
+            }
+        }
+    }
+
+    It "取得失敗時は既存の pip-packages を残す" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $dir = New-TestDirectory
+            try {
+                $dest = Join-Path $dir "pip-packages"
+                New-Item -ItemType Directory -Path $dest -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $dest "pip-26.1.1-py3-none-any.whl") -Force | Out-Null
+
+                Mock Get-Command {
+                    [PSCustomObject]@{ Source = "C:\Python\python.exe" }
+                } -ParameterFilter { $Name -eq "python.exe" }
+                Mock Save-PipWheelPackages { return 1 }
+
+                $result = Invoke-PipWheelDownload -Packages @() -PipInstallPackages @() -DestinationDir $dest -IncludeCorePackages
+                $result.Success | Should Be $false
+                (Test-Path (Join-Path $dest "pip-26.1.1-py3-none-any.whl")) | Should Be $true
+            } finally {
+                Remove-TestDirectory -Path $dir
+            }
+        }
+    }
+}
+
 Describe "pip 関連実装の一本化" {
 
     # 各スクリプトに旧実装の重複定義が残存していないことを確認します (Devbin モジュールへ集約済み)。

@@ -81,7 +81,9 @@
 
 v144 は Visual Studio Installer や Build Tools で「MSVC v144 - VS 2022 C++ toolset (14.44)」として表示されます。
 
-このツールセットは Windows SDK v26100 (Windows 11 24H2 対応) と組み合わせるのが一般的です。
+このツールセットは Windows SDK v26100 (Windows 11 24H2 対応) と組み合わせます。
+MSVC は Visual Studio 2022 の 14.44 を維持し、SDK は系列 26100 を固定します。
+`Get-Packages.ps1` でマニフェストを再取得すると、同一系列の最新サービス ビルド (調査時点では 10.0.26100.9169) がキャッシュされます。
 
 ### パラメーター一覧
 

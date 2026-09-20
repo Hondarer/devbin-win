@@ -129,7 +129,7 @@ cloc はソースコードの空行・コメント行・コード行を数える
 
 - **用途**: リポジトリやディレクトリ単位のコード行数集計
 - **配置場所**: `bin\cloc.exe`
-- **バージョン**: 2.08
+- **バージョン**: 2.10
 - **プロジェクト**: [AlDanial/cloc](https://github.com/AlDanial/cloc)
 
 ### vswhere について
@@ -147,7 +147,7 @@ clang-format はソースコードを自動整形する LLVM ツールです。`
 
 - **用途**: C/C++/Java/JavaScript 等のコード整形、Git コミット前の自動整形 (`git-clang-format`)
 - **配置ファイル**: `bin\clang-format.exe`、`bin\git-clang-format`、`bin\git-clang-format.bat`
-- **バージョン**: 22.1.4
+- **バージョン**: 23.1.1
 - **プロジェクト**: [llvm/llvm-project](https://github.com/llvm/llvm-project)
 
 ### WinFlexBison について
@@ -167,7 +167,7 @@ editorconfig-checker は `.editorconfig` の定義に対してファイルのフ
 
 - **用途**: `.editorconfig` ルールへの準拠チェック (インデント、改行コード、末尾空白など)
 - **配置ファイル**: `bin\editorconfig-checker.exe`
-- **バージョン**: 3.6.1
+- **バージョン**: 3.7.0
 - **プロジェクト**: [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig-checker/editorconfig-checker)
 
 ### gh について
@@ -176,7 +176,7 @@ gh は GitHub の Issue・Pull Request・リリース等をコマンドライン
 
 - **用途**: GitHub の Issue/PR/Release 操作、ワークフロー実行
 - **配置ファイル**: `bin\gh.exe`
-- **バージョン**: 2.95.0
+- **バージョン**: 2.101.0
 - **プロジェクト**: [cli/cli](https://github.com/cli/cli)
 
 ### Copilot CLI について
@@ -185,7 +185,7 @@ GitHub Copilot CLI は、ターミナルから GitHub Copilot を利用するた
 
 - **用途**: ターミナル上でのコード調査、編集、デバッグ、GitHub 操作
 - **配置ファイル**: `bin\copilot.exe`
-- **バージョン**: 1.0.81 (初回導入時。導入後は自己更新する)
+- **バージョン**: 1.0.86 (初回導入時。導入後は自己更新する)
 - **プロジェクト**: [github/copilot-cli](https://github.com/github/copilot-cli)
 - **前提条件**: PowerShell 6 以上、GitHub Copilot の有効な契約
 
@@ -204,7 +204,7 @@ agy は、ターミナルから Google Antigravity のエージェントを利�
 
 - **用途**: ターミナル上でのコード調査、編集、コマンド実行
 - **配置ファイル**: `bin\agy.exe`
-- **バージョン**: 1.2.6 (初回導入時。導入後は自己更新する)
+- **バージョン**: 1.2.7 (初回導入時。導入後は自己更新する)
 - **プロジェクト**: [google-antigravity/antigravity-cli](https://github.com/google-antigravity/antigravity-cli)
 - **前提条件**: Google アカウント、または Gemini API キー
 
@@ -225,7 +225,7 @@ glab は GitLab の Issue・Merge Request・CI/CD パイプライン等をコマ
 
 - **用途**: GitLab の Issue/MR/Pipeline 操作
 - **配置ファイル**: `bin\glab.exe`
-- **バージョン**: 1.105.0
+- **バージョン**: 1.118.0
 - **プロジェクト**: [gitlab-org/cli](https://gitlab.com/gitlab-org/cli)
 
 ## アンインストール
@@ -282,8 +282,8 @@ MinGW 用 Windows Terminal プロファイルはパスを含まないため、�
 
 ### Python
 
-- システムに有効な `python.exe` が存在する場合、Python 3.13 への PATH は追加されません
-- Windows Store の Python プロキシ (実際にはインストールされていない) は無視され、Python 3.13 がインストールされます
+- システムに有効な `python.exe` が存在する場合、Python 3.14 への PATH は追加されません
+- Windows Store の Python プロキシ (実際にはインストールされていない) は無視され、Python 3.14 がインストールされます
 - 有効な Python インストールが検出された場合は既存のインストールが優先されます
 
 ### .NET SDK
@@ -293,7 +293,7 @@ MinGW 用 Windows Terminal プロファイルはパスを含まないため、�
 
 ### PowerShell 7
 
-- PowerShell 7.6.3 x64 ZIP を `bin\pwsh` に展開し、`pwsh` コマンドを提供します
+- PowerShell 7.6.6 x64 ZIP を `bin\pwsh` に展開し、`pwsh` コマンドを提供します
 - Windows PowerShell 5.1 は置き換えず、並行して利用できます
 - システムに devbin-win 外の `pwsh.exe` が存在する場合、コンポーネント マネージャーでは `External` と表示して導入を無効化し、既存の PowerShell 7 を優先します
 

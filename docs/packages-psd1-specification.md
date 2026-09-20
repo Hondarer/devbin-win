@@ -254,6 +254,7 @@ DownloadHeaders = @{
 バージョン比較では、ピリオド (`.`)、アンダースコア (`_`)、ハイフン (`-`) の区切り文字の差異を同一と判定します (例: `2.1.5` と `2_1_5`)。
 
 `ArchivePattern` は、配布元の元ファイル名ではなく、packages フォルダーへ保存される最終ファイル名に一致するように定義してください。
+現行版だけに固定せず、旧バージョンの保存名にも一致させてください。`Get-Packages.ps1` は同一パターンの旧ファイルを削除します。
 `Install-Component` には互換フォールバック機能があり、`ArchivePattern` に一致するファイルが存在しない場合に限り、URL 由来の元ファイル名が packages に存在すればそのファイルを使用します。
 
 #### DownloadVersion と VersionSource
@@ -268,8 +269,8 @@ DownloadHeaders = @{
     Name = "PsTools"
     ShortName = "pstools"
     Version = ""
-    DownloadVersion = "2.43"
-    DownloadFileName = "PSTools-2.43.zip"
+    DownloadVersion = "2.52"
+    DownloadFileName = "PSTools-2.52.zip"
     ArchivePattern = "^PSTools-.*\.zip$"
     VersionSource = @{
         Type = "ZipEntry"
@@ -297,7 +298,7 @@ ZIP を展開し、すべてのファイルを bin ディレクトリに配置�
     ShortName = "nodejs"
     ArchivePattern = "node-v.*-win-x64\.zip$"
     ExtractStrategy = "Standard"
-    DownloadUrl = "https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip"
+    DownloadUrl = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-win-x64.zip"
 }
 ```
 
@@ -330,7 +331,7 @@ MSYS2 MinGW パッケージの例 (RenameFiles 使用):
     ExtractPath = "bin"
     FilePattern = "^mingw32-make\.exe$"
     RenameFiles = @{ "mingw32-make.exe" = "make.exe" }
-    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst"
+    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-5-any.pkg.tar.zst"
 }
 ```
 
@@ -355,7 +356,7 @@ ZIP を展開後、指定されたサブディレクトリの内容を指定の�
     ExtractStrategy = "SubdirectoryToTarget"
     ExtractPath = "bin"
     TargetDirectory = "graphviz"
-    DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.2/windows_10_cmake_Release_Graphviz-14.0.2-win64.zip"
+    DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.1.0/windows_10_cmake_Release_Graphviz-16.1.0-win64.zip"
 }
 ```
 
@@ -375,7 +376,7 @@ ZIP を展開後、バージョン番号を含むディレクトリ名を正規�
     ExtractStrategy = "VersionNormalized"
     VersionPattern = "^jdk-(\d+)"
     TargetDirectory = "jdk-{0}"
-    DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-25.0.1-windows-x64.zip"
+    DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-25.0.4.1-windows-x64.zip"
 }
 ```
 
@@ -393,9 +394,9 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
     ShortName = "python"
     ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
     ExtractStrategy = "TargetDirectory"
-    TargetDirectory = "python-3.13"
+    TargetDirectory = "python-3.14"
     PostSetupScript = "python-setup.ps1"
-    DownloadUrl = "https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip"
+    DownloadUrl = "https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip"
 }
 ```
 
@@ -454,7 +455,7 @@ set "JAVA_HOME=%SCRIPT_DIR%jdk-25"
 
 endlocal
 "@
-    DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2026.2/plantuml-1.2026.2.jar"
+    DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2026.8/plantuml-1.2026.8.jar"
 }
 ```
 
@@ -474,7 +475,7 @@ endlocal
     ArchivePattern = "nuget-.*\.exe$"
     ExtractStrategy = "SingleExecutable"
     TargetName = "nuget.exe"
-    DownloadUrl = "https://dist.nuget.org/win-x86-commandline/v7.3.1/nuget.exe"
+    DownloadUrl = "https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe"
 }
 ```
 
@@ -484,7 +485,7 @@ endlocal
 NuGet、cloc、vswhere のように、配布物が単体の `.exe` で完結するツールに適しています。
 
 `DownloadFileName` は、保存ファイル名を明示的に固定したい場合に指定します。
-たとえば VS Code の公式固定版 URL は末尾が `stable` となるため、`DownloadFileName = "VSCode-win32-x64-1.128.0.zip"` のように指定します。
+たとえば VS Code の公式固定版 URL は末尾が `stable` となるため、`DownloadFileName = "VSCode-win32-x64-1.138.0.zip"` のように指定します。
 未指定の場合であっても `Version` が定義されていれば、保存ファイル名は自動的にバージョン付きのファイル名へ正規化されます (区切り文字の差異は同一バージョンとして判定)。
 
 ### SelfExtractingArchive 戦略
@@ -590,7 +591,7 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
     DependsOn = @("python")
     PathDirs = @()
     EnvVars = @{}
-    DetectFiles = @("python-3.13\Scripts\yamllint.exe")
+    DetectFiles = @("python-3.14\Scripts\yamllint.exe")
     DefaultChecked = $true
 }
 ```
@@ -614,7 +615,7 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 @{
     Name = "pnpm"
     ShortName = "pnpm"
-    Version = "11.3.0"
+    Version = "12.5.1"
     ArchivePattern = "^pnpm-\d+\.\d+\.\d+\.tgz$"
     ExtractStrategy = "NpmInstall"
     NpmPackage = "pnpm"

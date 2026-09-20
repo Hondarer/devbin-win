@@ -47,6 +47,7 @@ $script:DevbinSourceFiles = @(
     "Packages\NpmCacheDownload.ps1"
     "Packages\VsBuildToolsDownload.ps1"
     "Packages\OfflineMode.ps1"
+    "Packages\PackageLayout.ps1"
     "Packages\PackageAcquisition.ps1"
     "Extract\ArchiveExtraction.ps1"
     "Extract\StandardStrategy.ps1"
@@ -179,6 +180,8 @@ Export-ModuleMember -Function @(
     'Invoke-VsBuildToolsDownload',
     'Get-DevbinOfflineMarkerPath',
     'Test-DevbinOfflineMode',
+    'Get-ManagedPackageKeepRelativePaths',
+    'Remove-UnreferencedPackageFiles',
     'Invoke-PackageAcquisition',
     # Packages/Npm (子モジュールからの再エクスポート)
     'Get-NpmPackageSpecs',

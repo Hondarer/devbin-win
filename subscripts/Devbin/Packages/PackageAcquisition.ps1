@@ -155,14 +155,16 @@ function Invoke-PackageAcquisition {
     }
 
     # pip wheel キャッシュのダウンロード
+    # 共有キャッシュを現行カタログ一式へ置き換えるため、対象が一部でもカタログ全体の PipInstall を取得する
     if (Test-ShouldAcquirePipWheels -TargetPackages $targetPackages -RequestedShortNames $ShortNames) {
         Write-Host ""
         Write-Host "=== Pip Wheel Download ===" -ForegroundColor Cyan
         Write-Host ""
 
+        $catalogPipInstallPackages = @($Packages | Where-Object { [string]$_.ExtractStrategy -eq "PipInstall" })
         $pipResult = Invoke-PipWheelDownload `
             -Packages $Packages `
-            -PipInstallPackages $pipInstallPackages `
+            -PipInstallPackages $catalogPipInstallPackages `
             -DestinationDir $Context.PipPackagesDir `
             -IncludeCorePackages
 
@@ -175,6 +177,17 @@ function Invoke-PackageAcquisition {
         } else {
             $success = $false
             Write-Host $pipResult.Message -ForegroundColor Yellow
+        }
+    }
+
+    $isPartialSelection = ($ShortNames -and @($ShortNames).Count -gt 0)
+    if ($success -and -not $isPartialSelection) {
+        Write-Host ""
+        Write-Host "=== Unused Package Cleanup ==="
+        $keepPaths = @(Get-ManagedPackageKeepRelativePaths -Packages $Packages -PackagesDir $Context.PackagesDir)
+        $cleanup = Remove-UnreferencedPackageFiles -PackagesDir $Context.PackagesDir -KeepRelativePaths $keepPaths
+        if ($cleanup.RemovedCount -gt 0) {
+            $messages += "未使用のパッケージ資材を $($cleanup.RemovedCount) 件削除しました"
         }
     }
 

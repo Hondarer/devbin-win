@@ -72,45 +72,82 @@ function Invoke-PipWheelDownload {
     $requiredNames = @(Get-PipWheelPackageNames -PackageConfigs $PipInstallPackages -IncludeCorePackages:$IncludeCorePackages)
     $downloadSpecs = @(Get-PipWheelDownloadSpecs -PackageConfigs $PipInstallPackages -IncludeCorePackages:$IncludeCorePackages)
 
+    if ($downloadSpecs.Count -eq 0) {
+        return [PSCustomObject]@{
+            Success = $true
+            Skipped = $true
+            Missing = @()
+            Message = "wheel の取得対象がありません"
+        }
+    }
+
+    $stagingDir = $null
+    $oldDirectory = $null
     try {
+        $stagingDir = New-DevbinTempDirectory -Prefix "devbin-pip-wheels"
         $exitCode = Save-PipWheelPackages `
             -PythonCommandPath $pythonCommand.Source `
-            -DestinationDir $DestinationDir `
+            -DestinationDir $stagingDir `
             -TargetPythonVersion (Get-TargetPythonVersion -Packages $Packages) `
             -DownloadSpecs $downloadSpecs
+
+        $missing = @(Test-PipWheelPackages -DirectoryPath $stagingDir -PackageNames $requiredNames)
+
+        if ($exitCode -ne 0) {
+            return [PSCustomObject]@{
+                Success = $false
+                Skipped = $false
+                Missing = $missing
+                Message = "wheel の取得に失敗しました (終了コード: $exitCode)"
+            }
+        }
+
+        if ($missing.Count -gt 0) {
+            return [PSCustomObject]@{
+                Success = $false
+                Skipped = $false
+                Missing = $missing
+                Message = "wheel キャッシュに不足があります: $($missing -join ', ')"
+            }
+        }
+
+        $destinationParent = Split-Path -Parent $DestinationDir
+        if (-not [string]::IsNullOrWhiteSpace($destinationParent) -and -not (Test-Path -LiteralPath $destinationParent)) {
+            New-Item -ItemType Directory -Path $destinationParent -Force | Out-Null
+        }
+
+        if (Test-Path -LiteralPath $DestinationDir) {
+            $oldDirectory = "$DestinationDir.old-$([guid]::NewGuid().ToString('N'))"
+            Move-Item -LiteralPath $DestinationDir -Destination $oldDirectory -Force
+        }
+
+        Move-Item -LiteralPath $stagingDir -Destination $DestinationDir -Force
+        if ($oldDirectory -and (Test-Path -LiteralPath $oldDirectory)) {
+            Remove-Item -LiteralPath $oldDirectory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+
+        return [PSCustomObject]@{
+            Success = $true
+            Skipped = $false
+            Missing = @()
+            Message = "wheel を $DestinationDir に取得しました"
+        }
     } catch {
+        if ($oldDirectory -and (Test-Path -LiteralPath $oldDirectory) -and -not (Test-Path -LiteralPath $DestinationDir)) {
+            Move-Item -LiteralPath $oldDirectory -Destination $DestinationDir -Force -ErrorAction SilentlyContinue
+        }
         return [PSCustomObject]@{
             Success = $false
             Skipped = $false
             Missing = @()
             Message = "wheel の取得に失敗しました: $($_.Exception.Message)"
         }
-    }
-
-    $missing = @(Test-PipWheelPackages -DirectoryPath $DestinationDir -PackageNames $requiredNames)
-
-    if ($exitCode -ne 0) {
-        return [PSCustomObject]@{
-            Success = $false
-            Skipped = $false
-            Missing = $missing
-            Message = "wheel の取得に失敗しました (終了コード: $exitCode)"
+    } finally {
+        if (-not [string]::IsNullOrWhiteSpace($stagingDir) -and (Test-Path -LiteralPath $stagingDir)) {
+            Remove-DevbinTempDirectory -Path $stagingDir
         }
-    }
-
-    if ($missing.Count -gt 0) {
-        return [PSCustomObject]@{
-            Success = $false
-            Skipped = $false
-            Missing = $missing
-            Message = "wheel キャッシュに不足があります: $($missing -join ', ')"
+        if ($oldDirectory -and (Test-Path -LiteralPath $oldDirectory)) {
+            Remove-Item -LiteralPath $oldDirectory -Recurse -Force -ErrorAction SilentlyContinue
         }
-    }
-
-    return [PSCustomObject]@{
-        Success = $true
-        Skipped = $false
-        Missing = @()
-        Message = "wheel を $DestinationDir に取得しました"
     }
 }

@@ -210,12 +210,12 @@ Describe "Get-PackageTargetDirectory / Get-PythonDirectory" {
 
 Describe "Python 配置先のハードコード" {
 
-    It "コード側に python-3.13 が直書きされていない" {
+    It "コード側に python-3.14 が直書きされていない" {
         $subscriptsDir = Get-DevbinSubscriptsDir
         $hits = @()
         foreach ($file in (Get-ChildItem $subscriptsDir -Recurse -Include *.ps1, *.psm1)) {
             # packages.psd1 は設定ファイルのため検証対象から除外します。
-            if (Select-String -Path $file.FullName -Pattern "python-3\.13" -Quiet) {
+            if (Select-String -Path $file.FullName -Pattern "python-3\.14" -Quiet) {
                 $hits += $file.Name
             }
         }

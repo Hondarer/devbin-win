@@ -660,14 +660,16 @@ try {
             # Resolve full path for proper relative path calculation
             $downloadsFullPath = (Resolve-Path $DownloadsPath).Path
 
-            # Get all cached files
-            $cachedFiles = Get-ChildItem -Path $DownloadsPath -Recurse -File | Where-Object {
-                $_.Extension -in @('.msi', '.cab', '.zip', '.vsix')
-            }
+            # Get all cached files. channel/manifest JSON は現行チャンネルの正本として残す
+            $cachedFiles = @(Get-ChildItem -Path $DownloadsPath -Recurse -File)
 
             foreach ($cachedFile in $cachedFiles) {
                 # Get relative path from DownloadsPath
                 $relativePath = $cachedFile.FullName.Substring($downloadsFullPath.Length + 1)
+
+                if ($cachedFile.Name -match '^(channel|manifest)_') {
+                    continue
+                }
 
                 # Check if this file is in the required list
                 $isRequired = $false

@@ -9,22 +9,22 @@ Windows 用開発バイナリの自動配置ツールです。
 from [https://nodejs.org/en](https://nodejs.org/en)
 
 - [https://nodejs.org/en/download/](https://nodejs.org/en/download/)
-    - [node-v25.9.0-win-x64.zip](https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip)
+    - [node-v26.9.0-win-x64.zip](https://nodejs.org/dist/v26.9.0/node-v26.9.0-win-x64.zip)
 
 ### Marp CLI
 
 from [marp-team/marp-cli](https://github.com/marp-team/marp-cli)
 
-- [v4.4.0](https://www.npmjs.com/package/@marp-team/marp-cli/v/4.4.0)
-    - `@marp-team/marp-cli@4.4.0` を検証済みの依存関係ツリーから `npm install --offline` で配置します。
+- [v4.5.1](https://www.npmjs.com/package/@marp-team/marp-cli/v/4.5.1)
+    - `@marp-team/marp-cli@4.5.1` を検証済みの依存関係ツリーから `npm install --offline` で配置します。
       依存関係ツリーは `packages/npm-packages/marp-cli/` に lock/manifest 付きで保存し、既存の Microsoft Edge を使用します。
 
 ### Mermaid CLI
 
 from [mermaid-js/mermaid-cli](https://github.com/mermaid-js/mermaid-cli)
 
-- [v11.15.0](https://www.npmjs.com/package/@mermaid-js/mermaid-cli/v/11.15.0)
-    - `@mermaid-js/mermaid-cli@11.15.0` (`mmdc`) を配置します。
+- [v11.17.0](https://www.npmjs.com/package/@mermaid-js/mermaid-cli/v/11.17.0)
+    - `@mermaid-js/mermaid-cli@11.17.0` (`mmdc`) を配置します。
       依存関係ツリーは `packages/npm-packages/mermaid-cli/` に保存し、既存の Microsoft Edge を使用します。
 
 ### Widdershins
@@ -37,7 +37,7 @@ from [Mermade/widdershins](https://github.com/Mermade/widdershins)
 
 from [puppeteer/puppeteer](https://github.com/puppeteer/puppeteer)
 
-- [v24.43.1](https://www.npmjs.com/package/puppeteer/v/24.43.1)
+- [v25.11.0](https://www.npmjs.com/package/puppeteer/v/25.11.0)
     - Google Chrome はダウンロードしません。Windows では Microsoft Edge を使用します。
 
 ### MiniSearch / @plantuml/core / sharp / minimist
@@ -68,21 +68,21 @@ from [textlint/textlint](https://github.com/textlint/textlint)
 
 from [https://github.com/jgm/pandoc](https://github.com/jgm/pandoc)
 
-- [/releases/tag/3.9.0.2](https://github.com/jgm/pandoc/releases/tag/3.9.0.2)
-    - [pandoc-3.9.0.2-windows-x86_64.zip](https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip)
+- [/releases/tag/3.11](https://github.com/jgm/pandoc/releases/tag/3.11)
+    - [pandoc-3.11-windows-x86_64.zip](https://github.com/jgm/pandoc/releases/download/3.11/pandoc-3.11-windows-x86_64.zip)
 
 ### pandoc-crossref
 
 from [lierdakil/pandoc-crossref](https://github.com/lierdakil/pandoc-crossref)
 
-- [/releases/tag/v0.3.24a](https://github.com/lierdakil/pandoc-crossref/releases/tag/v0.3.24a)
-    - [pandoc-crossref-Windows-X64.7z](https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.24a/pandoc-crossref-Windows-X64.7z)
+- [/releases/tag/v0.3.25a](https://github.com/lierdakil/pandoc-crossref/releases/tag/v0.3.25a)
+    - [pandoc-crossref-Windows-X64.7z](https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.25a/pandoc-crossref-Windows-X64.7z)
 
 ### doxygen
 
 from [https://doxygen.nl/](https://doxygen.nl/)
 
-- [doxygen-1.15.0.windows.x64.bin.zip](https://www.doxygen.nl/files/doxygen-1.15.0.windows.x64.bin.zip)
+- [doxygen-1.18.0.windows.x64.bin.zip](https://www.doxygen.nl/files/doxygen-1.18.0.windows.x64.bin.zip)
 
 ### doxybook2
 
@@ -95,33 +95,35 @@ from [Antonz0/doxybook2](https://github.com/Antonz0/doxybook2)
 
 from [Download the Microsoft Build of OpenJDK](https://learn.microsoft.com/en-us/java/openjdk/download)
 
-- [OpenJDK 25.0.1 LTS](https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-2501-lts--see-previous-releases)
-    - [microsoft-jdk-25.0.1-windows-x64.zip](https://aka.ms/download-jdk/microsoft-jdk-25.0.1-windows-x64.zip)
+- [OpenJDK 25.0.4.1 LTS](https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-25)
+    - [microsoft-jdk-25.0.4.1-windows-x64.zip](https://aka.ms/download-jdk/microsoft-jdk-25.0.4.1-windows-x64.zip)
 
 ### Graphviz
 
 from [Graphviz](https://graphviz.org/)
 
 - [Download](https://graphviz.org/download/)
-    - [graphviz-14.0.2 (64-bit) ZIP archive](https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.2/windows_10_cmake_Release_Graphviz-14.0.2-win64.zip)
+    - [graphviz-16.1.0 (64-bit) ZIP archive](https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.1.0/windows_10_cmake_Release_Graphviz-16.1.0-win64.zip)
+
+16.0.0 以降、`diffimg` ユーティリティは含まれません。
 
 ### PlantUML
 
 from [plantuml](https://github.com/plantuml/plantuml)
 
-- [/releases/tag/v1.2026.2](https://github.com/plantuml/plantuml/releases/tag/v1.2026.2)
-    - [plantuml-1.2026.2.jar](https://github.com/plantuml/plantuml/releases/download/v1.2026.2/plantuml-1.2026.2.jar)
+- [/releases/tag/v1.2026.8](https://github.com/plantuml/plantuml/releases/tag/v1.2026.8)
+    - [plantuml-1.2026.8.jar](https://github.com/plantuml/plantuml/releases/download/v1.2026.8/plantuml-1.2026.8.jar)
 
 ### Python
 
 from [python.org](https://www.python.org/)
 
 - [Python Releases for Windows](https://www.python.org/downloads/windows/)
-    - [Python 3.13.13](https://www.python.org/downloads/release/python-31313/)
-        - [Windows embeddable package (64-bit)](https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip)
+    - [Python 3.14.7](https://www.python.org/downloads/release/python-3147/)
+        - [Windows embeddable package (64-bit)](https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip)
 
-- [pip 26.1.1](https://pypi.org/project/pip/26.1.1/)
-    - [pip-26.1.1.tar.gz](https://files.pythonhosted.org/packages/b6/48/cb9b7a682f6fe01a4221e1728941dd4ac3cd9090a17db3779d6ff490b602/pip-26.1.1.tar.gz)
+- [pip 26.2.1](https://pypi.org/project/pip/26.2.1/)
+    - [pip-26.2.1.tar.gz](https://files.pythonhosted.org/packages/ae/15/4500e320e6b101ec3b719ae85b697d9940b6cda672bc555bd6016fc60c6f/pip-26.2.1.tar.gz)
 
 完全オフライン環境での pip インストールに対応しています。
 pip のソース tarball は Get-Packages.ps1 の実行により `packages` フォルダーへ保存され、pip wheel ファイルは `packages/pip-packages` に自動ダウンロードされます。
@@ -132,13 +134,13 @@ pip のソース tarball は Get-Packages.ps1 の実行により `packages` フ�
 from [.NET のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet)
 
 - [.NET 10.0 のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet/10.0)
-    - [dotnet-sdk-10.0.202-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.202/dotnet-sdk-10.0.202-win-x64.zip)
+    - [dotnet-sdk-10.0.401-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.401/dotnet-sdk-10.0.401-win-x64.zip)
 
 ### PowerShell 7
 
 from [PowerShell 7 installation on Windows](https://learn.microsoft.com/ja-jp/powershell/scripting/install/install-powershell-on-windows)
 
-- [PowerShell 7.6.3 x64 ZIP](https://github.com/PowerShell/PowerShell/releases/download/v7.6.3/PowerShell-7.6.3-win-x64.zip)
+- [PowerShell 7.6.6 x64 ZIP](https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/PowerShell-7.6.6-win-x64.zip)
 
 ZIP アーカイブを `bin\pwsh` に展開して `pwsh` コマンドを提供します。
 Windows PowerShell 5.1 を置き換えずに共存します。
@@ -149,14 +151,14 @@ Windows PowerShell 5.1 を置き換えずに共存します。
 from [Git](https://git-scm.com/)
 
 - [Install for Windows](https://git-scm.com/install/windows)
-    - [Portable 2.55.0.2](https://sourceforge.net/projects/git-for-windows.mirror/files/v2.55.0.windows.2/PortableGit-2.55.0.2-64-bit.7z.exe/download)
+    - [Portable 2.55.0.5](https://sourceforge.net/projects/git-for-windows.mirror/files/v2.55.0.windows.5/PortableGit-2.55.0.5-64-bit.7z.exe/download)
 
 ### Visual Studio Code
 
 from [Visual Studio Code](https://code.visualstudio.com/)
 
 - [Download Visual Studio Code](https://code.visualstudio.com/Download)
-    - [x64 archive 1.128.0](https://update.code.visualstudio.com/1.128.0/win32-x64-archive/stable)
+    - [x64 archive 1.138.0](https://update.code.visualstudio.com/1.138.0/win32-x64-archive/stable)
 
 ### PsTools
 
@@ -165,7 +167,7 @@ from [Microsoft Sysinternals](https://learn.microsoft.com/sysinternals/)
 - [PsTools](https://learn.microsoft.com/ja-jp/sysinternals/downloads/pstools)
     - [PSTools.zip](https://download.sysinternals.com/files/PSTools.zip)
 
-`packages` フォルダーには `PSTools-2.43.zip` のように、バージョンを付与して保存します。
+`packages` フォルダーには `PSTools-2.52.zip` のように、バージョンを付与して保存します。
 インストール時の実バージョンは ZIP 内の `psversion.txt` から読み取り、インストール後に Sysinternals EULA を `-accepteula` で自動受諾します。
 
 ### Inkscape
@@ -183,13 +185,13 @@ make.exe と実行に必要な DLL を MSYS2 MinGW パッケージから取得�
 mingw32-make.exe のファイル名を make.exe に変更して配置します。
 
 - [mingw-w64-x86_64-gcc-libs](https://packages.msys2.org/packages/mingw-w64-x86_64-gcc-libs) (GCC ランタイム DLL)
-    - [mingw-w64-x86_64-gcc-libs-16.1.0-2-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-16.1.0-2-any.pkg.tar.zst)
+    - [mingw-w64-x86_64-gcc-libs-16.2.0-3-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-16.2.0-3-any.pkg.tar.zst)
 - [mingw-w64-x86_64-libiconv](https://packages.msys2.org/packages/mingw-w64-x86_64-libiconv) (libiconv DLL)
     - [mingw-w64-x86_64-libiconv-1.19-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.19-1-any.pkg.tar.zst)
 - [mingw-w64-x86_64-gettext-runtime](https://packages.msys2.org/packages/mingw-w64-x86_64-gettext-runtime) (gettext ランタイム DLL)
     - [mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst)
 - [mingw-w64-x86_64-make](https://packages.msys2.org/packages/mingw-w64-x86_64-make) (make.exe)
-    - [mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst)
+    - [mingw-w64-x86_64-make-4.4.1-5-any.pkg.tar.zst](https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-5-any.pkg.tar.zst)
 
 ### iconv
 
@@ -206,10 +208,10 @@ iconv.exe を MSYS2 MinGW パッケージから取得します。
 from [CMake](https://cmake.org/)
 
 - [Download](https://cmake.org/download/)
-    - Latest Release (4.3.1)
+    - Latest Release (4.3.5)
         - Binary distributions
             - Windows x64 ZIP
-                - [cmake-4.3.1-windows-x86_64.zip](https://github.com/Kitware/CMake/releases/download/v4.3.1/cmake-4.3.1-windows-x86_64.zip)
+                - [cmake-4.3.5-windows-x86_64.zip](https://github.com/Kitware/CMake/releases/download/v4.3.5/cmake-4.3.5-windows-x86_64.zip)
 
 ### WinFlexBison
 
@@ -225,22 +227,22 @@ bison が参照する `data/` は実行ファイルと同じ場所に保持し�
 
 from [LLVM Project](https://github.com/llvm/llvm-project)
 
-- [/releases/tag/llvmorg-22.1.4](https://github.com/llvm/llvm-project/releases/tag/llvmorg-22.1.4)
-    - [clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz](https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz)
+- [/releases/tag/llvmorg-23.1.1](https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.1)
+    - [clang+llvm-23.1.1-x86_64-pc-windows-msvc.tar.xz](https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/clang+llvm-23.1.1-x86_64-pc-windows-msvc.tar.xz)
 
 ### NuGet
 
 from [NuGet](https://www.nuget.org/)
 
 - [Available NuGet Distribution Versions](https://www.nuget.org/downloads)
-    - [nuget.exe v7.3.1](https://dist.nuget.org/win-x86-commandline/v7.3.1/nuget.exe)
+    - [nuget.exe v7.9.0](https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe)
 
 ### cloc
 
 from [AlDanial/cloc](https://github.com/AlDanial/cloc)
 
-- [/releases/tag/v2.08](https://github.com/AlDanial/cloc/releases/tag/v2.08)
-    - [cloc-2.08.exe](https://github.com/AlDanial/cloc/releases/download/v2.08/cloc-2.08.exe)
+- [/releases/tag/v2.10](https://github.com/AlDanial/cloc/releases/tag/v2.10)
+    - [cloc-2.10.exe](https://github.com/AlDanial/cloc/releases/download/v2.10/cloc-2.10.exe)
 
 ### nkf
 
@@ -267,8 +269,8 @@ from [OpenCppCoverage](https://github.com/OpenCppCoverage/OpenCppCoverage)
 
 from [ReportGenerator](https://github.com/danielpalme/ReportGenerator)
 
-- [/releases/tag/v5.5.1](https://github.com/danielpalme/ReportGenerator/releases/tag/v5.5.1)
-    - [ReportGenerator_5.5.1.zip](https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.1/ReportGenerator_5.5.1.zip)
+- [/releases/tag/v5.5.11](https://github.com/danielpalme/ReportGenerator/releases/tag/v5.5.11)
+    - [ReportGenerator_5.5.11.zip](https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.11/ReportGenerator_5.5.11.zip)
 
 ### vswhere
 
@@ -290,22 +292,22 @@ from [Hondarer/udev-gothic-rf](https://github.com/Hondarer/udev-gothic-rf)
 
 from [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig-checker/editorconfig-checker)
 
-- [/releases/tag/v3.6.1](https://github.com/editorconfig-checker/editorconfig-checker/releases/tag/v3.6.1)
-    - [ec-windows-amd64.zip](https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.6.1/ec-windows-amd64.zip)
+- [/releases/tag/v3.7.0](https://github.com/editorconfig-checker/editorconfig-checker/releases/tag/v3.7.0)
+    - [ec-windows-amd64.zip](https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.7.0/ec-windows-amd64.zip)
 
 ### GitHub CLI
 
 from [cli/cli](https://github.com/cli/cli)
 
-- [/releases/tag/v2.95.0](https://github.com/cli/cli/releases/tag/v2.95.0)
-    - [gh_2.95.0_windows_amd64.zip](https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_windows_amd64.zip)
+- [/releases/tag/v2.101.0](https://github.com/cli/cli/releases/tag/v2.101.0)
+    - [gh_2.101.0_windows_amd64.zip](https://github.com/cli/cli/releases/download/v2.101.0/gh_2.101.0_windows_amd64.zip)
 
 ### GitHub Copilot CLI
 
 from [github/copilot-cli](https://github.com/github/copilot-cli)
 
-- [/releases/tag/v1.0.81](https://github.com/github/copilot-cli/releases/tag/v1.0.81)
-    - [copilot-win32-x64.zip](https://github.com/github/copilot-cli/releases/download/v1.0.81/copilot-win32-x64.zip)
+- [/releases/tag/v1.0.86](https://github.com/github/copilot-cli/releases/tag/v1.0.86)
+    - [copilot-win32-x64.zip](https://github.com/github/copilot-cli/releases/download/v1.0.86/copilot-win32-x64.zip)
 
 Windows 版は PowerShell 6 以降が必要です。
 devbin-win では PowerShell 7 を依存コンポーネントとして導入します。
@@ -317,8 +319,8 @@ Copilot CLI は既定値では選択されていないため、コンポーネ�
 
 from [google-antigravity/antigravity-cli](https://github.com/google-antigravity/antigravity-cli)
 
-- [/releases/tag/1.2.6](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.2.6)
-    - [agy_cli_windows_x64.zip](https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.6/agy_cli_windows_x64.zip)
+- [/releases/tag/1.2.7](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.2.7)
+    - [agy_cli_windows_x64.zip](https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.7/agy_cli_windows_x64.zip)
 
 devbin-win は公式インストーラーを使わずに `bin\agy.exe` へ直接配置するため、`agy install` によるユーザー PATH とシェル設定の変更は行いません。
 Antigravity CLI は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
@@ -329,10 +331,12 @@ Antigravity CLI は既定値では選択されていないため、コンポー�
 
 from [gitlab-org/cli](https://gitlab.com/gitlab-org/cli)
 
-- [/releases/v1.105.0](https://gitlab.com/gitlab-org/cli/-/releases/v1.105.0)
-    - [glab_1.105.0_windows_amd64.zip](https://gitlab.com/gitlab-org/cli/-/releases/v1.105.0/downloads/glab_1.105.0_windows_amd64.zip)
+- [/releases/v1.118.0](https://gitlab.com/gitlab-org/cli/-/releases/v1.118.0)
+    - [glab_1.118.0_windows_amd64.zip](https://gitlab.com/gitlab-org/cli/-/releases/v1.118.0/downloads/glab_1.118.0_windows_amd64.zip)
 
 ### Visual Studio Build Tools (VS 2022 C++ toolset 14.44 & Windows SDK v26100)
+
+MSVC は Visual Studio 2022 の toolset 14.44 を維持します。Windows SDK は系列 26100 のまま、Get-Packages 時のマニフェスト再取得で最新のサービス ビルドを取り込みます。
 
 Visual Studio Build Tools は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
 

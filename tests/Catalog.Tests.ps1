@@ -82,4 +82,11 @@ Describe "packages.psd1" {
         $copilot.DisableIfCommand | Should Be "copilot"
         $agy.DisableIfCommand | Should Be "agy"
     }
+
+    It "get-pip の ArchivePattern は旧 tarball も対象にする" {
+        $getPip = $packages | Where-Object { $_.ShortName -eq "get-pip" }
+        ("pip-26.2.1.tar.gz" -match $getPip.ArchivePattern) | Should Be $true
+        ("pip-26.1.1.tar.gz" -match $getPip.ArchivePattern) | Should Be $true
+        ("python-3.14.7-embed-amd64.zip" -match $getPip.ArchivePattern) | Should Be $false
+    }
 }

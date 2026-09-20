@@ -7,8 +7,8 @@ Import-DevbinModules
 Describe "Get-PackageBaseFileName" {
 
     It "通常の URL は末尾のファイル名をそのまま使う" {
-        $package = @{ DownloadUrl = "https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip" }
-        Get-PackageBaseFileName -Package $package | Should Be "node-v25.9.0-win-x64.zip"
+        $package = @{ DownloadUrl = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-win-x64.zip" }
+        Get-PackageBaseFileName -Package $package | Should Be "node-v26.9.0-win-x64.zip"
     }
 
     It "DownloadFileName の指定を優先する" {

@@ -4,10 +4,10 @@
         @{
             Name = "Node.js"
             ShortName = "nodejs"
-            Version = "25.9.0"
+            Version = "26.9.0"
             ArchivePattern = "node-v.*-win-x64\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip"
+            DownloadUrl = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-win-x64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -19,7 +19,7 @@
         @{
             Name = "pnpm"
             ShortName = "pnpm"
-            Version = "11.3.0"
+            Version = "12.5.1"
             ArchivePattern = "^pnpm-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "pnpm"
@@ -34,7 +34,7 @@
         @{
             Name = "@antfu/ni"
             ShortName = "antfu-ni"
-            Version = "30.1.0"
+            Version = "30.5.0"
             ArchivePattern = "^antfu-ni-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "@antfu/ni"
@@ -50,7 +50,7 @@
         @{
             Name = "Marp CLI"
             ShortName = "marp-cli"
-            Version = "4.4.0"
+            Version = "4.5.1"
             ArchivePattern = "^marp-team-marp-cli-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "@marp-team/marp-cli"
@@ -66,7 +66,7 @@
         @{
             Name = "Mermaid CLI"
             ShortName = "mermaid-cli"
-            Version = "11.15.0"
+            Version = "11.17.0"
             ArchivePattern = "^mermaid-js-mermaid-cli-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "@mermaid-js/mermaid-cli"
@@ -97,7 +97,7 @@
         @{
             Name = "Puppeteer"
             ShortName = "puppeteer"
-            Version = "24.43.1"
+            Version = "25.11.0"
             ArchivePattern = "^puppeteer-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "puppeteer"
@@ -131,7 +131,7 @@
         @{
             Name = "@plantuml/core"
             ShortName = "plantuml-core"
-            Version = "1.2026.7"
+            Version = "1.2026.8"
             ArchivePattern = "^plantuml-core-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "@plantuml/core"
@@ -146,7 +146,7 @@
         @{
             Name = "sharp"
             ShortName = "sharp"
-            Version = "0.34.5"
+            Version = "0.35.4"
             ArchivePattern = "^sharp-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "sharp"
@@ -176,10 +176,10 @@
         @{
             Name = "Pandoc"
             ShortName = "pandoc"
-            Version = "3.9.0.2"
+            Version = "3.11"
             ArchivePattern = "pandoc-.*-windows-x86_64\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip"
+            DownloadUrl = "https://github.com/jgm/pandoc/releases/download/3.11/pandoc-3.11-windows-x86_64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -191,10 +191,10 @@
         @{
             Name = "pandoc-crossref"
             ShortName = "pandoc-crossref"
-            Version = "0.3.24a"
+            Version = "0.3.25a"
             ArchivePattern = "pandoc-crossref-Windows-X64-.*\.7z$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.24a/pandoc-crossref-Windows-X64.7z"
+            DownloadUrl = "https://github.com/lierdakil/pandoc-crossref/releases/download/v0.3.25a/pandoc-crossref-Windows-X64.7z"
             DependsOn = @("pandoc")
             PathDirs = @()
             EnvVars = @{}
@@ -206,10 +206,10 @@
         @{
             Name = "Doxygen"
             ShortName = "doxygen"
-            Version = "1.15.0"
+            Version = "1.18.0"
             ArchivePattern = "doxygen-.*\.windows\.x64\.bin\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://www.doxygen.nl/files/doxygen-1.15.0.windows.x64.bin.zip"
+            DownloadUrl = "https://www.doxygen.nl/files/doxygen-1.18.0.windows.x64.bin.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -237,12 +237,12 @@
         @{
             Name = "Microsoft JDK"
             ShortName = "jdk"
-            Version = "25.0.1"
+            Version = "25.0.4.1"
             ArchivePattern = "microsoft-jdk-.*-windows-x64\.zip$"
             ExtractStrategy = "VersionNormalized"
             VersionPattern = "^jdk-(\d+)"
             TargetDirectory = "jdk-{0}"
-            DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-25.0.1-windows-x64.zip"
+            DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-25.0.4.1-windows-x64.zip"
             DependsOn = @()
             PathDirs = @("jdk-25\bin")
             EnvVars = @{}
@@ -255,12 +255,12 @@
         @{
             Name = "Graphviz"
             ShortName = "graphviz"
-            Version = "14.0.2"
+            Version = "16.1.0"
             ArchivePattern = "windows_10_cmake_Release_Graphviz-.*-win64\.zip$"
             ExtractStrategy = "SubdirectoryToTarget"
             ExtractPath = "bin"
             TargetDirectory = "graphviz"
-            DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.2/windows_10_cmake_Release_Graphviz-14.0.2-win64.zip"
+            DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.1.0/windows_10_cmake_Release_Graphviz-16.1.0-win64.zip"
             DependsOn = @()
             PathDirs = @("graphviz")
             EnvVars = @{}
@@ -272,13 +272,13 @@
         @{
             Name = "FFmpeg"
             ShortName = "ffmpeg"
-            Version = "8.1.2"
+            Version = "9.0.1"
             ArchivePattern = "^ffmpeg-.*-essentials_build\.zip$"
             ExtractStrategy = "SubdirectoryToTarget"
             ExtractPath = "bin"
             TargetDirectory = "ffmpeg"
-            DownloadUrl = "https://github.com/GyanD/codexffmpeg/releases/download/8.1.2/ffmpeg-8.1.2-essentials_build.zip"
-            DownloadFileName = "ffmpeg-8.1.2-essentials_build.zip"
+            DownloadUrl = "https://github.com/GyanD/codexffmpeg/releases/download/9.0.1/ffmpeg-9.0.1-essentials_build.zip"
+            DownloadFileName = "ffmpeg-9.0.1-essentials_build.zip"
             DependsOn = @()
             PathDirs = @("ffmpeg")
             EnvVars = @{}
@@ -292,7 +292,7 @@
         @{
             Name = "PlantUML"
             ShortName = "plantuml"
-            Version = "1.2026.2"
+            Version = "1.2026.8"
             ArchivePattern = "plantuml-.*\.jar$"
             ExtractStrategy = "JarWithWrapper"
             JarName = "plantuml.jar"
@@ -307,7 +307,7 @@ set "JAVA_HOME=%SCRIPT_DIR%jdk-25"
 
 endlocal
 "@
-            DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2026.2/plantuml-1.2026.2.jar"
+            DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2026.8/plantuml-1.2026.8.jar"
             DependsOn = @("jdk")
             PathDirs = @()
             EnvVars = @{ "PLANTUML_HOME" = "" }
@@ -319,16 +319,16 @@ endlocal
         @{
             Name = "Python"
             ShortName = "python"
-            Version = "3.13.13"
+            Version = "3.14.7"
             ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
             ExtractStrategy = "TargetDirectory"
-            TargetDirectory = "python-3.13"
+            TargetDirectory = "python-3.14"
             PostSetupScript = "python-setup.ps1"
-            DownloadUrl = "https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip"
+            DownloadUrl = "https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip"
             DependsOn = @("get-pip")
-            PathDirs = @("python-3.13", "python-3.13\Scripts")
+            PathDirs = @("python-3.14", "python-3.14\Scripts")
             EnvVars = @{}
-            DetectFiles = @("python-3.13\python.exe")
+            DetectFiles = @("python-3.14\python.exe")
             SkipIfCommand = "python"
             DefaultChecked = $true
         },
@@ -337,10 +337,10 @@ endlocal
         @{
             Name = "pip source tarball"
             ShortName = "get-pip"
-            Version = "26.1.1"
-            ArchivePattern = "^pip-26\.1\.1\.tar\.gz$"
+            Version = "26.2.1"
+            ArchivePattern = "^pip-\d+\.\d+\.\d+\.tar\.gz$"
             ExtractStrategy = "CopyToPackages"
-            DownloadUrl = "https://files.pythonhosted.org/packages/b6/48/cb9b7a682f6fe01a4221e1728941dd4ac3cd9090a17db3779d6ff490b602/pip-26.1.1.tar.gz"
+            DownloadUrl = "https://files.pythonhosted.org/packages/ae/15/4500e320e6b101ec3b719ae85b697d9940b6cda672bc555bd6016fc60c6f/pip-26.2.1.tar.gz"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -352,11 +352,11 @@ endlocal
         @{
             Name = ".NET SDK"
             ShortName = "dotnet10sdk"
-            Version = "10.0.202"
+            Version = "10.0.401"
             ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "dotnet10sdk"
-            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.202/dotnet-sdk-10.0.202-win-x64.zip"
+            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.401/dotnet-sdk-10.0.401-win-x64.zip"
             DependsOn = @()
             PathDirs = @("dotnet10sdk")
             EnvVars = @{ "DOTNET_HOME" = "dotnet10sdk"; "DOTNET_CLI_TELEMETRY_OPTOUT" = "1" }
@@ -371,12 +371,12 @@ endlocal
         @{
             Name = "PowerShell 7"
             ShortName = "pwsh"
-            Version = "7.6.3"
+            Version = "7.6.6"
             ArchivePattern = "^PowerShell-\d+\.\d+\.\d+-win-x64\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "pwsh"
             PostSetupScript = "pwsh-setup.ps1"
-            DownloadUrl = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.3/PowerShell-7.6.3-win-x64.zip"
+            DownloadUrl = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/PowerShell-7.6.6-win-x64.zip"
             DependsOn = @()
             PathDirs = @("pwsh")
             EnvVars = @{}
@@ -389,12 +389,12 @@ endlocal
         @{
             Name = "Portable Git"
             ShortName = "git"
-            Version = "2.55.0.2"
+            Version = "2.55.0.5"
             ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
             ExtractStrategy = "SelfExtractingArchive"
             TargetDirectory = "git"
             ExtractArgs = @("-y", "-o{TargetPath}")
-            DownloadUrl = "https://sourceforge.net/projects/git-for-windows.mirror/files/v2.55.0.windows.2/PortableGit-2.55.0.2-64-bit.7z.exe/download"
+            DownloadUrl = "https://sourceforge.net/projects/git-for-windows.mirror/files/v2.55.0.windows.5/PortableGit-2.55.0.5-64-bit.7z.exe/download"
             PostExtract = @{
                 CopyFiles = @(
                     @{ Source = "subscripts\Add-MinGW-Path.cmd"; Destination = "Add-MinGW-Path.cmd" },
@@ -442,12 +442,12 @@ endlocal
         @{
             Name = "VS Code"
             ShortName = "vscode"
-            Version = "1.128.0"
+            Version = "1.138.0"
             ArchivePattern = "VSCode-win32-x64-.*\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "vscode"
-            DownloadUrl = "https://update.code.visualstudio.com/1.128.0/win32-x64-archive/stable"
-            DownloadFileName = "VSCode-win32-x64-1.128.0.zip"
+            DownloadUrl = "https://update.code.visualstudio.com/1.138.0/win32-x64-archive/stable"
+            DownloadFileName = "VSCode-win32-x64-1.138.0.zip"
             PostSetupScript = "vscode-setup.ps1"
             DependsOn = @()
             PathDirs = @("vscode\bin")
@@ -470,12 +470,12 @@ endlocal
             Name = "PsTools"
             ShortName = "pstools"
             Version = ""
-            DownloadVersion = "2.43"
+            DownloadVersion = "2.52"
             ArchivePattern = "^PSTools-.*\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "pstools"
             DownloadUrl = "https://download.sysinternals.com/files/PSTools.zip"
-            DownloadFileName = "PSTools-2.43.zip"
+            DownloadFileName = "PSTools-2.52.zip"
             VersionSource = @{
                 Type = "ZipEntry"
                 Path = "psversion.txt"
@@ -499,7 +499,7 @@ endlocal
             Name = "Inkscape"
             ShortName = "inkscape"
             Version = "1.4.4"
-            ArchivePattern = "^inkscape-1\.4\.4-x64\.7z$"
+            ArchivePattern = "^inkscape-.*-x64\.7z$"
             ExtractStrategy = "SubdirectoryToTarget"
             ExtractPath = ""
             TargetDirectory = "inkscape"
@@ -523,12 +523,12 @@ endlocal
         @{
             Name = "mingw-w64-x86_64-gcc-libs"
             ShortName = "mingw64-gcc-libs"
-            Version = "16.1.0-2"
+            Version = "16.2.0-3"
             ArchivePattern = "^mingw-w64-x86_64-gcc-libs-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
             FilePattern = "\.dll$"
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-16.1.0-2-any.pkg.tar.zst"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-16.2.0-3-any.pkg.tar.zst"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -591,13 +591,13 @@ endlocal
         @{
             Name = "GNU Make"
             ShortName = "make"
-            Version = "4.4.1-4"
+            Version = "4.4.1-5"
             ArchivePattern = "^mingw-w64-x86_64-make-.*\.pkg\.tar\.zst$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
             FilePattern = "^mingw32-make\.exe$"
             RenameFiles = @{ "mingw32-make.exe" = "make.exe" }
-            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst"
+            DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-5-any.pkg.tar.zst"
             DependsOn = @("mingw64-gcc-libs", "mingw64-libiconv", "mingw64-gettext-runtime")
             PathDirs = @()
             EnvVars = @{}
@@ -609,11 +609,11 @@ endlocal
         @{
             Name = "CMake"
             ShortName = "cmake"
-            Version = "4.3.1"
+            Version = "4.3.5"
             ArchivePattern = "cmake-.*-windows-x86_64\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
-            DownloadUrl = "https://github.com/Kitware/CMake/releases/download/v4.3.1/cmake-4.3.1-windows-x86_64.zip"
+            DownloadUrl = "https://github.com/Kitware/CMake/releases/download/v4.3.5/cmake-4.3.5-windows-x86_64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -647,13 +647,13 @@ endlocal
         @{
             Name = "clang-format"
             ShortName = "clang-format"
-            Version = "22.1.4"
+            Version = "23.1.1"
             ArchivePattern = "^clang\+llvm-.*-x86_64-pc-windows-msvc\.tar\.xz$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = "bin"
             FilePattern = "^(clang-format\.exe|git-clang-format|git-clang-format\.bat)$"
             PostSetupScript = "clang-format-setup.ps1"
-            DownloadUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz"
+            DownloadUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/clang+llvm-23.1.1-x86_64-pc-windows-msvc.tar.xz"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -665,11 +665,11 @@ endlocal
         @{
             Name = "NuGet"
             ShortName = "nuget"
-            Version = "7.3.1"
+            Version = "7.9.0"
             ArchivePattern = "nuget-.*\.exe$"
             ExtractStrategy = "SingleExecutable"
             TargetName = "nuget.exe"
-            DownloadUrl = "https://dist.nuget.org/win-x86-commandline/v7.3.1/nuget.exe"
+            DownloadUrl = "https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -681,11 +681,11 @@ endlocal
         @{
             Name = "cloc"
             ShortName = "cloc"
-            Version = "2.08"
+            Version = "2.10"
             ArchivePattern = "^cloc-\d+\.\d+\.exe$"
             ExtractStrategy = "SingleExecutable"
             TargetName = "cloc.exe"
-            DownloadUrl = "https://github.com/AlDanial/cloc/releases/download/v2.08/cloc-2.08.exe"
+            DownloadUrl = "https://github.com/AlDanial/cloc/releases/download/v2.10/cloc-2.10.exe"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -764,12 +764,12 @@ endlocal
         @{
             Name = "ReportGenerator"
             ShortName = "reportgenerator"
-            Version = "5.5.1"
+            Version = "5.5.11"
             ArchivePattern = "ReportGenerator_.*\.zip$"
             ExtractStrategy = "SubdirectoryToTarget"
             ExtractPath = "net47"
             TargetDirectory = "ReportGenerator"
-            DownloadUrl = "https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.1/ReportGenerator_5.5.1.zip"
+            DownloadUrl = "https://github.com/danielpalme/ReportGenerator/releases/download/v5.5.11/ReportGenerator_5.5.11.zip"
             DependsOn = @()
             PathDirs = @("ReportGenerator")
             EnvVars = @{}
@@ -827,13 +827,13 @@ endlocal
         @{
             Name = "editorconfig-checker"
             ShortName = "editorconfig-checker"
-            Version = "3.6.1"
+            Version = "3.7.0"
             ArchivePattern = "^ec-windows-amd64-.*\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = ""
             FilePattern = "^ec-windows-amd64\.exe$"
             RenameFiles = @{ "ec-windows-amd64.exe" = "editorconfig-checker.exe" }
-            DownloadUrl = "https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.6.1/ec-windows-amd64.zip"
+            DownloadUrl = "https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.7.0/ec-windows-amd64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -845,12 +845,12 @@ endlocal
         @{
             Name = "GitHub CLI"
             ShortName = "gh"
-            Version = "2.95.0"
+            Version = "2.101.0"
             ArchivePattern = "^gh_.*_windows_amd64\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = ""
             FilePattern = "^gh\.exe$"
-            DownloadUrl = "https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_windows_amd64.zip"
+            DownloadUrl = "https://github.com/cli/cli/releases/download/v2.101.0/gh_2.101.0_windows_amd64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -862,13 +862,13 @@ endlocal
         @{
             Name = "GitHub Copilot CLI"
             ShortName = "copilot"
-            Version = "1.0.81"
+            Version = "1.0.86"
             ArchivePattern = "^copilot-win32-x64-.*\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = ""
             FilePattern = "^copilot\.exe$"
-            DownloadUrl = "https://github.com/github/copilot-cli/releases/download/v1.0.81/copilot-win32-x64.zip"
-            DownloadFileName = "copilot-win32-x64-1.0.81.zip"
+            DownloadUrl = "https://github.com/github/copilot-cli/releases/download/v1.0.86/copilot-win32-x64.zip"
+            DownloadFileName = "copilot-win32-x64-1.0.86.zip"
             DependsOn = @("pwsh")
             PathDirs = @()
             EnvVars = @{}
@@ -885,15 +885,15 @@ endlocal
         @{
             Name = "Antigravity CLI"
             ShortName = "agy"
-            Version = "1.2.6"
+            Version = "1.2.7"
             ArchivePattern = "^agy_cli_windows_x64-.*\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = ""
             FilePattern = "^antigravity\.exe$"
             # 公式インストーラーと同じく agy.exe の名前で配置します。
             RenameFiles = @{ "antigravity.exe" = "agy.exe" }
-            DownloadUrl = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.6/agy_cli_windows_x64.zip"
-            DownloadFileName = "agy_cli_windows_x64-1.2.6.zip"
+            DownloadUrl = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.7/agy_cli_windows_x64.zip"
+            DownloadFileName = "agy_cli_windows_x64-1.2.7.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -910,12 +910,12 @@ endlocal
         @{
             Name = "GitLab CLI"
             ShortName = "glab"
-            Version = "1.105.0"
+            Version = "1.118.0"
             ArchivePattern = "^glab_.*_windows_amd64\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = ""
             FilePattern = "^glab\.exe$"
-            DownloadUrl = "https://gitlab.com/gitlab-org/cli/-/releases/v1.105.0/downloads/glab_1.105.0_windows_amd64.zip"
+            DownloadUrl = "https://gitlab.com/gitlab-org/cli/-/releases/v1.118.0/downloads/glab_1.118.0_windows_amd64.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -935,7 +935,7 @@ endlocal
             DependsOn = @("python")
             PathDirs = @()
             EnvVars = @{}
-            DetectFiles = @("python-3.13\Scripts\yamllint.exe")
+            DetectFiles = @("python-3.14\Scripts\yamllint.exe")
             DefaultChecked = $true
         },
 

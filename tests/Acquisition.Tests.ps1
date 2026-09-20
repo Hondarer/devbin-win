@@ -140,6 +140,191 @@ Describe "Invoke-ArchiveDownload" {
     }
 }
 
+Describe "Get-ManagedPackageKeepRelativePaths / Remove-UnreferencedPackageFiles" {
+
+    It "現行アーカイブと OFFLINE と管理ツリーを残す" {
+        $dir = New-TestDirectory
+        try {
+            $packagesDir = Join-Path $dir "packages"
+            New-Item -ItemType Directory -Path (Join-Path $packagesDir "npm-packages\pnpm\archives") -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $packagesDir "pip-packages") -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $packagesDir "vsbt") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "OFFLINE") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "tool-2.0.0.zip") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "npm-packages\pnpm\package-lock.json") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "pip-packages\pip-26.2.1-py3-none-any.whl") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "vsbt\channel_release.json") -Force | Out-Null
+
+            $packages = @(
+                (New-TestPackage -ShortName "tool" -Version "2.0.0" -Extra @{ DownloadUrl = "https://example.com/tool.zip" }),
+                (New-TestPackage -ShortName "pnpm" -Extra @{ ExtractStrategy = "NpmInstall"; NpmPackage = "pnpm" }),
+                (New-TestPackage -ShortName "python" -Extra @{ ExtractStrategy = "TargetDirectory" }),
+                (New-TestPackage -ShortName "vsbt" -Extra @{ ExtractStrategy = "VSBuildTools" })
+            )
+
+            $keep = @(Get-ManagedPackageKeepRelativePaths -Packages $packages -PackagesDir $packagesDir)
+            ($keep -contains "OFFLINE") | Should Be $true
+            ($keep -contains "tool-2.0.0.zip") | Should Be $true
+            ($keep -contains "npm-packages\pnpm\package-lock.json") | Should Be $true
+            ($keep -contains "pip-packages\pip-26.2.1-py3-none-any.whl") | Should Be $true
+            ($keep -contains "vsbt\channel_release.json") | Should Be $true
+        } finally {
+            Remove-TestDirectory -Path $dir
+        }
+    }
+
+    It "許可リストに無いファイルと空ディレクトリを削除する" {
+        $dir = New-TestDirectory
+        try {
+            $packagesDir = Join-Path $dir "packages"
+            New-Item -ItemType Directory -Path (Join-Path $packagesDir "junk") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "OFFLINE") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "tool-2.0.0.zip") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "tool-1.0.0.zip") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "junk\extra.txt") -Force | Out-Null
+
+            $result = Remove-UnreferencedPackageFiles -PackagesDir $packagesDir -KeepRelativePaths @("OFFLINE", "tool-2.0.0.zip")
+
+            $result.RemovedCount | Should Be 2
+            (Test-Path (Join-Path $packagesDir "OFFLINE")) | Should Be $true
+            (Test-Path (Join-Path $packagesDir "tool-2.0.0.zip")) | Should Be $true
+            (Test-Path (Join-Path $packagesDir "tool-1.0.0.zip")) | Should Be $false
+            (Test-Path (Join-Path $packagesDir "junk")) | Should Be $false
+        } finally {
+            Remove-TestDirectory -Path $dir
+        }
+    }
+}
+
+Describe "Invoke-PackageAcquisition の未使用資材整理" {
+
+    It "全件成功時はカタログ外のファイルを削除する" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $root = New-TestDirectory
+            try {
+                $packagesDir = Join-Path $root "packages"
+                New-Item -ItemType Directory -Path (Join-Path $packagesDir "npm-packages\oldpkg\archives") -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $packagesDir "OFFLINE") -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $packagesDir "tool-2.0.0.zip") -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $packagesDir "leftover.zip") -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $packagesDir "npm-packages\oldpkg\archives\old.tgz") -Force | Out-Null
+
+                $pkg = New-TestPackage -ShortName "tool" -Version "2.0.0" -Extra @{
+                    DownloadUrl = "https://example.invalid/tool.zip"
+                    ArchivePattern = "^tool-.*\.zip$"
+                }
+                $context = [PSCustomObject]@{
+                    PackagesDir    = $packagesDir
+                    SubscriptsDir  = (Join-Path $root "subscripts")
+                    PipPackagesDir = Join-Path $packagesDir "pip-packages"
+                }
+                Mock Invoke-ArchiveDownload {
+                    [PSCustomObject]@{
+                        Success          = $true
+                        SuccessCount     = 1
+                        TotalCount       = 1
+                        FailedShortNames = @()
+                    }
+                }
+                Mock Unblock-PackageFiles { }
+                Mock Test-ShouldAcquirePipWheels { $false }
+
+                $result = Invoke-PackageAcquisition -Packages @($pkg) -Context $context -AllowOfflineAcquisition
+                $result.Success | Should Be $true
+                (Test-Path (Join-Path $packagesDir "OFFLINE")) | Should Be $true
+                (Test-Path (Join-Path $packagesDir "tool-2.0.0.zip")) | Should Be $true
+                (Test-Path (Join-Path $packagesDir "leftover.zip")) | Should Be $false
+                (Test-Path (Join-Path $packagesDir "npm-packages\oldpkg")) | Should Be $false
+            } finally {
+                Remove-TestDirectory -Path $root
+            }
+        }
+    }
+
+    It "部分取得では指定外のファイルを残す" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $root = New-TestDirectory
+            try {
+                $packagesDir = Join-Path $root "packages"
+                New-Item -ItemType Directory -Path $packagesDir -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $packagesDir "tool-2.0.0.zip") -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $packagesDir "other-1.0.0.zip") -Force | Out-Null
+
+                $packages = @(
+                    (New-TestPackage -ShortName "tool" -Version "2.0.0" -Extra @{
+                        DownloadUrl = "https://example.invalid/tool.zip"
+                        ArchivePattern = "^tool-.*\.zip$"
+                    }),
+                    (New-TestPackage -ShortName "other" -Version "1.0.0" -Extra @{
+                        DownloadUrl = "https://example.invalid/other.zip"
+                        ArchivePattern = "^other-.*\.zip$"
+                    })
+                )
+                $context = [PSCustomObject]@{
+                    PackagesDir    = $packagesDir
+                    SubscriptsDir  = (Join-Path $root "subscripts")
+                    PipPackagesDir = Join-Path $packagesDir "pip-packages"
+                }
+                Mock Invoke-ArchiveDownload {
+                    [PSCustomObject]@{
+                        Success          = $true
+                        SuccessCount     = 1
+                        TotalCount       = 1
+                        FailedShortNames = @()
+                    }
+                }
+                Mock Unblock-PackageFiles { }
+                Mock Test-ShouldAcquirePipWheels { $false }
+
+                $result = Invoke-PackageAcquisition -Packages $packages -Context $context -ShortNames @("tool")
+                $result.Success | Should Be $true
+                (Test-Path (Join-Path $packagesDir "other-1.0.0.zip")) | Should Be $true
+            } finally {
+                Remove-TestDirectory -Path $root
+            }
+        }
+    }
+
+    It "取得失敗時は全域掃除をしない" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $root = New-TestDirectory
+            try {
+                $packagesDir = Join-Path $root "packages"
+                New-Item -ItemType Directory -Path $packagesDir -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $packagesDir "leftover.zip") -Force | Out-Null
+
+                $pkg = New-TestPackage -ShortName "tool" -Version "2.0.0" -Extra @{
+                    DownloadUrl = "https://example.invalid/tool.zip"
+                    ArchivePattern = "^tool-.*\.zip$"
+                }
+                $context = [PSCustomObject]@{
+                    PackagesDir    = $packagesDir
+                    SubscriptsDir  = (Join-Path $root "subscripts")
+                    PipPackagesDir = Join-Path $packagesDir "pip-packages"
+                }
+                Mock Invoke-ArchiveDownload {
+                    [PSCustomObject]@{
+                        Success          = $false
+                        SuccessCount     = 0
+                        TotalCount       = 1
+                        FailedShortNames = @("tool")
+                    }
+                }
+                Mock Test-ShouldAcquirePipWheels { $false }
+
+                $result = Invoke-PackageAcquisition -Packages @($pkg) -Context $context
+                $result.Success | Should Be $false
+                (Test-Path (Join-Path $packagesDir "leftover.zip")) | Should Be $true
+            } finally {
+                Remove-TestDirectory -Path $root
+            }
+        }
+    }
+}
+
 Describe "Save-DownloadedFile" {
 
     It "既存ファイルがあり -Force が無ければ取得しない" {

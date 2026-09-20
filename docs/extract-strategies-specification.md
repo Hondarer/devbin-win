@@ -106,7 +106,7 @@ ZIP を展開し、すべてのファイルを bin ディレクトリに配置�
     ShortName = "nodejs"
     ArchivePattern = "node-v.*-win-x64\.zip$"
     ExtractStrategy = "Standard"
-    DownloadUrl = "https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip"
+    DownloadUrl = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-win-x64.zip"
 }
 ```
 
@@ -193,7 +193,7 @@ RenameFiles を使用してファイル名を変更する例:
     ExtractPath = "bin"
     FilePattern = "^mingw32-make\.exe$"
     RenameFiles = @{ "mingw32-make.exe" = "make.exe" }
-    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-4-any.pkg.tar.zst"
+    DownloadUrl = "https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-make-4.4.1-5-any.pkg.tar.zst"
 }
 ```
 
@@ -213,7 +213,7 @@ tar.xz アーカイブと PostSetupScript を使用した例:
     ExtractPath = "bin"
     FilePattern = "^(clang-format\.exe|git-clang-format|git-clang-format\.cmd)$"
     PostSetupScript = "clang-format-setup.ps1"
-    DownloadUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz"
+    DownloadUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/clang+llvm-23.1.1-x86_64-pc-windows-msvc.tar.xz"
 }
 ```
 
@@ -254,7 +254,7 @@ Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin �
     ExtractStrategy = "SubdirectoryToTarget"
     ExtractPath = "bin"
     TargetDirectory = "graphviz"
-    DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.2/windows_10_cmake_Release_Graphviz-14.0.2-win64.zip"
+    DownloadUrl = "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.1.0/windows_10_cmake_Release_Graphviz-16.1.0-win64.zip"
 }
 ```
 
@@ -296,11 +296,11 @@ ZIP を展開後、バージョン番号を含むディレクトリ名を正規�
     ExtractStrategy = "VersionNormalized"
     VersionPattern = "^jdk-(\d+)"
     TargetDirectory = "jdk-{0}"
-    DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-25.0.1-windows-x64.zip"
+    DownloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-25.0.4.1-windows-x64.zip"
 }
 ```
 
-この例では、`jdk-25.0.1+8` が `jdk-25` に正規化されます。
+この例では、`jdk-25.0.4+11` が `jdk-25` に正規化されます。
 
 #### 適用パッケージ
 
@@ -363,7 +363,7 @@ Portable Git の MinGW PATH スクリプトなど、リポジトリで管理す�
     ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
     ExtractStrategy = "TargetDirectory"
     TargetDirectory = "dotnet10sdk"
-    DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.202/dotnet-sdk-10.0.202-win-x64.zip"
+    DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.401/dotnet-sdk-10.0.401-win-x64.zip"
 }
 ```
 
@@ -375,9 +375,9 @@ PostSetupScript を使用した例:
     ShortName = "python"
     ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
     ExtractStrategy = "TargetDirectory"
-    TargetDirectory = "python-3.13"
+    TargetDirectory = "python-3.14"
     PostSetupScript = "python-setup.ps1"
-    DownloadUrl = "https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip"
+    DownloadUrl = "https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip"
 }
 ```
 
@@ -437,7 +437,7 @@ set "JAVA_HOME=%SCRIPT_DIR%jdk-25"
 
 endlocal
 "@
-    DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2026.2/plantuml-1.2026.2.jar"
+    DownloadUrl = "https://github.com/plantuml/plantuml/releases/download/v1.2026.8/plantuml-1.2026.8.jar"
 }
 ```
 
@@ -469,7 +469,7 @@ PlantUML
     ArchivePattern = "nuget\.exe$"
     ExtractStrategy = "SingleExecutable"
     TargetName = "nuget.exe"
-    DownloadUrl = "https://dist.nuget.org/win-x86-commandline/v7.3.1/nuget.exe"
+    DownloadUrl = "https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe"
 }
 ```
 
@@ -636,7 +636,7 @@ Visual Studio Build Tools
 
 #### 処理フロー
 
-1. `$BinDir\python-3.13\python.exe` を特定
+1. Python の `TargetDirectory` (現行は `python-3.14`) 配下の `python.exe` を特定
 2. `packages\pip-packages\` に `PipPackage` と `PipDependencies` の wheel が揃っていることを確認
 3. `--no-index --find-links` でオフラインインストール
 4. wheel が不足している場合は PyPI へ直接フォールバックせずエラー終了
@@ -659,7 +659,7 @@ Visual Studio Build Tools
     PipPackage = "yamllint"
     PipDependencies = @("pathspec", "pyyaml")
     DependsOn = @("python")
-    DetectFiles = @("python-3.13\Scripts\yamllint.exe")
+    DetectFiles = @("python-3.14\Scripts\yamllint.exe")
 }
 ```
 
@@ -703,7 +703,7 @@ npm パッケージは ShortName ごとの依存関係ツリー キャッシュ�
 @{
     Name = "@antfu/ni"
     ShortName = "antfu-ni"
-    Version = "30.1.0"
+    Version = "30.5.0"
     ArchivePattern = "^antfu-ni-\d+\.\d+\.\d+\.tgz$"
     ExtractStrategy = "NpmInstall"
     NpmPackage = "@antfu/ni"
