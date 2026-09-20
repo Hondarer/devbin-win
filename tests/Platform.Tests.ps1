@@ -116,6 +116,7 @@ Describe "Get-DevbinHomeLayout" {
         ($names -contains "CONTINUE_GLOBAL_DIR") | Should Be $true
         ($names -contains "NPM_CONFIG_USERCONFIG") | Should Be $true
         ($layout | Where-Object { $_.EnvName -eq "XDG_DATA_HOME" }).Path | Should Be "C:\home\user\.local\share"
+        ($layout | Where-Object { $_.EnvName -eq "CONTINUE_GLOBAL_DIR" }).Path | Should Be "C:\home\user\continue"
         ($names -contains "JETSKI_APP_DATA_DIR") | Should Be $false
     }
 }

@@ -12,7 +12,7 @@ function Get-DevbinHomeLayout {
     param([string]$HomePath)
 
     return @(
-        [PSCustomObject]@{ EnvName = "CONTINUE_GLOBAL_DIR"; Path = (Join-Path $HomePath ".continue");     Label = "continue";   ShortNames = @() }
+        [PSCustomObject]@{ EnvName = "CONTINUE_GLOBAL_DIR"; Path = (Join-Path $HomePath "continue");      Label = "continue";   ShortNames = @() }
         [PSCustomObject]@{ EnvName = "XDG_CONFIG_HOME";     Path = (Join-Path $HomePath ".config");       Label = "XDG config"; ShortNames = @() }
         [PSCustomObject]@{ EnvName = "XDG_CACHE_HOME";      Path = (Join-Path $HomePath ".cache");        Label = "XDG cache";  ShortNames = @() }
         [PSCustomObject]@{ EnvName = "XDG_DATA_HOME";       Path = (Join-Path $HomePath ".local\share");  Label = "XDG data";   ShortNames = @() }

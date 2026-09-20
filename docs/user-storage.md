@@ -26,7 +26,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | 環境変数 | 保存先 | 設定するコンポーネント |
 | --- | --- | --- |
 | HOME | data 自体 | (共通) |
-| CONTINUE_GLOBAL_DIR | `.continue` | (共通) |
+| CONTINUE_GLOBAL_DIR | `continue` | (共通) |
 | XDG_CONFIG_HOME | `.config` | (共通) |
 | XDG_CACHE_HOME | `.cache` | (共通) |
 | XDG_DATA_HOME | `.local\share` | (共通) |
