@@ -4,7 +4,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 
 ## 配置方針
 
-共通ルートは `%ProgramData%\%USERNAME%` です。
+共通ルートは `%ProgramData%\%USERNAME%\devbin-win` です。
 
 | 区分 | 保存先 | 設定のタイミング |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | HOME と XDG | `data` とその配下 | Manage の開始時 |
 | VS Code のポータブルデータ | `data\vscode` | VS Code のインストール・再インストール時 |
 | devbin-win の操作トランスクリプト | `log` | Manage / Uninstall の開始時。カスタム導入先でも共通 |
-| バイナリ・導入状態 | `devbin-win\bin` | インストール時 |
+| バイナリ・導入状態 | `bin` | インストール時 |
 | 配布用パッケージ・オフラインキャッシュ | 配布元の `packages` | パッケージ取得時。実行時のユーザーデータとは別 |
 
 `Manage-Bin.cmd` は起動時に `data` と `log` を作成し、HOME と XDG のうち未設定のものを設定します。コンポーネントを導入すると、そのコンポーネントが使う保存先を作成し、未設定の環境変数を設定します。個別アンインストールでは、devbin-win が設定した値と一致する環境変数だけを解除します。利用者が別の値へ変更した項目と、導入済みの他コンポーネントと共有する項目は残します。
@@ -21,7 +21,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 
 ## 設定する環境変数
 
-相対パスの基準は `%ProgramData%\%USERNAME%\data` です。
+相対パスの基準は `%ProgramData%\%USERNAME%\devbin-win\data` です。
 
 | 環境変数 | 保存先 | 設定するコンポーネント |
 | --- | --- | --- |
@@ -88,7 +88,7 @@ Windows Terminal の `settings.json` は AppData/LocalAppData のままです。
 
 ## 完全アンインストール
 
-`Manage-Bin.cmd` の U と `Setup-Bin.ps1 -Uninstall` は、実行前に `data` と過去のログを個別に削除するか質問し、最終確認を表示します。既定はいずれも保持です。data の削除はこの共通領域全体を対象とするため、そこへ置いた設定・キャッシュ・認証ファイルを含みます。
+`Manage-Bin.cmd` の U と `Setup-Bin.ps1 -Uninstall` は、`bin` を完全に削除したあと、実行前の選択に従って `data` と過去のログをクリーンアップします。既定は data / log とも保持です。data の削除はこの共通領域全体を対象とするため、そこへ置いた設定・キャッシュ・認証ファイルを含みます。
 
 ```powershell
 .\subscripts\Setup-Bin.ps1 -Uninstall `
@@ -98,7 +98,7 @@ Windows Terminal の `settings.json` は AppData/LocalAppData のままです。
 
 `-Force` を併用すると質問を省略します。`-Force` 単独では data と log を保持します。PowerShell から `-RemoveData:$false -RemoveLogs:$false` と明示すれば、その項目の質問を省略して保持できます。削除対象は実行前に表示します。
 
-data の削除に成功した後、その配下を参照するユーザー環境変数と PATH を解除します。data の外は削除しません。data / log とその祖先・内部に再解析ポイントがある場合は削除を拒否します。削除の失敗はアンインストールの失敗として報告します。
+data の削除に成功した後、その配下を参照するユーザー環境変数と PATH を解除します。data の外は削除しません。bin / data / log とその祖先・内部に再解析ポイントがある場合は削除を拒否します。bin の削除に失敗した場合は data / log をクリーンアップしません。削除の失敗はアンインストールの失敗として報告します。
 
 log の削除では、記録中のトランスクリプトと `log` フォルダー自体を残します。メニューから完全アンインストールを実行した場合は、その操作を記録しているログが残ります。`log` が利用できない場合は一時フォルダーへ出力します。アプリが自身で生成するログをここへ集約する機能ではありません。
 

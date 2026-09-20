@@ -1,4 +1,4 @@
-﻿# ユーザー単位のデータ・ログ保存先。製品ディレクトリとは独立させます。
+﻿# ユーザー単位のデータ・ログ保存先。製品ルート (%ProgramData%\%USERNAME%\devbin-win) 配下に集約します。
 function Get-DevbinUserEnvironmentValue {
     param([string]$Name)
     return [Environment]::GetEnvironmentVariable($Name, 'User')
@@ -15,7 +15,7 @@ function Get-DevbinUserStorageRoot {
         $env:USERNAME -match '[\\/]' -or $env:USERNAME -in @('.', '..')) {
         throw "ProgramData / USERNAME cannot determine a safe storage root."
     }
-    return [IO.Path]::GetFullPath((Join-Path $env:ProgramData $env:USERNAME))
+    return [IO.Path]::GetFullPath((Join-Path $env:ProgramData "$env:USERNAME\devbin-win"))
 }
 
 function Get-DevbinDataDirectory {
@@ -36,11 +36,15 @@ function Initialize-DevbinUserStorage {
     return (Get-DevbinUserStorageRoot)
 }
 
-# 再解析ポイントを含むツリーは削除を拒否し、リンク先への削除の波及を防ぎます。
+# bin / data / log とその祖先・内部に再解析ポイントがある場合は削除を拒否します。
 function Assert-DevbinStorageTreeSafe {
     param([string]$Path)
     $fullPath = [IO.Path]::GetFullPath($Path).TrimEnd('\')
-    $allowed = @((Get-DevbinDataDirectory), (Get-DevbinLogDirectory))
+    $allowed = @(
+        (Join-Path (Get-DevbinUserStorageRoot) 'bin'),
+        (Get-DevbinDataDirectory),
+        (Get-DevbinLogDirectory)
+    ) | ForEach-Object { [IO.Path]::GetFullPath($_).TrimEnd('\') }
     if ($allowed -notcontains $fullPath) { throw "Unexpected cleanup path: $Path" }
     $ancestor = $fullPath
     while ($ancestor) {

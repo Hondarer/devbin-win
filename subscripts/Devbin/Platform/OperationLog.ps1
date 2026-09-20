@@ -1,8 +1,8 @@
 ﻿# OperationLog.ps1
 # 操作ログの配置パス解決および Transcript のライフサイクル管理
 #
-# 完全アンインストール時に製品ルート (...\devbin-win) が削除されるため、
-# ログファイルは %ProgramData%\%USERNAME%\log に保存します。
+# 完全アンインストール時も記録中のログを保持するため、
+# ログファイルは %ProgramData%\%USERNAME%\devbin-win\log に保存します。
 
 $script:DevbinOperationLogState = @{
     Started = $false

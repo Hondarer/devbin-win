@@ -188,8 +188,10 @@ function Invoke-ProductUninstall {
         return [PSCustomObject]@{ Status = "Refused" }
     }
 
-    Write-Host "導入状態にかかわらず、このフォルダーの痕跡を次のとおり削除します。"
-    Write-Host "  - 製品フォルダーとその中身のすべて"
+    $binDirectory = Join-Path $productRoot "bin"
+
+    Write-Host "導入状態にかかわらず、次の痕跡を削除します。"
+    Write-Host "  - bin フォルダーとその中身のすべて"
     Write-Host "  - このフォルダーを指すユーザー PATH のエントリ"
     Write-Host "  - このフォルダーを指すユーザー環境変数"
     Write-Host "  - このフォルダーを指すフォント登録"
@@ -217,6 +219,7 @@ function Invoke-ProductUninstall {
     }
 
     try {
+        Assert-DevbinStorageTreeSafe -Path $binDirectory
         if ($RemoveData) { Assert-DevbinStorageTreeSafe -Path (Get-DevbinDataDirectory) }
         if ($RemoveLogs) { Assert-DevbinStorageTreeSafe -Path (Get-DevbinLogDirectory) }
     } catch {
@@ -226,21 +229,22 @@ function Invoke-ProductUninstall {
 
     $removedEnvNames = @("PATH")
     Write-Host "製品フォルダーを指す設定を削除しています..."
-    $envRemoved = @(Remove-UserEnvVarsPointingToRoot -Root $productRoot)
+    $envRemoved = @(Remove-UserEnvVarsPointingToRoot -Root $binDirectory)
     if ($envRemoved.Count -gt 0) {
         $removedEnvNames += $envRemoved
     }
-    Remove-UserPathEntriesPointingToRoot -Root $productRoot
-    Remove-FontRegistrationsPointingToRoot -Root $productRoot
-    Remove-WindowsTerminalProfilesForRoot -Root $productRoot
-    Unregister-VswhereInstanceIfPointingToRoot -Root $productRoot
+    Remove-UserPathEntriesPointingToRoot -Root $binDirectory
+    Remove-FontRegistrationsPointingToRoot -Root $binDirectory
+    Remove-WindowsTerminalProfilesForRoot -Root $binDirectory
+    Unregister-VswhereInstanceIfPointingToRoot -Root $binDirectory
 
     $dirFailed = $false
-    if (Test-Path -LiteralPath $productRoot) {
-        Write-Host "製品フォルダーを削除しています: $productRoot"
-        $removeResult = Remove-DirectoryTree -Path $productRoot
+    # data / log は製品ルート配下にあるため、bin だけを先に完全削除します。
+    if (Test-Path -LiteralPath $binDirectory) {
+        Write-Host "bin フォルダーを削除しています: $binDirectory"
+        $removeResult = Remove-DirectoryTree -Path $binDirectory
         if ($removeResult.Success) {
-            Write-Host "製品フォルダーを削除しました。"
+            Write-Host "bin フォルダーを削除しました。"
         } else {
             $dirFailed = $true
             $isBusy = [string]$removeResult.ErrorMessage -match "(使用中|being used|in use|access.*denied|cannot access|プロセスで使用|別のプロセス)"
@@ -250,11 +254,17 @@ function Invoke-ProductUninstall {
                 Write-Host "環境設定は解除しました。PC を再起動してから、もう一度実行してフォルダーを削除してください。" -ForegroundColor Yellow
                 Write-Host ""
             } else {
-                Write-Host "Warning: 製品フォルダーを削除できません: $($removeResult.ErrorMessage)" -ForegroundColor Yellow
+                Write-Host "Warning: bin フォルダーを削除できません: $($removeResult.ErrorMessage)" -ForegroundColor Yellow
             }
         }
     } else {
-        Write-Host "製品フォルダーが見つかりません: $productRoot"
+        Write-Host "bin フォルダーが見つかりません: $binDirectory"
+    }
+
+    # bin を完全に削除できない場合は、保持すべき data / log に触れず失敗とします。
+    if ($dirFailed) {
+        Sync-EnvironmentVariables -VariableNames ($removedEnvNames | Select-Object -Unique) | Out-Null
+        return [PSCustomObject]@{ Status = "Failed" }
     }
 
     try {

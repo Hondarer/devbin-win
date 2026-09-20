@@ -2,6 +2,24 @@
 Import-DevbinModules
 
 InModuleScope Devbin {
+    Describe 'User storage paths' {
+        It 'places data and log under the devbin-win product root' {
+            $oldProgramData = $env:ProgramData
+            $oldUserName = $env:USERNAME
+            try {
+                $env:ProgramData = Join-Path $TestDrive 'ProgramData'
+                $env:USERNAME = 'test-user'
+                $expectedRoot = Join-Path $env:ProgramData 'test-user\devbin-win'
+                Get-DevbinUserStorageRoot | Should Be ([IO.Path]::GetFullPath($expectedRoot))
+                Get-DevbinDataDirectory | Should Be (Join-Path $expectedRoot 'data')
+                Get-DevbinLogDirectory | Should Be (Join-Path $expectedRoot 'log')
+            } finally {
+                $env:ProgramData = $oldProgramData
+                $env:USERNAME = $oldUserName
+            }
+        }
+    }
+
     Describe 'Storage configuration planning' {
         BeforeEach {
             Mock Get-DevbinUserStorageRoot { Join-Path $TestDrive 'storage' }
@@ -109,6 +127,13 @@ InModuleScope Devbin {
             { Remove-DevbinUserStorage -RemoveData -RemoveLogs } | Should Throw
             Assert-MockCalled Remove-Item -Scope It -Times 0 -Exactly
         }
+        It 'refuses a reparse point inside bin' {
+            $binDirectory = Join-Path (Get-DevbinUserStorageRoot) 'bin'
+            New-Item -ItemType Directory -Path $binDirectory -Force | Out-Null
+            Mock Get-Item { [PSCustomObject]@{ Attributes = [IO.FileAttributes]::Directory } }
+            Mock Get-ChildItem { [PSCustomObject]@{ Attributes = [IO.FileAttributes]::ReparsePoint; FullName = 'bin-link' } }
+            { Assert-DevbinStorageTreeSafe -Path $binDirectory } | Should Throw
+        }
 
     }
 }
@@ -129,16 +154,50 @@ InModuleScope Devbin {
             Mock Sync-EnvironmentVariables {}
             Mock Remove-DirectoryTree { [PSCustomObject]@{ Success = $true } }
             Mock Remove-DevbinUserStorage {}
+            Mock Assert-DevbinStorageTreeSafe {}
             Mock Write-Host {}
         }
         It 'force alone retains data and logs' {
             (Invoke-ProductUninstall -InstallDir 'ignored' -Force).Status | Should Be 'Success'
             Assert-MockCalled Remove-DevbinUserStorage -Scope It -Times 1 -Exactly -ParameterFilter { -not $RemoveData -and -not $RemoveLogs }
+            Assert-MockCalled Remove-UserEnvVarsPointingToRoot -Scope It -Times 1 -Exactly -ParameterFilter { $Root -eq (Join-Path (Get-DevbinProductRoot -InstallDir 'ignored') 'bin') }
+            Assert-MockCalled Remove-UserEnvVarsPointingToRoot -Scope It -Times 0 -Exactly -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
             Assert-MockCalled Read-ConfirmationKey -Scope It -Times 0 -Exactly
         }
         It 'passes both explicit cleanup switches' {
             (Invoke-ProductUninstall -InstallDir 'ignored' -Force -RemoveData -RemoveLogs).Status | Should Be 'Success'
             Assert-MockCalled Remove-DevbinUserStorage -Scope It -Times 1 -Exactly -ParameterFilter { $RemoveData -and $RemoveLogs }
+        }
+        It 'always validates bin before making changes' {
+            $binDirectory = Join-Path (Get-DevbinProductRoot -InstallDir 'ignored') 'bin'
+            (Invoke-ProductUninstall -InstallDir 'ignored' -Force).Status | Should Be 'Success'
+            Assert-MockCalled Assert-DevbinStorageTreeSafe -Scope It -Times 1 -Exactly -ParameterFilter { $Path -eq $binDirectory }
+        }
+        It 'removes only bin before cleaning data and logs' {
+            $productRoot = Get-DevbinProductRoot -InstallDir 'ignored'
+            $binDirectory = Join-Path $productRoot 'bin'
+            $script:cleanupOrder = @()
+            Mock Test-Path { $true } -ParameterFilter { $LiteralPath -eq $binDirectory }
+            Mock Remove-DirectoryTree {
+                $script:cleanupOrder += 'bin'
+                [PSCustomObject]@{ Success = $true }
+            }
+            Mock Remove-DevbinUserStorage { $script:cleanupOrder += 'storage' }
+
+            (Invoke-ProductUninstall -InstallDir 'ignored' -Force -RemoveData -RemoveLogs).Status | Should Be 'Success'
+
+            Assert-MockCalled Remove-DirectoryTree -Scope It -Times 1 -Exactly -ParameterFilter { $Path -eq $binDirectory }
+            Assert-MockCalled Remove-DirectoryTree -Scope It -Times 0 -Exactly -ParameterFilter { $Path -eq $productRoot }
+            ($script:cleanupOrder -join ',') | Should Be 'bin,storage'
+        }
+        It 'does not clean data or logs when bin deletion fails' {
+            $binDirectory = Join-Path (Get-DevbinProductRoot -InstallDir 'ignored') 'bin'
+            Mock Test-Path { $true } -ParameterFilter { $LiteralPath -eq $binDirectory }
+            Mock Remove-DirectoryTree { [PSCustomObject]@{ Success = $false; ErrorMessage = 'locked' } }
+
+            (Invoke-ProductUninstall -InstallDir 'ignored' -Force -RemoveData -RemoveLogs).Status | Should Be 'Failed'
+
+            Assert-MockCalled Remove-DevbinUserStorage -Scope It -Times 0 -Exactly
         }
         It 'collects both choices before the final confirmation' {
             Mock Read-ConfirmationKey { $true } -ParameterFilter { $Prompt -like 'data *' -or $Prompt -like '続行しますか*' }

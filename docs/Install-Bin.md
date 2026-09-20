@@ -66,10 +66,10 @@ PowerShell で `@antfu/ni` の `ni` コマンドを使用する場合は、セ�
 ## 操作ログ
 
 `Manage-Bin.cmd` と `Setup-Bin.ps1` の Manage および Uninstall は、外部で Transcript を取得しなくても操作結果をファイルへ記録します。
-保存先は導入先によらず `%ProgramData%\%USERNAME%\log` です。
-既定の導入先では、`C:\ProgramData\<ユーザー名>\log\devbin-win-operation-yyyyMMdd-HHmmss.log` に保存されます。
+保存先は導入先によらず `%ProgramData%\%USERNAME%\devbin-win\log` です。
+既定の導入先では、`C:\ProgramData\<ユーザー名>\devbin-win\log\devbin-win-operation-yyyyMMdd-HHmmss.log` に保存されます。
 
-製品フォルダーを完全削除した場合でも、このログ ファイルは保持されます。
+`bin` を完全削除した場合でも、このログ ファイルは保持されます。
 古いログは既定では保持します。完全アンインストール時に `-RemoveLogs` を指定すると、現在記録中のログを除いて削除します。
 処理の開始時に、保存先パスを画面へ表示します。
 
@@ -250,9 +250,7 @@ PowerShell から直接実行する場合は、対象を明示します。
 
 ### アンインストール内容
 
-対象ルート `C:\ProgramData\<ユーザー名>\devbin-win` をフォルダーごと削除します。
-この削除対象には `bin` が含まれます。VS Code の設定・拡張機能を置く `data\vscode` は製品フォルダーの外にあり、`-RemoveData` を選択した場合のみ削除します。
-続けて、設定値がこのフォルダー配下を参照しているユーザー PATH、ユーザー環境変数、HKCU フォント登録、Windows Terminal プロファイル、および vswhere の `installationPath` を機械的に削除します。
+まず、設定値が `bin` 配下を参照しているユーザー PATH、ユーザー環境変数、HKCU フォント登録、Windows Terminal プロファイル、および vswhere の `installationPath` を機械的に削除します。次に、対象ルート `C:\ProgramData\<ユーザー名>\devbin-win` の `bin` をフォルダーごと完全削除します。その後、`-RemoveData` / `-RemoveLogs` の選択に従って同じルート配下の `data` / `log` をクリーンアップします。`bin` を完全に削除できなかった場合は、`data` / `log` のクリーンアップを行いません。`data` 配下を参照する環境設定は、`-RemoveData` で data を削除した場合に限り解除します。
 MinGW 用 Windows Terminal プロファイルはパスを含まないため、固定 GUID をキーとして削除します。
 
 環境変数はセミコロン (`;`) 区切りのエントリ単位で除去します。
@@ -263,7 +261,7 @@ MinGW 用 Windows Terminal プロファイルはパスを含まないため、�
 `-InstallDir` に他の場所を指定した場合は、いかなるファイルも削除せずに処理を拒絶します。
 この制限は、リポジトリや展開された配布フォルダーの誤削除を防止するために設けています。
 
-`%ProgramData%\%USERNAME%\data` と `log` は既定では保持します。実行前にそれぞれの削除を選択できます。CLI では `-RemoveData` / `-RemoveLogs` で指定します。`-Force` 単独では両方を保持します。data 削除時はその配下を参照するユーザー環境変数・PATH も解除します。data の外にある領域は削除しません。
+`%ProgramData%\%USERNAME%\devbin-win\data` と `log` は既定では保持します。実行前にそれぞれの削除を選択できます。CLI では `-RemoveData` / `-RemoveLogs` で指定します。`-Force` 単独では両方を保持します。data 削除時はその配下を参照するユーザー環境変数・PATH も解除します。`-RemoveLogs` を指定しても、`log` フォルダーと記録中の完全アンインストールログは残ります。`bin` / `data` / `log` またはその祖先・内部に再解析ポイントがある場合は、リンク先への誤削除を防ぐため処理を拒否します。
 
 設定の保存先と例外は [ユーザー設定・データの保存先](user-storage.md) を参照してください。
 値がパスではない環境変数 (`DOTNET_CLI_TELEMETRY_OPTOUT` など) や、Microsoft Edge を参照する `BROWSER_PATH` も削除しません。

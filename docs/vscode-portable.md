@@ -7,11 +7,11 @@
 | 内容 | 保存先 |
 | --- | --- |
 | VS Code 本体 | `%ProgramData%\%USERNAME%\devbin-win\bin\vscode` |
-| 設定・拡張機能 | `%ProgramData%\%USERNAME%\data\vscode` |
+| 設定・拡張機能 | `%ProgramData%\%USERNAME%\devbin-win\data\vscode` |
 
 導入処理はデータ ディレクトリを作成し、ユーザー環境変数 `VSCODE_PORTABLE` にそのパスを設定します。この設定はインストールのたびに行い、`VSCODE_PORTABLE` に別の値があっても上書きします。設定の反映には、インストール後にターミナルを開き直してください。
 
-本体の下に `data` ディレクトリは作成しません。設定と拡張機能は常に製品フォルダーの外に置きます。
+本体の下に `data` ディレクトリは作成しません。設定と拡張機能は製品ルート配下で、`bin` と分離した `data\vscode` に置きます。
 
 ## 更新と削除
 

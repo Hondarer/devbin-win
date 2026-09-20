@@ -190,15 +190,15 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 
 - `Invoke-CompleteUninstall`: 再インストール用の事前クリーンアップ (bin ディレクトリ削除) を行います。
 - `Get-DevbinProductRoot`: InstallDir から対象ルート (`...\devbin-win`) を決定します。
-- `Get-DevbinOperationLogDirectory`: 操作ログの配置先 (`%ProgramData%\%USERNAME%\log`) を返します。
+- `Get-DevbinOperationLogDirectory`: 操作ログの配置先 (`%ProgramData%\%USERNAME%\devbin-win\log`) を返します。
 - `New-DevbinOperationLogPath`: `devbin-win-operation-yyyyMMdd-HHmmss.log` のパスを生成します。既存ファイルは上書きしません。
-- `Start-DevbinOperationLog` / `Stop-DevbinOperationLog`: 操作結果を Transcript で記録します。完全アンインストール時でも削除されないよう製品ルートの外部へ出力し、ログ自体は保持します。
+- `Start-DevbinOperationLog` / `Stop-DevbinOperationLog`: 操作結果を Transcript で記録します。完全アンインストールでは `bin` だけを先に削除し、記録中のログと `log` フォルダーを保持します。
 - `Test-DevbinProductRootAllowed`: 対象ルートが `%ProgramData%\%USERNAME%\devbin-win` と一致するかを判定します。一致しない場合は削除を実行しません。
 - `Test-PathUnderRoot`: 指定されたパスが対象ルート配下であるかを判定します。
 - `Split-RootEntriesFromValue`: `;` 区切りの値を対象ルート配下のエントリとそれ以外に分割します。
 - `Remove-DirectoryTree`: ディレクトリツリーを削除します。260 文字を超えるパスで失敗した場合は robocopy の `/MIR` オプションでディレクトリ内を空にしてから削除します。
 - `ConvertFrom-JsonWithComments`: コメント付き JSON (Windows Terminal の settings.json) を読み込みます。
-- `Invoke-ProductUninstall`: 状態に依存しない完全アンインストールを実行します。対象ルートと、当該ルートを参照する PATH、環境変数、フォント登録、Windows Terminal プロファイル、vswhere を機械的に削除します。
+- `Invoke-ProductUninstall`: 状態に依存しない完全アンインストールを実行します。`bin` とその参照設定を削除し、選択に従って `data` / `log` をクリーンアップします。削除対象は事前に再解析ポイントを検査し、`bin` の削除に失敗した場合は `data` / `log` に触れません。
 
 ## 状態管理 (Devbin/State)
 
