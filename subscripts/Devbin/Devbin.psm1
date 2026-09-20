@@ -45,6 +45,7 @@ $script:DevbinSourceFiles = @(
     "Packages\PipCache.ps1"
     "Packages\NpmCacheDownload.ps1"
     "Packages\VsBuildToolsDownload.ps1"
+    "Packages\OfflineMode.ps1"
     "Packages\PackageAcquisition.ps1"
     "Extract\ArchiveExtraction.ps1"
     "Extract\StandardStrategy.ps1"
@@ -168,6 +169,8 @@ Export-ModuleMember -Function @(
     'Invoke-PipWheelDownload',
     'Invoke-NpmCacheDownload',
     'Invoke-VsBuildToolsDownload',
+    'Get-DevbinOfflineMarkerPath',
+    'Test-DevbinOfflineMode',
     'Invoke-PackageAcquisition',
     # Packages/Npm (子モジュールからの再エクスポート)
     'Get-NpmPackageSpecs',
@@ -187,6 +190,8 @@ Export-ModuleMember -Function @(
     # Install
     'Get-ComponentEnvVarValues',
     'Test-ComponentUsesEdge',
+    'Test-ComponentSourceAvailable',
+    'Test-ComponentTreeSourceAvailable',
     'Resolve-ComponentSource',
     'Set-ComponentEnvVars',
     'Remove-ComponentEnvVars',

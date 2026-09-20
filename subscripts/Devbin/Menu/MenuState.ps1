@@ -34,6 +34,19 @@ function Get-MenuItemList {
     }
 }
 
+function Get-MenuDisableReason {
+    param(
+        [hashtable]$State,
+        $ItemOrName
+    )
+
+    if ($null -eq $State -or -not $State.ContainsKey("DisableReasons") -or $null -eq $State.DisableReasons) {
+        return ""
+    }
+
+    return [string](Get-MenuFlag -Map $State.DisableReasons -ItemOrName $ItemOrName -Default "")
+}
+
 # hashtable[$null] 参照による実行時エラーを防ぐため、キーの有効性を確認した上で値を取得します。
 function Get-MenuFlag {
     param(
@@ -246,6 +259,26 @@ function Initialize-MenuState {
         }
     }
 
+    $disableReasons = @{}
+    foreach ($item in $items) {
+        if ($disabled[$item.ShortName]) {
+            $disableReasons[$item.ShortName] = "External"
+        } else {
+            $disableReasons[$item.ShortName] = ""
+        }
+    }
+
+    $offlineMode = Test-DevbinOfflineMode -PackagesDir $packagesDir
+    if ($offlineMode) {
+        foreach ($item in $items) {
+            if ($disabled[$item.ShortName]) { continue }
+            if (-not (Test-ComponentTreeSourceAvailable -ShortName $item.ShortName -Packages $Packages -PackagesDir $packagesDir)) {
+                $disabled[$item.ShortName] = $true
+                $disableReasons[$item.ShortName] = "Unavailable"
+            }
+        }
+    }
+
     $reinstall = @{}
     foreach ($item in $items) {
         $status = $statuses[$item.ShortName]
@@ -261,20 +294,22 @@ function Initialize-MenuState {
     }
 
     return @{
-        Items        = $items
-        Checked      = $checked
-        Reinstall    = $reinstall
-        Disabled     = $disabled
-        CursorIndex  = 0
-        Statuses     = $statuses
-        Manifest     = $Manifest
-        Packages     = $Packages
-        PackagesDir  = $packagesDir
-        InstallDir   = $InstallDir
-        ScriptDir    = $ScriptDir
-        NeedRedraw   = $true
-        ViewportTop  = 0
-        ViewportSize = $items.Count  # Render-Menu 実行時に確定
+        Items          = $items
+        Checked        = $checked
+        Reinstall      = $reinstall
+        Disabled       = $disabled
+        DisableReasons = $disableReasons
+        OfflineMode    = $offlineMode
+        CursorIndex    = 0
+        Statuses       = $statuses
+        Manifest       = $Manifest
+        Packages       = $Packages
+        PackagesDir    = $packagesDir
+        InstallDir     = $InstallDir
+        ScriptDir      = $ScriptDir
+        NeedRedraw     = $true
+        ViewportTop    = 0
+        ViewportSize   = $items.Count  # Render-Menu 実行時に確定
     }
 }
 

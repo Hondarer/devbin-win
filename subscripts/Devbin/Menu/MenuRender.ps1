@@ -18,6 +18,16 @@ function Get-StatusDisplay {
     }
 }
 
+function Get-DisabledStatusDisplay {
+    param([string]$Reason)
+
+    if ($Reason -eq "Unavailable") {
+        return @{ Label = "Unavailable"; Color = [ConsoleColor]::DarkGray }
+    }
+
+    return @{ Label = "External"; Color = [ConsoleColor]::DarkGray }
+}
+
 # コンポーネント行を 1 行描画します。
 function Render-MenuLine {
     param(
@@ -27,6 +37,7 @@ function Render-MenuLine {
         [bool]$IsChecked,
         [bool]$IsReinstall,
         [bool]$IsDisabled,
+        [string]$DisableReason = "",
         [string]$Status,
         [bool]$IsCursor,
         [array]$Packages
@@ -38,7 +49,7 @@ function Render-MenuLine {
     $checkbox  = if ($IsDisabled -and -not $IsChecked) { "[-]" } elseif ($IsReinstall) { "[R]" } elseif ($IsChecked) { "[X]" } else { "[ ]" }
     $statusDisp = Get-StatusDisplay -Status $Status
     if ($IsDisabled -and $Status -eq "NotInstalled") {
-        $statusDisp = @{ Label = "External"; Color = [ConsoleColor]::DarkGray }
+        $statusDisp = Get-DisabledStatusDisplay -Reason $DisableReason
     }
     $depDisplay = Get-DependencyDisplay -PackageConfig $Item -Packages $Packages
 
@@ -76,7 +87,7 @@ function Render-Footer {
 
     # 凡例
     [Console]::SetCursorPosition(0, $footerStart)
-    [Console]::Write((" [X] Selected Installed  [R] Reinstall / Update  [ ] Not Selected  [-] External").PadRight($width))
+    [Console]::Write((" [X] Selected Installed  [R] Reinstall / Update  [ ] Not Selected  [-] External / Unavailable").PadRight($width))
 
     # 空行
     [Console]::SetCursorPosition(0, $footerStart + 1)
@@ -106,7 +117,11 @@ function Render-Menu {
 
     # 行 1: タイトル
     [Console]::SetCursorPosition(0, 1)
-    [Console]::Write(("=== devbin-win コンポーネント マネージャー ===").PadRight($width))
+    $title = "=== devbin-win コンポーネント マネージャー ==="
+    if ($State.ContainsKey("OfflineMode") -and $State.OfflineMode) {
+        $title = "=== devbin-win コンポーネント マネージャー  [オフライン] ==="
+    }
+    [Console]::Write($title.PadRight($width))
 
     # 行 2: 空行
     [Console]::SetCursorPosition(0, 2)
@@ -143,6 +158,7 @@ function Render-Menu {
             -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $item) `
             -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $item) `
             -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `
+            -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $item) `
             -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") `
             -IsCursor ($i -eq $State.CursorIndex) `
             -Packages $State.Packages

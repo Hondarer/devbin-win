@@ -32,6 +32,7 @@ function Handle-KeyInput {
                     -Item $item -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $item) `
                     -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $item) `
                     -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `
+                    -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $item) `
                     -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") `
                     -IsCursor ($i -eq $State.CursorIndex) `
                     -Packages $State.Packages

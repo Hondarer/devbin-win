@@ -42,12 +42,21 @@ function Invoke-PackageAcquisition {
         [array]$Packages,
         [PSCustomObject]$Context,
         [string[]]$ShortNames = @(),
-        [switch]$Force
+        [switch]$Force,
+        [switch]$AllowOfflineAcquisition
     )
 
     $messages = @()
     $failedShortNames = @()
     $success = $true
+
+    if ($Context -and (Test-DevbinOfflineMode -PackagesDir $Context.PackagesDir) -and -not $AllowOfflineAcquisition) {
+        return [PSCustomObject]@{
+            Success          = $false
+            Messages         = @("packages\OFFLINE があるため、パッケージの取得はしません")
+            FailedShortNames = @()
+        }
+    }
 
     try {
         $targetPackages = Select-TargetPackages -Packages $Packages -ShortNames $ShortNames

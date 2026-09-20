@@ -27,6 +27,8 @@ Describe "Get-PipWheelPackageNames" {
         $content | Should Match '\$corePackages\s*=\s*@\(Get-PipWheelPackageNames -IncludeCorePackages\)'
         $content | Should Match '\$pipInstallArgs\s*\+=\s*\$corePackages'
         $content | Should Match '\$pipDownloadArgs\s*\+=\s*\$corePackages'
+        $content | Should Match '\$completeOffline = Test-DevbinOfflineMode'
+        $content | Should Match 'elseif \(\$completeOffline\)'
     }
 
     It "既に読み込み済みの Devbin を Force で置き換えない" {

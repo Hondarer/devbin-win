@@ -147,6 +147,11 @@ function Invoke-VSBuildToolsExtract {
         SkipDevbinModuleImport = $true
     }
 
+    $packagesDir = Split-Path -Parent $downloadsPath
+    if (Test-DevbinOfflineMode -PackagesDir $packagesDir) {
+        $params["OfflineMode"] = $true
+    }
+
     Write-Host "    Executing Setup-VSBT.ps1..."
     Write-Host "      MSVC: $($params.MSVCVersion)"
     Write-Host "      SDK: $($params.SDKVersion)"

@@ -28,6 +28,10 @@ try {
 
 $DevbinContext = New-DevbinContext -SubscriptsDir $ScriptDir
 
+if (Test-DevbinOfflineMode -PackagesDir $DevbinContext.PackagesDir) {
+    Write-Host "packages\OFFLINE がありますが、Get-Packages.ps1 の明示実行のため取得を続けます。"
+}
+
 # パッケージ定義の読み込み
 $catalog = Import-PackageCatalog -Path $DevbinContext.ConfigPath
 if (-not $catalog.Success) {
@@ -42,7 +46,8 @@ $result = Invoke-PackageAcquisition `
     -Packages $catalog.Packages `
     -Context $DevbinContext `
     -ShortNames $PackageShortNames `
-    -Force:$Force
+    -Force:$Force `
+    -AllowOfflineAcquisition
 
 Write-Host ""
 Write-Host "=== 取得結果 ==="

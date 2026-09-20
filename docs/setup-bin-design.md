@@ -373,6 +373,15 @@ packages.psd1 からダウンロード URL を読み込み、必要なパッケ�
 `NpmInstall` による導入時は、マニフェスト、lockfile、および全アーカイブの SHA-512 ハッシュ値を検証した上で、一時 npm キャッシュへアーカイブを登録します。
 lockfile の `resolved` と `integrity` をローカルアーカイブへ差し替えた一時プロジェクトに対して `npm install --offline` を実行し、生成された `node_modules` およびコマンド shim をインストール先ディレクトリへマージします。
 キャッシュの不足が検出された場合のみ `Get-Packages.ps1 -PackageShortNames` の自動実行を試行し、取得後も不完全な状態である場合は導入処理を開始しません。
+`packages/OFFLINE` がある場合は導入中の自動取得を行わず、資材が無いメニュー項目は `Unavailable` として非活性にします。
+`Get-Packages.ps1` を明示実行した場合は、マーカーがあっても取得します。
+
+### 完全オフラインモード
+
+`packages/OFFLINE` は完全オフラインを示すマジックファイルです。中身は使いません。
+判定は `Test-DevbinOfflineMode`、資材の有無は `Test-ComponentSourceAvailable` が担当します。
+表示中の項目は Hidden を含む `DependsOn` の連鎖も見ます。
+`Get-Packages.ps1` は `-AllowOfflineAcquisition` でマーカーを無視して取得します。導入経路はこれを渡しません。
 
 ### SourceForge URL 対応
 

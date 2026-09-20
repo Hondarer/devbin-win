@@ -368,7 +368,8 @@ $global:DevbinTestVsbtExtractDownloadsPath = [string]$DownloadsPath
         ($source -match 'Invoke-RestMethod -Uri \$MANIFEST_URL -UseBasicParsing -ErrorAction Stop') | Should Be $false
         ($source -match '\$preferCache = \$OfflineMode -or \(\$cacheReady -and -not \$DownloadOnly\)') | Should Be $true
         ($source -match 'Failed to download VSBT manifest from \$MANIFEST_URL and no cached manifest was found') | Should Be $true
-        ($extractSource -match 'OfflineMode\s*=\s*\$true') | Should Be $false
+        ($extractSource -match 'if \(Test-DevbinOfflineMode -PackagesDir \$packagesDir\)') | Should Be $true
+        ($extractSource -match '\$params\["OfflineMode"\]\s*=\s*\$true') | Should Be $true
     }
 
     It "単独実行では従来どおり Devbin を Force インポートする" {
@@ -392,6 +393,12 @@ Describe "取得処理の一本化" {
         $functions = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true))
 
         $functions.Count | Should Be 0
+    }
+
+    It "Get-Packages.ps1 は OFFLINE があっても明示取得する" {
+        $source = Get-Content (Join-Path $subscriptsDir "Get-Packages.ps1") -Raw
+        $source | Should Match 'AllowOfflineAcquisition'
+        $source | Should Not Match 'packages\\OFFLINE があるため、パッケージの取得はしません'
     }
 
     It "導入中の自動取得も Invoke-PackageAcquisition を通る" {

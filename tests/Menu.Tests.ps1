@@ -239,6 +239,8 @@ Describe "Initialize-MenuState" {
             $state.Items.Count | Should Be 1
             ($null -eq $state.Items[0]) | Should Be $false
             $state.Items[0].ShortName | Should Be "only"
+            $state.ContainsKey("DisableReasons") | Should Be $true
+            $state.ContainsKey("OfflineMode") | Should Be $true
             { Get-MenuFlag -Map $state.Checked -ItemOrName $state.Items[0] } | Should Not Throw
         }
     }

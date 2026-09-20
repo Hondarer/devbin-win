@@ -56,6 +56,7 @@ function Move-MenuCursor {
                 -Item $old -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $old) `
                 -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $old) `
                 -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $old) `
+                -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $old) `
                 -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $old -Default "NotInstalled") `
                 -IsCursor $false -Packages $State.Packages
         }
@@ -66,6 +67,7 @@ function Move-MenuCursor {
                 -Item $new -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $new) `
                 -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $new) `
                 -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $new) `
+                -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $new) `
                 -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $new -Default "NotInstalled") `
                 -IsCursor $true -Packages $State.Packages
         }

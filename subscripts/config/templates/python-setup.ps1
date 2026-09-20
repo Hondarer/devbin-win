@@ -181,15 +181,17 @@ with tarfile.open(archive_path, 'r:gz') as archive:
         # pip-packages ディレクトリが存在する場合はオフラインインストールを実行
         $pipPackagesDir = $devbinContext.PipPackagesDir
         $corePackages = @(Get-PipWheelPackageNames -IncludeCorePackages)
-        $offlineMode = Test-Path $pipPackagesDir
+        $completeOffline = Test-DevbinOfflineMode -PackagesDir $devbinContext.PackagesDir
+        $offlineMode = $false
         $missingWheels = @()
 
-        if ($offlineMode) {
+        if (Test-Path $pipPackagesDir) {
             $missingWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $corePackages)
-            if ($missingWheels.Count -gt 0) {
+            if ($missingWheels.Count -eq 0) {
+                $offlineMode = $true
+            } elseif (-not $completeOffline) {
                 Write-Host "Warning: Offline wheel cache is incomplete: $($missingWheels -join ', ')"
                 Write-Host "Falling back to online installation."
-                $offlineMode = $false
             }
         }
 
@@ -200,6 +202,9 @@ with tarfile.open(archive_path, 'r:gz') as archive:
             $pipInstallArgs += $corePackages
             & $pythonExe @pipInstallArgs
             $installExitCode = $LASTEXITCODE
+        } elseif ($completeOffline) {
+            Write-Host "Error: packages\OFFLINE があるため、不足している pip wheel は取得しません: $($missingWheels -join ', ')"
+            $installExitCode = 1
         } else {
             Write-Host "Using online installation (downloading core packages including pytest from PyPI)..."
             $pipInstallArgs = @("-m", "pip", "install", "--no-warn-script-location")

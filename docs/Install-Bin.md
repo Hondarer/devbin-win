@@ -92,8 +92,7 @@ archives\*.tgz
 
 `npm-cache-manifest.json` は、全アーカイブのバージョン、ファイル サイズ、および SHA-512 ハッシュ値を検証するために使用します。
 `Manage-Bin.cmd` は、キャッシュが不足している場合に限り `Get-Packages.ps1` の自動実行を試行します。
-この処理ではネットワーク接続が発生するため、完全オフラインでの導入環境では事前にキャッシュを準備してください。
-取得後もキャッシュが不足している場合は、導入処理を開始せずにエラーで停止します。
+この処理ではネットワーク接続が発生するため、完全オフラインでの導入環境では事前にキャッシュを準備し、`packages\OFFLINE` を置いてください。
 
 導入時はレジストリ メタデータに依存せず、lockfile の `resolved` と `integrity` をキャッシュ内のローカル `.tgz` に差し替えた一時プロジェクトに対して `npm install --offline` を実行します。
 処理の完了後、一時プロジェクトの `node_modules` とコマンド shim をインストール先へ配置します。
@@ -101,14 +100,29 @@ archives\*.tgz
 Marp CLI、Mermaid CLI、Puppeteer は Chromium をダウンロードせず、PATH、標準インストール先、および Windows の `App Paths` レジストリから既存の Microsoft Edge を自動検出して使用します。
 Microsoft Edge が検出されない場合は、ブラウザーを必要とするコンポーネントの導入に失敗します。
 
-### オフライン移行手順
+## 完全オフラインモード
+
+`packages` フォルダーに `OFFLINE` という空ファイルを置くと、完全オフラインモードになります。
+中身は見ません。ファイルがあることだけを判定します。
+
+このモードでは次のように動作します。
+
+- 導入中の不足資材の自動取得を行わない。`Get-Packages.ps1` を明示実行した場合は取得する
+- メニュー項目に対応する資材が `packages` に無い場合は非活性にし、状態列に `Unavailable` と表示する
+- 導入済みの項目はアンインストールできる。再インストールはできない
+- システムに同じツールがある `External` とは表示を分ける
+
+オンライン環境で資材を揃えたあと、オフライン環境へコピーしてから `packages\OFFLINE` を置いてください。
 
 1. オンライン環境で `Get-Packages.ps1` を実行
 2. `packages` フォルダーを含むリポジトリ全体をコピー
-3. オフライン環境で `Manage-Bin.cmd` を実行
-4. 新しいターミナルで npm コマンドと Marp/Mermaid の出力を確認
+3. オフライン環境の `packages` フォルダーへ空の `OFFLINE` を置く
+4. `Manage-Bin.cmd` を実行
+5. 新しいターミナルでコマンドを確認
 
-#### cloc について
+## パッケージの補足
+
+### cloc について
 
 cloc はソースコードの空行・コメント行・コード行を数えるツールです。
 
@@ -117,7 +131,7 @@ cloc はソースコードの空行・コメント行・コード行を数える
 - **バージョン**: 2.08
 - **プロジェクト**: [AlDanial/cloc](https://github.com/AlDanial/cloc)
 
-#### vswhere について
+### vswhere について
 
 vswhere は Visual Studio インスタンスを検出するための Microsoft 公式ツールです。
 
@@ -126,7 +140,7 @@ vswhere は Visual Studio インスタンスを検出するための Microsoft �
 - **バージョン**: 3.1.7
 - **プロジェクト**: [microsoft/vswhere](https://github.com/microsoft/vswhere)
 
-#### clang-format について
+### clang-format について
 
 clang-format はソースコードを自動整形する LLVM ツールです。`git-clang-format` で Git との連携が可能です。
 
@@ -135,7 +149,7 @@ clang-format はソースコードを自動整形する LLVM ツールです。`
 - **バージョン**: 22.1.4
 - **プロジェクト**: [llvm/llvm-project](https://github.com/llvm/llvm-project)
 
-#### WinFlexBison について
+### WinFlexBison について
 
 WinFlexBison は Flex と GNU Bison の Windows 移植版です。
 字句解析器 (lexer) および構文解析器 (parser) の生成に使用します。
@@ -146,7 +160,7 @@ WinFlexBison は Flex と GNU Bison の Windows 移植版です。
 - **バージョン**: 2.5.25 (bison 3.8.2、flex 2.6.4)
 - **プロジェクト**: [lexxmark/winflexbison](https://github.com/lexxmark/winflexbison)
 
-#### editorconfig-checker について
+### editorconfig-checker について
 
 editorconfig-checker は `.editorconfig` の定義に対してファイルのフォーマットを検証するツールです。
 
@@ -155,7 +169,7 @@ editorconfig-checker は `.editorconfig` の定義に対してファイルのフ
 - **バージョン**: 3.6.1
 - **プロジェクト**: [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig-checker/editorconfig-checker)
 
-#### gh について
+### gh について
 
 gh は GitHub の Issue・Pull Request・リリース等をコマンドラインから操作する公式 CLI です。
 
@@ -164,7 +178,7 @@ gh は GitHub の Issue・Pull Request・リリース等をコマンドライン
 - **バージョン**: 2.95.0
 - **プロジェクト**: [cli/cli](https://github.com/cli/cli)
 
-#### Copilot CLI について
+### Copilot CLI について
 
 GitHub Copilot CLI は、ターミナルから GitHub Copilot を利用するための公式 CLI です。
 
@@ -183,7 +197,7 @@ Copilot CLI は既定値では選択されていません。
 packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
 自己更新時に作られる `copilot.exe.old-*` は、アンインストール時と再インストール時に削除します。
 
-#### agy について
+### agy について
 
 agy は、ターミナルから Google Antigravity のエージェントを利用するための公式 CLI (Antigravity CLI) です。
 
@@ -204,7 +218,7 @@ API キーで利用する場合は、`~/.gemini/antigravity-cli/settings.json` �
 packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
 自己更新時に作られる `agy.exe.<数値>.old` は、アンインストール時と再インストール時に削除します。
 
-#### glab について
+### glab について
 
 glab は GitLab の Issue・Merge Request・CI/CD パイプライン等をコマンドラインから操作する公式 CLI です。
 
@@ -333,7 +347,8 @@ HOME (`C:\ProgramData\home\<ユーザー>` および XDG 関連の環境変数) 
 
 1. `Get-Packages.ps1` を実行して、全パッケージと wheel ファイルをダウンロード
 2. リポジトリ全体 (特に `packages` フォルダー) をオフライン環境にコピー
-3. オフライン環境で `Manage-Bin.cmd` を実行
+3. `packages\OFFLINE` を置く
+4. オフライン環境で `Manage-Bin.cmd` を実行
 
 これにより、完全オフライン環境でも pip とプリインストール対象の pytest を含む全ツールがインストールされます。
 Python 導入後は、`python -m pytest` でテストを実行できます。

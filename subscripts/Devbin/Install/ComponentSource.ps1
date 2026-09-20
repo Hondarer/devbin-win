@@ -13,6 +13,165 @@ function Get-PackagesDirectory {
     return "packages"
 }
 
+function Find-ComponentArchiveFile {
+    param(
+        [hashtable]$PackageConfig,
+        [string]$PackagesDir
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PackagesDir) -or -not (Test-Path -LiteralPath $PackagesDir -PathType Container)) {
+        return $null
+    }
+
+    $archivePattern = if ($PackageConfig.ContainsKey("ArchivePattern")) { [string]$PackageConfig.ArchivePattern } else { "" }
+    if (-not [string]::IsNullOrWhiteSpace($archivePattern)) {
+        $archiveFiles = @(Get-ChildItem -Path $PackagesDir -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match $archivePattern })
+        if ($archiveFiles.Count -gt 0) {
+            return $archiveFiles[0].FullName
+        }
+    }
+
+    $baseFileName = Get-PackageBaseFileName -Package $PackageConfig
+    $downloadFileName = ""
+    if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {
+        $downloadFileName = Get-PackageDownloadFileName -Package $PackageConfig
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($baseFileName) -and $baseFileName -ne $downloadFileName) {
+        $candidatePath = Join-Path $PackagesDir $baseFileName
+        if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
+            return $candidatePath
+        }
+    }
+
+    return $null
+}
+
+function Test-VsBuildToolsSourceAvailable {
+    param(
+        [hashtable]$PackageConfig,
+        [string]$PackagesDir
+    )
+
+    $downloadsPath = Join-Path $PackagesDir "vsbt"
+    $channelPath = Join-Path $downloadsPath "channel_release.json"
+    $manifestPath = Join-Path $downloadsPath "manifest_release.json"
+    if (-not (Test-Path -LiteralPath $channelPath -PathType Leaf)) {
+        return $false
+    }
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        return $false
+    }
+
+    $target = "x64"
+    if ($PackageConfig.ContainsKey("VSBTConfig") -and $PackageConfig.VSBTConfig -and $PackageConfig.VSBTConfig.ContainsKey("Target")) {
+        $targetValue = [string]$PackageConfig.VSBTConfig.Target
+        if (-not [string]::IsNullOrWhiteSpace($targetValue)) {
+            $target = $targetValue
+        }
+    }
+
+    $payloadDir = Join-Path $downloadsPath $target
+    if (-not (Test-Path -LiteralPath $payloadDir -PathType Container)) {
+        return $false
+    }
+
+    $payloadFiles = @(Get-ChildItem -LiteralPath $payloadDir -Recurse -File -ErrorAction SilentlyContinue)
+    return ($payloadFiles.Count -gt 0)
+}
+
+function Test-ComponentSourceAvailable {
+    param(
+        [hashtable]$PackageConfig,
+        [string]$PackagesDir
+    )
+
+    if ($null -eq $PackageConfig) {
+        return $false
+    }
+
+    $strategy = if ($PackageConfig.ContainsKey("ExtractStrategy")) { [string]$PackageConfig.ExtractStrategy } else { "" }
+
+    if ($strategy -eq "NpmInstall") {
+        $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $PackageConfig -PackagesDir $PackagesDir
+        return [bool]$npmCacheStatus.IsValid
+    }
+
+    if ($strategy -eq "PipInstall") {
+        $pipPackagesDir = Join-Path $PackagesDir "pip-packages"
+        $requiredPipWheels = Get-PipWheelPackageNames -PackageConfigs @($PackageConfig)
+        $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
+        return ($missingPipWheels.Count -eq 0)
+    }
+
+    if ($strategy -eq "VSBuildTools") {
+        return (Test-VsBuildToolsSourceAvailable -PackageConfig $PackageConfig -PackagesDir $PackagesDir)
+    }
+
+    $archiveFile = Find-ComponentArchiveFile -PackageConfig $PackageConfig -PackagesDir $PackagesDir
+    if ([string]::IsNullOrWhiteSpace($archiveFile)) {
+        return $false
+    }
+
+    $shortName = if ($PackageConfig.ContainsKey("ShortName")) { [string]$PackageConfig.ShortName } else { "" }
+    if ($strategy -eq "CopyToPackages" -or $shortName -eq "get-pip") {
+        $pipPackagesDir = Join-Path $PackagesDir "pip-packages"
+        $corePackages = @(Get-PipWheelPackageNames -IncludeCorePackages)
+        $missingCoreWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $corePackages)
+        if ($missingCoreWheels.Count -gt 0) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Test-ComponentTreeSourceAvailable {
+    param(
+        [string]$ShortName,
+        [array]$Packages,
+        [string]$PackagesDir
+    )
+
+    $order = @(Resolve-Dependencies -ShortName $ShortName -Packages $Packages)
+    if ($order.Count -eq 0) {
+        return $false
+    }
+
+    foreach ($name in $order) {
+        $package = Get-PackageByShortName -ShortName $name -Packages $Packages
+        if ($null -eq $package) {
+            return $false
+        }
+        if (-not (Test-ComponentSourceAvailable -PackageConfig $package -PackagesDir $PackagesDir)) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Write-ComponentSourceMissing {
+    param(
+        [string]$ShortName,
+        [string]$PackagesDir,
+        [string]$Detail = ""
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($Detail)) {
+        Write-Host "    Error: $Detail" -ForegroundColor Red
+    }
+
+    if (Test-DevbinOfflineMode -PackagesDir $PackagesDir) {
+        Write-Host "    packages\OFFLINE があるため、不足資材の取得はしません。" -ForegroundColor Yellow
+        Write-Host "    不足している資材を packages に置いてから再実行してください。" -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "    Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $ShortName" -ForegroundColor Yellow
+}
+
 # 不足しているパッケージアーカイブやキャッシュを取得します。
 # パッケージ取得スクリプトと共通の Invoke-PackageAcquisition を経由して取得します。
 function Invoke-PackageAcquisitionForShortNames {
@@ -69,98 +228,98 @@ function Resolve-ComponentSource {
         Success     = $false
         ArchiveFile = $null
     }
+    $offline = Test-DevbinOfflineMode -PackagesDir $PackagesDir
+    $strategy = if ($PackageConfig.ContainsKey("ExtractStrategy")) { [string]$PackageConfig.ExtractStrategy } else { "" }
 
-    if ($PackageConfig.ExtractStrategy -eq "NpmInstall") {
+    if ($strategy -eq "NpmInstall") {
         $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $PackageConfig -PackagesDir $PackagesDir
         if (-not $npmCacheStatus.IsValid) {
-            Write-Host "  npm パッケージアーカイブが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
+            Write-Host "  npm パッケージアーカイブが見つかりません。" -ForegroundColor Yellow
             Write-Host "    不足: $($npmCacheStatus.Missing -join ', ')"
             if ($npmCacheStatus.Invalid.Count -gt 0) {
                 Write-Host "    不正: $($npmCacheStatus.Invalid -join ', ')"
             }
 
+            if ($offline) {
+                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir
+                return $result
+            }
+
+            Write-Host "  ダウンロードを試みます..." -ForegroundColor Yellow
             Invoke-PackageAcquisitionForShortNames -ShortNames @($ShortName) -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages | Out-Null
 
             $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $PackageConfig -PackagesDir $PackagesDir
             if (-not $npmCacheStatus.IsValid) {
-                Write-Host "    Error: npm package cache is not valid for '$ShortName'" -ForegroundColor Red
                 Write-Host "      Missing: $($npmCacheStatus.Missing -join ', ')" -ForegroundColor Red
                 Write-Host "      Invalid: $($npmCacheStatus.Invalid -join ', ')" -ForegroundColor Red
-                Write-Host "    Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $ShortName" -ForegroundColor Yellow
+                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail "npm package cache is not valid for '$ShortName'"
                 return $result
             }
         }
     }
-    elseif ($PackageConfig.ExtractStrategy -eq "PipInstall") {
+    elseif ($strategy -eq "PipInstall") {
         $pipPackagesDir = Join-Path $PackagesDir "pip-packages"
         $requiredPipWheels = Get-PipWheelPackageNames -PackageConfigs @($PackageConfig)
         $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
 
         if ($missingPipWheels.Count -gt 0) {
-            Write-Host "  pip wheel ファイルが見つかりません。ダウンロードを試みます..." -ForegroundColor Yellow
+            Write-Host "  pip wheel ファイルが見つかりません。" -ForegroundColor Yellow
             Write-Host "    不足: $($missingPipWheels -join ', ')"
 
+            if ($offline) {
+                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir
+                return $result
+            }
+
+            Write-Host "  ダウンロードを試みます..." -ForegroundColor Yellow
             Invoke-PackageAcquisitionForShortNames -ShortNames @($ShortName) -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages -WithInstalledPython | Out-Null
 
             $missingPipWheels = @(Test-PipWheelPackages -DirectoryPath $pipPackagesDir -PackageNames $requiredPipWheels)
             if ($missingPipWheels.Count -gt 0) {
-                Write-Host "    Error: pip wheel files not found for '$ShortName': $($missingPipWheels -join ', ')" -ForegroundColor Red
-                Write-Host "    Please run: .\subscripts\Get-Packages.ps1 -PackageShortNames $ShortName" -ForegroundColor Yellow
+                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail "pip wheel files not found for '$ShortName': $($missingPipWheels -join ', ')"
                 return $result
             }
         }
     }
-    elseif ($PackageConfig.ExtractStrategy -ne "VSBuildTools" -and $PackageConfig.ExtractStrategy -ne "PipInstall") {
-        # 保存ファイル名の判定ロジックはパッケージ取得側 (Get-Packages) と同一の実装を使用します。
-        $baseFileName = Get-PackageBaseFileName -Package $PackageConfig
-        $downloadFileName = ""
-        if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {
-            $downloadFileName = Get-PackageDownloadFileName -Package $PackageConfig
+    elseif ($strategy -eq "VSBuildTools") {
+        if ($offline -and -not (Test-VsBuildToolsSourceAvailable -PackageConfig $PackageConfig -PackagesDir $PackagesDir)) {
+            Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail "VS Build Tools cache not found for '$ShortName'"
+            return $result
         }
-
-        $archiveFiles = Get-ChildItem -Path $PackagesDir -File -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match $PackageConfig.ArchivePattern }
-
-        if ($archiveFiles -and $archiveFiles.Count -gt 0) {
-            $archiveFile = $archiveFiles[0].FullName
+    }
+    else {
+        $archiveFile = Find-ComponentArchiveFile -PackageConfig $PackageConfig -PackagesDir $PackagesDir
+        if (-not [string]::IsNullOrWhiteSpace($archiveFile)) {
+            $archivePattern = if ($PackageConfig.ContainsKey("ArchivePattern")) { [string]$PackageConfig.ArchivePattern } else { "" }
+            $leafName = Split-Path $archiveFile -Leaf
+            if (-not [string]::IsNullOrWhiteSpace($archivePattern) -and $leafName -notmatch $archivePattern) {
+                Write-Host "    Warning: ArchivePattern に一致しないため元ファイル名へフォールバックします: $leafName" -ForegroundColor Yellow
+            }
         } else {
-            $fallbackPath = $null
-            if (-not [string]::IsNullOrWhiteSpace($baseFileName) -and $baseFileName -ne $downloadFileName) {
-                $candidatePath = Join-Path $PackagesDir $baseFileName
-                if (Test-Path $candidatePath -PathType Leaf) {
-                    $fallbackPath = $candidatePath
-                }
+            if ($offline) {
+                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail "Archive not found for '$ShortName' (pattern: $($PackageConfig.ArchivePattern))"
+                return $result
             }
 
-            if ($fallbackPath) {
-                $archiveFile = $fallbackPath
-                Write-Host "    Warning: ArchivePattern に一致しないため元ファイル名へフォールバックします: $(Split-Path $fallbackPath -Leaf)" -ForegroundColor Yellow
-            } else {
-                # アーカイブが存在しない場合はダウンロードを試行します。
-                Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
-                $resolution = Resolve-DependencyOrder -ShortNames @($ShortName) -Packages $Packages
-                if (-not $resolution.Success) {
-                    foreach ($message in $resolution.Errors) {
-                        Write-Host "    Error: $message" -ForegroundColor Red
-                    }
-                    return $result
+            Write-Host "  アーカイブが見つかりません。ダウンロードを試みます..."
+            $resolution = Resolve-DependencyOrder -ShortNames @($ShortName) -Packages $Packages
+            if (-not $resolution.Success) {
+                foreach ($message in $resolution.Errors) {
+                    Write-Host "    Error: $message" -ForegroundColor Red
                 }
-                $downloadTargets = @($resolution.Order | Select-Object -Unique)
-                if (-not $downloadTargets -or $downloadTargets.Count -eq 0) {
-                    $downloadTargets = @($ShortName)
-                }
+                return $result
+            }
+            $downloadTargets = @($resolution.Order | Select-Object -Unique)
+            if (-not $downloadTargets -or $downloadTargets.Count -eq 0) {
+                $downloadTargets = @($ShortName)
+            }
 
-                Invoke-PackageAcquisitionForShortNames -ShortNames $downloadTargets -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages | Out-Null
+            Invoke-PackageAcquisitionForShortNames -ShortNames $downloadTargets -InstallDir $InstallDir -ScriptDir $ScriptDir -Packages $Packages | Out-Null
 
-                $archiveFiles = Get-ChildItem -Path $PackagesDir -File -ErrorAction SilentlyContinue |
-                    Where-Object { $_.Name -match $PackageConfig.ArchivePattern }
-
-                if ($archiveFiles -and $archiveFiles.Count -gt 0) {
-                    $archiveFile = $archiveFiles[0].FullName
-                } else {
-                    Write-Host "    Error: Archive not found for '$ShortName' (pattern: $($PackageConfig.ArchivePattern))" -ForegroundColor Red
-                    return $result
-                }
+            $archiveFile = Find-ComponentArchiveFile -PackageConfig $PackageConfig -PackagesDir $PackagesDir
+            if ([string]::IsNullOrWhiteSpace($archiveFile)) {
+                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail "Archive not found for '$ShortName' (pattern: $($PackageConfig.ArchivePattern))"
+                return $result
             }
         }
     }
