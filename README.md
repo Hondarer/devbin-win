@@ -2,6 +2,9 @@
 
 Windows 用開発バイナリの自動配置ツールです。
 
+開発環境のバイナリ配置・更新には `Manage-Bin.cmd`、環境変数の確認・編集には `Manage-Env.cmd` を利用できます。
+詳しくは [Development Tools Installation Guide](docs/Install-Bin.md) および [環境変数マネージャー](docs/Manage-Env.md) を参照してください。
+
 ## インストールされるパッケージ
 
 ### Node.js
@@ -346,3 +349,4 @@ Visual Studio Build Tools は既定値では選択されていないため、コ
 - HTTP_PROXY の設定
 
 ユーザー設定・キャッシュ・操作ログの保存先と完全削除オプションは、[ユーザー設定・データの保存先](docs/user-storage.md) を参照してください。
+環境変数の確認・編集手順は、[環境変数マネージャー](docs/Manage-Env.md) を参照してください。

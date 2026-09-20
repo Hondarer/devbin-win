@@ -62,7 +62,8 @@ try {
         "LICENSE",
         "docs",
         "subscripts",
-        "Manage-Bin.cmd"
+        "Manage-Bin.cmd",
+        "Manage-Env.cmd"
     )
 
     # 配布対象外ファイル (アーカイブルートからの相対パス)

@@ -40,3 +40,4 @@ powershell.exe -ExecutionPolicy Bypass -File tests\Run-Tests.ps1
 + [ユーザー設定・データの保存先](./docs/user-storage.md) - data / log の配置と設定する環境変数
 + [vscode-portable](./docs/vscode-portable.md) - VS Code のポータブル セットアップ
 + [offline-pip-design](./docs/offline-pip-design.md) - 完全オフライン pip インストール設計
++ [環境変数マネージャー](./docs/Manage-Env.md) - 環境変数マネージャー (Manage-Env) の仕様と操作手順
