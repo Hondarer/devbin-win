@@ -798,7 +798,7 @@ endlocal
             PathDirs = @()
             EnvVars = @{}
             DetectFiles = @("vsbt")
-            DefaultChecked = $true
+            DefaultChecked = $false
         },
 
         # UDEV Gothic HSRF JPDOC EM - Font package
