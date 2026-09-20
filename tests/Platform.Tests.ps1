@@ -324,6 +324,54 @@ Describe "Register-VswhereInstance" {
     }
 }
 
+Describe "Unregister-VswhereInstance" {
+
+    It "標準ユーザーなら削除を試みず通常表示でスキップする" {
+        InModuleScope Devbin {
+            Mock Test-Path { $true }
+            Mock Test-VswhereAdministrator { $false }
+            Mock Remove-Item {}
+            Mock Write-Host {}
+            Mock Write-Warning {}
+
+            { Unregister-VswhereInstance } | Should Not Throw
+
+            Assert-MockCalled Remove-Item -Times 0 -Exactly
+            Assert-MockCalled Write-Warning -Times 0 -Exactly
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                $Object -eq "Skip to unregister vswhere instance: You are normal user." -and
+                -not $PSBoundParameters.ContainsKey("ForegroundColor")
+            }
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                $Object -eq "Continuing without vswhere unregistration..." -and
+                -not $PSBoundParameters.ContainsKey("ForegroundColor")
+            }
+        }
+    }
+
+    It "日本語のアクセス拒否は警告ストリームへ出さない" {
+        InModuleScope Devbin {
+            Mock Test-Path { $true }
+            Mock Test-VswhereAdministrator { $true }
+            Mock Remove-Item { throw [System.UnauthorizedAccessException]::new("パスへのアクセスは拒否されました。") }
+            Mock Write-Host {}
+            Mock Write-Warning {}
+
+            { Unregister-VswhereInstance } | Should Not Throw
+
+            Assert-MockCalled Write-Warning -Times 0 -Exactly
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                $Object -like "Failed to unregister vswhere instance:*" -and
+                -not $PSBoundParameters.ContainsKey("ForegroundColor")
+            }
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                $Object -eq "Continuing anyway..." -and
+                -not $PSBoundParameters.ContainsKey("ForegroundColor")
+            }
+        }
+    }
+}
+
 Describe "操作ログ" {
     BeforeEach {
         Mock Get-DevbinUserStorageRoot -ModuleName Devbin { Join-Path $TestDrive "storage" }

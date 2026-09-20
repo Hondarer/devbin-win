@@ -1,6 +1,33 @@
 ﻿# Vswhere.ps1
 # vswhere 向けインスタンス情報の登録および登録解除
 
+function Test-VswhereAccessDeniedError {
+    param(
+        [System.Management.Automation.ErrorRecord]$ErrorRecord
+    )
+
+    if ($ErrorRecord.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::PermissionDenied) {
+        return $true
+    }
+
+    $exception = $ErrorRecord.Exception
+    while ($null -ne $exception) {
+        if ($exception -is [System.UnauthorizedAccessException] -or
+            $exception.Message -match "(アクセス(が|は)拒否|Access.*denied|UnauthorizedAccess)") {
+            return $true
+        }
+        $exception = $exception.InnerException
+    }
+
+    return $false
+}
+
+function Test-VswhereAdministrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
 # Visual Studio Build Tools のインスタンス情報を vswhere 向けに登録
 function Register-VswhereInstance {
     param(
@@ -76,7 +103,7 @@ function Register-VswhereInstance {
         Write-Host "Registered to vswhere: $instancePath" -ForegroundColor Green
     }
     catch {
-        $isAccessDenied = $_.Exception.Message -match "(アクセスが拒否|Access.*denied|UnauthorizedAccess)"
+        $isAccessDenied = Test-VswhereAccessDeniedError -ErrorRecord $_
 
         if ($isAccessDenied) {
             Write-Host "Skip to register vswhere instance: You are normal user."
@@ -95,6 +122,12 @@ function Unregister-VswhereInstance {
         $instancePath = Join-Path $instancesPath $script:VSBT_INSTANCE_ID
 
         if (Test-Path $instancePath) {
+            if (-not (Test-VswhereAdministrator)) {
+                Write-Host "Skip to unregister vswhere instance: You are normal user."
+                Write-Host "Continuing without vswhere unregistration..."
+                return
+            }
+
             Remove-Item -Path $instancePath -Recurse -Force -ErrorAction Stop
             Write-Host "Unregistered from vswhere: $instancePath" -ForegroundColor Green
         } else {
@@ -102,16 +135,16 @@ function Unregister-VswhereInstance {
         }
     }
     catch {
-        $isAccessDenied = $_.Exception.Message -match "(アクセスが拒否|Access.*denied|UnauthorizedAccess)"
+        $isAccessDenied = Test-VswhereAccessDeniedError -ErrorRecord $_
 
         if ($isAccessDenied) {
-            Write-Warning "Failed to unregister vswhere instance: Access denied"
-            Write-Host "Note: vswhere unregistration requires administrator privileges." -ForegroundColor Yellow
+            Write-Host "Failed to unregister vswhere instance: $($_.Exception.Message)"
+            Write-Host "Note: vswhere unregistration requires administrator privileges."
+            Write-Host "Continuing anyway..."
         } else {
             Write-Warning "Failed to unregister vswhere instance: $_"
+            Write-Host "Continuing anyway..." -ForegroundColor Yellow
         }
-
-        Write-Host "Continuing anyway..." -ForegroundColor Yellow
     }
 }
 
@@ -155,7 +188,7 @@ function Unregister-VswhereInstanceIfPointingToRoot {
             Write-Host "  Unregistered vswhere instance: $instancePath"
         }
     } catch {
-        $isAccessDenied = $_.Exception.Message -match "(アクセスが拒否|Access.*denied|UnauthorizedAccess)"
+        $isAccessDenied = Test-VswhereAccessDeniedError -ErrorRecord $_
         if ($isAccessDenied) {
             Write-Host "Warning: Failed to unregister vswhere instance: Access denied" -ForegroundColor Yellow
         } else {
