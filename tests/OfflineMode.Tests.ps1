@@ -328,6 +328,67 @@ Describe "オフライン時のメニュー非活性" {
             }
         }
     }
+
+    It "オフラインでは DefaultChecked = false でも資材があれば選択する" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $root = New-TestDirectory
+            try {
+                $subscripts = Join-Path $root "subscripts"
+                $packages = Join-Path $root "packages"
+                $install = Join-Path $root "bin"
+                New-Item -ItemType Directory -Path $subscripts -Force | Out-Null
+                New-Item -ItemType Directory -Path $packages -Force | Out-Null
+                New-Item -ItemType Directory -Path $install -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $packages "OFFLINE") -Value "" -Encoding ASCII
+                New-Item -ItemType File -Path (Join-Path $packages "tool-1.0.0.zip") -Force | Out-Null
+                $pkg = New-TestPackage -ShortName "tool" -Extra @{
+                    ArchivePattern = "^tool-.*\.zip$"
+                    DefaultChecked = $false
+                }
+                $state = Initialize-MenuState `
+                    -Packages @($pkg) `
+                    -Manifest @{ version = 1; components = @{} } `
+                    -InstallDir $install `
+                    -ScriptDir $subscripts
+
+                $state.Disabled["tool"] | Should Be $false
+                $state.Checked["tool"] | Should Be $true
+            } finally {
+                Remove-TestDirectory -Path $root
+            }
+        }
+    }
+
+    It "オフラインでなければ DefaultChecked = false は選択しない" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $root = New-TestDirectory
+            try {
+                $subscripts = Join-Path $root "subscripts"
+                $packages = Join-Path $root "packages"
+                $install = Join-Path $root "bin"
+                New-Item -ItemType Directory -Path $subscripts -Force | Out-Null
+                New-Item -ItemType Directory -Path $packages -Force | Out-Null
+                New-Item -ItemType Directory -Path $install -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $packages "tool-1.0.0.zip") -Force | Out-Null
+                $pkg = New-TestPackage -ShortName "tool" -Extra @{
+                    ArchivePattern = "^tool-.*\.zip$"
+                    DefaultChecked = $false
+                }
+                $state = Initialize-MenuState `
+                    -Packages @($pkg) `
+                    -Manifest @{ version = 1; components = @{} } `
+                    -InstallDir $install `
+                    -ScriptDir $subscripts
+
+                $state.OfflineMode | Should Be $false
+                $state.Checked["tool"] | Should Be $false
+            } finally {
+                Remove-TestDirectory -Path $root
+            }
+        }
+    }
 }
 
 Describe "Get-DisabledStatusDisplay" {

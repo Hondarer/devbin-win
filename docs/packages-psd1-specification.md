@@ -70,6 +70,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |
 | DisableIfFont | このフォント名を持つ登録が HKCU/HKLM にあり、かつ HKCU の value data が devbin-win 配下を指していない場合、メニューでのインストール操作を無効化する。UI 表示は `External` に統一 | string | なし (常に有効) |
 | Hidden | `$true` なら CLI メニューに表示しない | bool | `$false` (表示) |
+| DefaultChecked | 初回導入時に、メニューで最初からチェック状態にするか | bool | `$false` (チェックしない) |
 | SelfUpdating | `$true` なら、導入後にツール自身が実行ファイルを更新するものとして扱い、`Updateable` 判定を行わない | bool | `$false` (更新判定あり) |
 | CleanupPatterns | ツールが実行時に生成し、マニフェストに記録されないファイルのパターン ($InstallDir からの相対パス)。アンインストール時と再インストール時に削除する | string[] | `@()` (追加削除なし) |
 
@@ -145,6 +146,15 @@ GNU Make が依存する MinGW ランタイム DLL パッケージ (`mingw64-gcc
 
 ```powershell
 Hidden = $true   # メニュー非表示・自動管理
+```
+
+### DefaultChecked
+
+導入済みのコンポーネントが 1 件も無い初回導入時に、メニューで最初からチェック状態にするかどうかを指定します。
+既に何かを導入済みの環境では、この値ではなく各コンポーネントの導入状態に従って選択が決まるため、影響しません。
+
+```powershell
+DefaultChecked = $true    # 初回導入時に選択済みで表示する
 ```
 
 ### SelfUpdating と CleanupPatterns

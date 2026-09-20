@@ -383,6 +383,10 @@ lockfile の `resolved` と `integrity` をローカルアーカイブへ差し�
 表示中の項目は Hidden を含む `DependsOn` の連鎖も見ます。
 `Get-Packages.ps1` は `-AllowOfflineAcquisition` でマーカーを無視して取得します。導入経路はこれを渡しません。
 
+初期選択には例外規則があります。
+オフライン環境へ資材を置いた行為自体が導入の意思表示とみなせるため、`Initialize-MenuState` は資材が揃っている項目を `DefaultChecked = $false` であってもチェック状態にします。
+この例外は初回導入時 (既存の導入が 1 件も無い場合) のみ働き、既に何かを導入済みの環境では従来どおり導入状態に従います。
+
 ### SourceForge URL 対応
 
 SourceForge の URL は、自動的に実際のダウンロード URL へ変換されます。

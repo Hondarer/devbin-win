@@ -334,6 +334,8 @@ from [gitlab-org/cli](https://gitlab.com/gitlab-org/cli)
 
 ### Visual Studio Build Tools (VS 2022 C++ toolset 14.44 & Windows SDK v26100)
 
+Visual Studio Build Tools は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
+
 ## TODO
 
 - VS Code などのスタート メニュー用ショートカットの作成

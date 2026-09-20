@@ -14,7 +14,7 @@
 Manage-Bin.cmd
 ```
 
-VS Code、GitHub Copilot CLI、Antigravity CLI は既定値では選択されません。
+VS Code、Visual Studio Build Tools、GitHub Copilot CLI、Antigravity CLI は既定値では選択されません。
 必要な場合は Space キーで選択してから Enter キーを押してください。
 すべて導入する場合は A キーで全選択します。
 
@@ -111,6 +111,7 @@ Microsoft Edge が検出されない場合は、ブラウザーを必要とす�
 - メニュー項目に対応する資材が `packages` に無い場合は非活性にし、状態列に `Unavailable` と表示する
 - 導入済みの項目はアンインストールできる。再インストールはできない
 - システムに同じツールがある `External` とは表示を分ける
+- 初回導入時は、資材が `packages` にある項目を `DefaultChecked = $false` であってもチェック状態にする
 
 オンライン環境で資材を揃えたあと、オフライン環境へコピーしてから `packages\OFFLINE` を置いてください。
 

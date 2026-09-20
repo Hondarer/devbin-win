@@ -268,11 +268,16 @@ function Initialize-MenuState {
         }
     }
 
+    # 完全オフラインモードでは、資材のある項目だけを残し、無い項目は Unavailable として非活性化します。
     $offlineMode = Test-DevbinOfflineMode -PackagesDir $packagesDir
+    $offlineAvailable = @{}
     if ($offlineMode) {
         foreach ($item in $items) {
+            $offlineAvailable[$item.ShortName] = $false
             if ($disabled[$item.ShortName]) { continue }
-            if (-not (Test-ComponentTreeSourceAvailable -ShortName $item.ShortName -Packages $Packages -PackagesDir $packagesDir)) {
+            if (Test-ComponentTreeSourceAvailable -ShortName $item.ShortName -Packages $Packages -PackagesDir $packagesDir) {
+                $offlineAvailable[$item.ShortName] = $true
+            } else {
                 $disabled[$item.ShortName] = $true
                 $disableReasons[$item.ShortName] = "Unavailable"
             }
@@ -283,6 +288,10 @@ function Initialize-MenuState {
     foreach ($item in $items) {
         $status = $statuses[$item.ShortName]
         $isDefaultChecked = ($item.ContainsKey("DefaultChecked") -and $item.DefaultChecked -eq $true)
+        # 完全オフラインモードでは資材を用意した項目が選択意図とみなせるため、DefaultChecked = $false でも選択します。
+        if ($offlineMode -and $offlineAvailable[$item.ShortName]) {
+            $isDefaultChecked = $true
+        }
         Set-MenuSelectionState `
             -Checked $checked `
             -Reinstall $reinstall `
