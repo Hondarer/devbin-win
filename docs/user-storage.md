@@ -35,7 +35,6 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | GLAB_CONFIG_DIR | `glab` | `glab` |
 | COPILOT_HOME | `copilot` | `copilot` |
 | COPILOT_CACHE_HOME | `copilot\cache` | `copilot` |
-| JETSKI_APP_DATA_DIR | `.gemini\antigravity-cli` | `agy` |
 | INKSCAPE_PROFILE_DIR | `inkscape` | `inkscape` |
 | DOTNET_CLI_HOME | `dotnet` | `dotnet10sdk` |
 | NUGET_PACKAGES | `nuget\packages` | `nuget`、`dotnet10sdk` |
@@ -71,7 +70,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | `gh` | `GH_CONFIG_DIR=data\gh`。認証が OS 資格情報ストアにある場合は対象外 |
 | `glab` | `GLAB_CONFIG_DIR=data\glab`。リポジトリ内の `.git\glab-cli` は対象外 |
 | `copilot` | `COPILOT_HOME=data\copilot`、`COPILOT_CACHE_HOME=data\copilot\cache`。資格情報ストアまで移るとは限らない |
-| `agy` | `JETSKI_APP_DATA_DIR=data\.gemini\antigravity-cli`。公式の既定 `~/.gemini/antigravity-cli` と同じ相対配置。この変数は実行ファイル内で確認したもので、公式ドキュメントには記載がなく動作実証もしていない。資格情報ストアと `~/.gemini/config` は対象外 |
+| `agy` | 個別の保存先指定はなし。公式の既定は `~/.gemini/antigravity-cli`。資格情報ストアは対象外 |
 | `inkscape` | `INKSCAPE_PROFILE_DIR=data\inkscape` |
 | `pwsh` | 指定なし。Documents の PowerShell プロファイルと AppData の PSReadLine 履歴は HOME の変更では移らない |
 | `pandoc` | 指定なし。Windows の既定は `%APPDATA%\pandoc`。環境変数での変更手段がなく、`--data-dir` の一律付与も行わない |
