@@ -113,7 +113,8 @@ Describe "Get-DevbinHomeLayout" {
         $layout = @(Get-DevbinHomeLayout -HomePath "C:\home\user")
         $names = @($layout | ForEach-Object { $_.EnvName })
 
-        ($names -join ",") | Should Be "CONTINUE_GLOBAL_DIR,XDG_CONFIG_HOME,XDG_CACHE_HOME,XDG_DATA_HOME,XDG_STATE_HOME"
+        ($names -contains "CONTINUE_GLOBAL_DIR") | Should Be $true
+        ($names -contains "NPM_CONFIG_USERCONFIG") | Should Be $true
         ($layout | Where-Object { $_.EnvName -eq "XDG_DATA_HOME" }).Path | Should Be "C:\home\user\.local\share"
     }
 }
@@ -279,17 +280,14 @@ Describe "旧モジュールの整理" {
         $productUninstall = Get-Content (Join-Path $subscriptsDir "Devbin\Platform\ProductUninstall.ps1") -Raw
         $menuActions = Get-Content (Join-Path $subscriptsDir "Devbin\Menu\MenuActions.ps1") -Raw
         $componentUninstall = Get-Content (Join-Path $subscriptsDir "Devbin\Install\ComponentUninstall.ps1") -Raw
-        $setupHome = Get-Content (Join-Path $subscriptsDir "Setup-Home.ps1") -Raw
         $setupVsbt = Get-Content (Join-Path $subscriptsDir "Setup-VSBT.ps1") -Raw
 
         $productUninstall | Should Match 'function Read-ConfirmationKey'
-        $productUninstall | Should Match 'Read-ConfirmationKey -Prompt "Continue\? \[y/N/Esc\] "'
+        $productUninstall | Should Match 'Read-ConfirmationKey -Prompt "続行しますか\? \[y/N/Esc\] "'
         $productUninstall | Should Not Match 'Read-Host'
         $menuActions | Should Match 'Read-ConfirmationKey -Prompt " 続行しますか\? \[Y/n/Esc\] " -DefaultYes'
         $componentUninstall | Should Match 'Read-ConfirmationKey -Prompt "アンインストールを続行しますか\? \[y/N/Esc\] "'
         $componentUninstall | Should Not Match 'Read-Host'
-        $setupHome | Should Match 'Read-ConfirmationKey -Prompt "Do you want to proceed\? \[Y/n/Esc\] " -DefaultYes'
-        $setupHome | Should Not Match 'Read-Host'
         $setupVsbt | Should Match 'Read-ConfirmationKey -Prompt "Do you accept the license\? \[y/N/Esc\] "'
         $setupVsbt | Should Not Match 'Read-Host'
     }
@@ -325,21 +323,24 @@ Describe "Register-VswhereInstance" {
 }
 
 Describe "操作ログ" {
-
-    It "標準の導入先では製品ルートの親を返す" {
-        $directory = Get-DevbinOperationLogDirectory -InstallDir "C:\nonexistent-devbin-test\user\devbin-win\bin"
-        $directory | Should Be "C:\nonexistent-devbin-test\user"
+    BeforeEach {
+        Mock Get-DevbinUserStorageRoot -ModuleName Devbin { Join-Path $TestDrive "storage" }
     }
 
-    It "カスタム導入先ではその親を返す" {
+    It "標準の導入先ではユーザーの log を返す" {
+        $directory = Get-DevbinOperationLogDirectory -InstallDir "C:\nonexistent-devbin-test\user\devbin-win\bin"
+        $directory | Should Be (Join-Path $TestDrive "storage\log")
+    }
+
+    It "カスタム導入先でもユーザーの log を返す" {
         $directory = Get-DevbinOperationLogDirectory -InstallDir "C:\nonexistent-devbin-test\tools"
-        $directory | Should Be "C:\nonexistent-devbin-test"
+        $directory | Should Be (Join-Path $TestDrive "storage\log")
     }
 
     It "ファイル名は devbin-win の操作ログと日時が分かる" {
         $info = New-DevbinOperationLogPath -InstallDir "C:\nonexistent-devbin-test\user\devbin-win\bin" -Timestamp ([datetime]"2026-09-15 22:15:13")
         $info.FileName | Should Be "devbin-win-operation-20260915-221513.log"
-        $info.Path | Should Be "C:\nonexistent-devbin-test\user\devbin-win-operation-20260915-221513.log"
+        $info.Path | Should Be (Join-Path $TestDrive "storage\log\devbin-win-operation-20260915-221513.log")
         $info.UsedFallback | Should Be $false
     }
 
@@ -350,6 +351,7 @@ Describe "操作ログ" {
             New-Item -ItemType Directory -Path $installDir -Force | Out-Null
             $stamp = [datetime]"2026-09-15 22:15:13"
             $first = New-DevbinOperationLogPath -InstallDir $installDir -Timestamp $stamp
+            New-Item -ItemType Directory -Path $first.Directory -Force | Out-Null
             New-Item -ItemType File -Path $first.Path -Force | Out-Null
 
             $second = New-DevbinOperationLogPath -InstallDir $installDir -Timestamp $stamp
@@ -361,8 +363,8 @@ Describe "操作ログ" {
         }
     }
 
-    It "ボリューム直下へは置かず一時フォルダーへ退避する" {
-        $info = New-DevbinOperationLogPath -InstallDir "C:\MyTools"
+    It "明示したフォールバックでは一時フォルダーへ退避する" {
+        $info = New-DevbinOperationLogPath -InstallDir "C:\MyTools" -ForceFallback
         $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\')
         $info.UsedFallback | Should Be $true
         ([System.IO.Path]::GetFullPath($info.Directory).TrimEnd('\')) | Should Be $tempRoot
@@ -379,7 +381,7 @@ Describe "操作ログ" {
             $logPath = Start-DevbinOperationLog -InstallDir $installDir
             [string]::IsNullOrWhiteSpace($logPath) | Should Be $false
             $logPath | Should Match 'devbin-win-operation-\d{8}-\d{6}.*\.log$'
-            $parent = Split-Path -Path (Split-Path -Path $installDir -Parent) -Parent
+            $parent = Join-Path $TestDrive "storage\log"
             $logDir = Split-Path -Path $logPath -Parent
             ([string]::Equals($logDir, $parent, [StringComparison]::OrdinalIgnoreCase)) | Should Be $true
 

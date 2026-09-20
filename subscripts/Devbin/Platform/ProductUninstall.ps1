@@ -37,20 +37,11 @@ function Invoke-CompleteUninstall {
     param(
         [string]$InstallDirectory,
         [switch]$Silent = $false,
-        [switch]$PreserveVSCodeData = $false,
         [string]$PackagesConfigPath
     )
 
     if (-not $Silent) {
         Write-Host "Starting cleanup process..."
-    }
-
-    $vscodeDataBackup = $null
-    if ($PreserveVSCodeData) {
-        $vscodeDataBackup = Backup-VSCodeData -InstallDirectory $InstallDirectory -Silent:$Silent
-        if (-not $vscodeDataBackup) {
-            $PreserveVSCodeData = $false
-        }
     }
 
     try {
@@ -144,7 +135,7 @@ function Invoke-CompleteUninstall {
 
                 if ($isBusy) {
                     Write-Host ""
-                    Write-Host "Error: Some files are currently in use and cannot be removed." -ForegroundColor Red
+                    Write-Host "Error: 使用中のファイルがあるため削除できません。" -ForegroundColor Red
                     Write-Host "Please restart your PC and run this operation again." -ForegroundColor Yellow
                     Write-Host ""
                     throw "Installation directory cleanup failed: Files are in use"
@@ -160,46 +151,10 @@ function Invoke-CompleteUninstall {
             }
         }
 
-        # VS Code ユーザーデータ (data フォルダ) の復元
-        if ($vscodeDataBackup) {
-            if (-not $Silent) {
-                Write-Host "Restoring VS Code data from backup..."
-            }
-
-            # bin ディレクトリの再作成 (削除済みの場合)
-            if (!(Test-Path $InstallDirectory)) {
-                New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
-            }
-
-            # vscode ディレクトリの作成
-            $vscodeDir = Join-Path $InstallDirectory "vscode"
-            if (!(Test-Path $vscodeDir)) {
-                New-Item -ItemType Directory -Path $vscodeDir -Force | Out-Null
-            }
-
-            # data ディレクトリの復元
-            $vscodeDataPath = Join-Path $vscodeDir "data"
-            Copy-Item -Path $vscodeDataBackup -Destination $vscodeDataPath -Recurse -Force
-
-            if (-not $Silent) {
-                Write-Host "VS Code data restored successfully"
-            }
-
-            # 一時バックアップの削除
-            Remove-Item -Path $vscodeDataBackup -Recurse -Force -ErrorAction SilentlyContinue
-        }
-
         return $true
     } catch {
         if (-not $Silent) {
             Write-Host "Warning: Some cleanup operations failed: $($_.Exception.Message)" -ForegroundColor Yellow
-        }
-
-        if ($vscodeDataBackup -and (Test-Path $vscodeDataBackup)) {
-            Remove-Item -Path $vscodeDataBackup -Recurse -Force -ErrorAction SilentlyContinue
-            if (-not $Silent) {
-                Write-Host "Cleaned up VS Code data backup due to error"
-            }
         }
 
         return $false
@@ -212,46 +167,66 @@ $script:VSBT_INSTANCE_ID = "8f3e5d42"
 function Invoke-ProductUninstall {
     param(
         [string]$InstallDir,
-        [switch]$Force
+        [switch]$Force,
+        [switch]$RemoveData,
+        [switch]$RemoveLogs
     )
 
     $productRoot = Get-DevbinProductRoot -InstallDir $InstallDir
 
-    Write-Host "=== Development Tools Complete Uninstallation ==="
+    Write-Host "=== 開発ツールの完全アンインストール ==="
     Write-Host ""
-    Write-Host "Product root: $productRoot"
+    Write-Host "製品ルート: $productRoot"
     Write-Host ""
 
     # 標準インストール先以外への削除要求を拒否 (リポジトリや作業ディレクトリの誤削除を防止)
     if (-not (Test-DevbinProductRootAllowed -ProductRoot $productRoot)) {
-        Write-Host "Error: Complete uninstallation is limited to the standard install location." -ForegroundColor Red
-        Write-Host "  Expected: $(Get-DevbinExpectedProductRoot)"
-        Write-Host "  Actual:   $productRoot"
-        Write-Host "Nothing was removed. Remove other locations manually." -ForegroundColor Yellow
+        Write-Host "Error: 完全アンインストールは標準の導入先だけを対象にします。" -ForegroundColor Red
+        Write-Host "  想定: $(Get-DevbinExpectedProductRoot)"
+        Write-Host "  実際: $productRoot"
+        Write-Host "何も削除していません。他の場所は手動で削除してください。" -ForegroundColor Yellow
         return [PSCustomObject]@{ Status = "Refused" }
     }
 
-    Write-Host "This removes traces of this folder regardless of install state:"
-    Write-Host "  - The product folder and all contents, including VS Code data"
-    Write-Host "  - User PATH entries pointing at this folder"
-    Write-Host "  - User environment variables pointing at this folder"
-    Write-Host "  - Font registrations pointing at this folder"
-    Write-Host "  - Windows Terminal profiles pointing at this folder"
-    Write-Host "  - vswhere registration if it points at this folder"
+    Write-Host "導入状態にかかわらず、このフォルダーの痕跡を次のとおり削除します。"
+    Write-Host "  - 製品フォルダーとその中身のすべて"
+    Write-Host "  - このフォルダーを指すユーザー PATH のエントリ"
+    Write-Host "  - このフォルダーを指すユーザー環境変数"
+    Write-Host "  - このフォルダーを指すフォント登録"
+    Write-Host "  - このフォルダーを指す Windows Terminal のプロファイル"
+    Write-Host "  - このフォルダーを指す vswhere の登録"
     Write-Host ""
-    Write-Host "HOME / XDG are not removed."
+    if (-not $Force) {
+        if (-not $PSBoundParameters.ContainsKey('RemoveData')) {
+            $RemoveData = Read-ConfirmationKey -Prompt "data (設定・キャッシュ) を削除しますか? $(Get-DevbinDataDirectory) [y/N/Esc] "
+        }
+        if (-not $PSBoundParameters.ContainsKey('RemoveLogs')) {
+            $RemoveLogs = Read-ConfirmationKey -Prompt "過去のログを削除しますか? $(Get-DevbinLogDirectory) [y/N/Esc] "
+        }
+    }
+    Write-Host "data の削除: $([bool]$RemoveData) - $(Get-DevbinDataDirectory)"
+    Write-Host "log の削除: $([bool]$RemoveLogs) - $(Get-DevbinLogDirectory) (記録中のログは残します)"
+    Write-Host "data の外にある HOME / XDG は削除しません。"
     Write-Host ""
 
     if (-not $Force) {
-        if (-not (Read-ConfirmationKey -Prompt "Continue? [y/N/Esc] ")) {
-            Write-Host "Cancelled."
+        if (-not (Read-ConfirmationKey -Prompt "続行しますか? [y/N/Esc] ")) {
+            Write-Host "中止しました。"
             return [PSCustomObject]@{ Status = "Cancelled" }
         }
         Write-Host ""
     }
 
+    try {
+        if ($RemoveData) { Assert-DevbinStorageTreeSafe -Path (Get-DevbinDataDirectory) }
+        if ($RemoveLogs) { Assert-DevbinStorageTreeSafe -Path (Get-DevbinLogDirectory) }
+    } catch {
+        Write-Host "削除を中止しました: $($_.Exception.Message)" -ForegroundColor Red
+        return [PSCustomObject]@{ Status = "Refused" }
+    }
+
     $removedEnvNames = @("PATH")
-    Write-Host "Removing references that point at the product folder..."
+    Write-Host "製品フォルダーを指す設定を削除しています..."
     $envRemoved = @(Remove-UserEnvVarsPointingToRoot -Root $productRoot)
     if ($envRemoved.Count -gt 0) {
         $removedEnvNames += $envRemoved
@@ -263,26 +238,42 @@ function Invoke-ProductUninstall {
 
     $dirFailed = $false
     if (Test-Path -LiteralPath $productRoot) {
-        Write-Host "Removing product folder: $productRoot"
+        Write-Host "製品フォルダーを削除しています: $productRoot"
         $removeResult = Remove-DirectoryTree -Path $productRoot
         if ($removeResult.Success) {
-            Write-Host "Product folder removed."
+            Write-Host "製品フォルダーを削除しました。"
         } else {
             $dirFailed = $true
             $isBusy = [string]$removeResult.ErrorMessage -match "(使用中|being used|in use|access.*denied|cannot access|プロセスで使用|別のプロセス)"
             if ($isBusy) {
                 Write-Host ""
                 Write-Host "Error: Some files are currently in use and cannot be removed." -ForegroundColor Red
-                Write-Host "Environment references were cleaned. Restart the PC and run this again to delete the folder." -ForegroundColor Yellow
+                Write-Host "環境設定は解除しました。PC を再起動してから、もう一度実行してフォルダーを削除してください。" -ForegroundColor Yellow
                 Write-Host ""
             } else {
-                Write-Host "Warning: Failed to remove product folder: $($removeResult.ErrorMessage)" -ForegroundColor Yellow
+                Write-Host "Warning: 製品フォルダーを削除できません: $($removeResult.ErrorMessage)" -ForegroundColor Yellow
             }
         }
     } else {
-        Write-Host "Product folder not found: $productRoot"
+        Write-Host "製品フォルダーが見つかりません: $productRoot"
     }
 
+    try {
+        Remove-DevbinUserStorage -RemoveData:$RemoveData -RemoveLogs:$RemoveLogs
+    } catch {
+        $dirFailed = $true
+        Write-Host "data / log の削除に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
+    }
+    # log の削除に失敗しても、削除済み data を参照する変数は残しません。
+    if ($RemoveData -and -not (Test-Path -LiteralPath (Get-DevbinDataDirectory))) {
+        try {
+            $removedEnvNames += @(Remove-UserEnvVarsPointingToRoot -Root (Get-DevbinDataDirectory))
+            Remove-UserPathEntriesPointingToRoot -Root (Get-DevbinDataDirectory)
+        } catch {
+            $dirFailed = $true
+            Write-Host "data を指す環境設定の解除に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
     Sync-EnvironmentVariables -VariableNames ($removedEnvNames | Select-Object -Unique) | Out-Null
 
     if ($dirFailed) {
@@ -290,7 +281,7 @@ function Invoke-ProductUninstall {
     }
 
     Write-Host ""
-    Write-Host "Complete uninstallation finished." -ForegroundColor Green
-    Write-Host "Note: To apply environment changes, restart your terminal."
+    Write-Host "完全アンインストールが完了しました。" -ForegroundColor Green
+    Write-Host "Note: 環境変数の変更を反映するには、ターミナルを開き直してください。"
     return [PSCustomObject]@{ Status = "Success" }
 }

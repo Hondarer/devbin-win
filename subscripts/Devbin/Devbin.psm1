@@ -25,6 +25,7 @@ $script:DevbinSourceFiles = @(
     "Platform\VSCodeData.ps1"
     "Platform\Vswhere.ps1"
     "Platform\ProductRoot.ps1"
+    "Platform\UserStorage.ps1"
     "Platform\OperationLog.ps1"
     "Platform\FontRegistration.ps1"
     "Platform\WindowsTerminal.ps1"
@@ -98,10 +99,14 @@ Export-ModuleMember -Function @(
     'Remove-SinglePathDir',
     'Get-ManagedUserPathValue',
     'Sync-ManagedUserPath',
-    'Backup-VSCodeData',
-    'Restore-VSCodeData',
+    'Initialize-DevbinVSCodeData',
+    'Remove-DevbinVSCodeData',
     'Register-VswhereInstance',
     'Unregister-VswhereInstance',
+    'Get-DevbinUserStorageRoot',
+    'Get-DevbinDataDirectory',
+    'Get-DevbinLogDirectory',
+    'Initialize-DevbinUserStorage',
     'Get-DevbinProductRoot',
     'Get-DevbinOperationLogDirectory',
     'New-DevbinOperationLogPath',
@@ -120,6 +125,9 @@ Export-ModuleMember -Function @(
     'Invoke-ProductUninstall',
     'Read-ConfirmationKey',
     'Get-DevbinHomeLayout',
+    'Get-DevbinComponentStorageLayout',
+    'Initialize-DevbinComponentStorage',
+    'Remove-DevbinComponentStorage',
     'Get-DevbinHomePlan',
     'Invoke-DevbinHomePlan',
     'Start-BusySignal',

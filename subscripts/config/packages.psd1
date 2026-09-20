@@ -448,9 +448,7 @@ endlocal
             TargetDirectory = "vscode"
             DownloadUrl = "https://update.code.visualstudio.com/1.128.0/win32-x64-archive/stable"
             DownloadFileName = "VSCode-win32-x64-1.128.0.zip"
-            PostExtract = @{
-                CreateDirectories = @("data")
-            }
+            PostSetupScript = "vscode-setup.ps1"
             DependsOn = @()
             PathDirs = @("vscode\bin")
             EnvVars = @{}

@@ -62,13 +62,6 @@ function Uninstall-Component {
         }
     }
 
-    # VS Code の場合: ポータブルデータ (data ディレクトリ) を退避します。
-    $isVSCode = $ShortName -eq "vscode"
-    $vscodeBackup = $null
-    if ($isVSCode) {
-        $vscodeBackup = Backup-VSCodeData -InstallDirectory $InstallDir -Silent
-    }
-
     # 見出し直後の最初の手順には空行を入れません。
     if ($pkg.ExtractStrategy -eq "NpmInstall") {
         Write-Host ""
@@ -88,15 +81,6 @@ function Uninstall-Component {
         -InstallDir $InstallDir `
         -Manifest $Manifest `
         -Files $files
-
-    # VS Code の場合: 退避したポータブルデータ (data ディレクトリ) を復元します。
-    if ($isVSCode -and $vscodeBackup) {
-        $vscodeDir = Join-Path $InstallDir "vscode"
-        if (-not (Test-Path $vscodeDir)) {
-            New-Item -ItemType Directory -Path $vscodeDir -Force | Out-Null
-        }
-        Restore-VSCodeData -InstallDirectory $InstallDir -BackupPath $vscodeBackup -Silent | Out-Null
-    }
 
     # コンポーネントに関連する環境変数を削除します。
     $envVarsConfig = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
@@ -126,6 +110,20 @@ function Uninstall-Component {
 
     # マニフェストからコンポーネントの登録を解除します。
     Remove-ComponentFromManifest -Manifest $Manifest -ShortName $ShortName
+
+    # data 配下の保存先を指す環境変数を解除します。data 自体は完全アンインストールまで残します。
+    try {
+        $storageEnvNames = @(Remove-DevbinComponentStorage -ShortName $ShortName -InstalledShortNames @($Manifest.components.Keys))
+        if ($ShortName -eq "vscode" -and (Remove-DevbinVSCodeData)) {
+            $storageEnvNames += "VSCODE_PORTABLE"
+        }
+        if ($storageEnvNames.Count -gt 0) {
+            Write-Host "  ユーザー データの保存先の設定を解除しました: $($storageEnvNames -join ', ')"
+            Sync-EnvironmentVariables -VariableNames $storageEnvNames | Out-Null
+        }
+    } catch {
+        Write-Host "    Warning: ユーザー データの保存先を解除できません: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
 
     # 参照元が存在しなくなった非表示の依存コンポーネントを自動的にアンインストールします。
     Remove-OrphanDependencies -UninstalledShortName $ShortName -Packages $Packages -InstallDir $InstallDir -Manifest $Manifest

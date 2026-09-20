@@ -219,7 +219,7 @@ pip 経由でインストールする新しいツールを追加する際は、`
 
 `python-setup.ps1` は、`Get-PipWheelPackageNames -IncludeCorePackages` が返すコア パッケージをプリインストールします。
 pytest のようにすべての devbin Python 環境へ導入するパッケージは、この一覧へ追加します。
-個別選択するツールは、従来どおり `PipInstall` のエントリとして追加します。
+個別に選択するツールは、`PipInstall` のエントリとして追加します。
 
 ## まとめ
 

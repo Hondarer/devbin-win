@@ -144,6 +144,17 @@ function Install-Component {
         }
     }
 
+    # ユーザー設定・キャッシュの保存先 (data 配下) を用意し、未設定の環境変数だけを設定します。
+    try {
+        $storageEnvNames = @(Initialize-DevbinComponentStorage -ShortName $ShortName)
+        if ($storageEnvNames.Count -gt 0) {
+            Write-Host "  ユーザー データの保存先を設定しました: $($storageEnvNames -join ', ')"
+            Sync-EnvironmentVariables -VariableNames $storageEnvNames | Out-Null
+        }
+    } catch {
+        Write-Host "    Warning: ユーザー データの保存先を設定できません: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+
     # インストール情報をマニフェストに記録します。
     $version = if (Get-Command Resolve-PackageVersion -ErrorAction SilentlyContinue) {
         Resolve-PackageVersion -PackageConfig $pkg -PackagesDir $packagesDir -ArchiveFile $(if ($archiveFile) { $archiveFile } else { "" })
@@ -217,21 +228,10 @@ function Update-Component {
     if ($targetDir) {
         $targetPath = Join-Path $InstallDir $targetDir
         if (Test-Path $targetPath) {
-            # VS Code のポータブルデータ (data ディレクトリ) を退避します。
-            if ($ShortName -eq "vscode") {
-                $vscodeBackup = Backup-VSCodeData -InstallDirectory $InstallDir -Silent
-            }
             try {
                 Remove-Item -Path $targetPath -Recurse -Force -ErrorAction Stop
             } catch {
                 Write-Host "    Warning: Could not remove '$targetDir': $($_.Exception.Message)" -ForegroundColor Yellow
-            }
-            if ($ShortName -eq "vscode" -and $vscodeBackup) {
-                $vscodeDir = Join-Path $InstallDir "vscode"
-                if (-not (Test-Path $vscodeDir)) {
-                    New-Item -ItemType Directory -Path $vscodeDir -Force | Out-Null
-                }
-                Restore-VSCodeData -InstallDirectory $InstallDir -BackupPath $vscodeBackup -Silent | Out-Null
             }
         }
     }

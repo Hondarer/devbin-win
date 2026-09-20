@@ -5,8 +5,15 @@ param(
     [string]$InstallDir = ".\bin",
     [switch]$Uninstall,
     [switch]$Manage,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$RemoveData,
+    [switch]$RemoveLogs
 )
+
+if (($PSBoundParameters.ContainsKey('RemoveData') -or $PSBoundParameters.ContainsKey('RemoveLogs')) -and (-not $Uninstall -or $Manage)) {
+    Write-Error '-RemoveData / -RemoveLogs require -Uninstall without -Manage.'
+    exit 1
+}
 
 # スクリプトの格納先ディレクトリを取得
 $ScriptDir = if ($PSScriptRoot) {
@@ -49,12 +56,14 @@ if (-not ($Uninstall -or $Manage)) {
     Write-Host ""
     Write-Host "Usage:"
     Write-Host "  .\Setup-Bin.ps1 -Manage [-InstallDir <path>]     # Interactive component manager"
-    Write-Host "  .\Setup-Bin.ps1 -Uninstall [-InstallDir <path>] [-Force]"
+    Write-Host "  .\Setup-Bin.ps1 -Uninstall [-InstallDir <path>] [-Force] [-RemoveData] [-RemoveLogs]"
     Write-Host "      # Remove the product folder and references that point at it"
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -InstallDir <path>  Installation directory (default: .\bin)"
     Write-Host "  -Force              Skip the complete-uninstall confirmation prompt"
+    Write-Host "  -RemoveData         Delete %ProgramData%\%USERNAME%\data and its environment references"
+    Write-Host "  -RemoveLogs         Delete previous logs; keep the current transcript"
     Write-Host ""
     Write-Host "Note: -Uninstall only targets %ProgramData%\%USERNAME%\devbin-win."
     Write-Host "      Other locations are refused without removing anything."
@@ -84,6 +93,27 @@ if ($Manage) {
     $operationExitCode = 0
     Start-DevbinOperationLog -InstallDir $absoluteInstallDir
     try {
+        # ユーザー単位の data / log を用意し、HOME と XDG を設定 (個々のコンポーネントの保存先はこの配下に作成)
+        try {
+            Initialize-DevbinUserStorage | Out-Null
+
+            $homePlan = Get-DevbinHomePlan
+            if (-not $homePlan.IsEmpty) {
+                Write-Host "ユーザー データの保存先を設定しています..."
+                $homeResult = Invoke-DevbinHomePlan -Plan $homePlan
+                foreach ($message in $homeResult.Messages) {
+                    Write-Host "  $message"
+                }
+                if (-not $homeResult.Success) {
+                    Write-Host "Warning: ユーザー データの保存先を設定できません" -ForegroundColor Yellow
+                }
+                Sync-EnvironmentVariables -VariableNames @($homePlan.EnvVars | ForEach-Object { $_.Name }) -Silent | Out-Null
+                Write-Host ""
+            }
+        } catch {
+            Write-Host "Warning: ユーザー データの保存先を用意できません: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+
         # レジストリから環境変数を同期
         Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
 
@@ -100,7 +130,11 @@ if ($Uninstall) {
     $operationExitCode = 1
     Start-DevbinOperationLog -InstallDir $absoluteInstallDir
     try {
-        $result = Invoke-ProductUninstall -InstallDir $absoluteInstallDir -Force:$Force
+        $cleanupOptions = @{}
+        foreach ($name in @('RemoveData', 'RemoveLogs')) {
+            if ($PSBoundParameters.ContainsKey($name)) { $cleanupOptions[$name] = $PSBoundParameters[$name] }
+        }
+        $result = Invoke-ProductUninstall -InstallDir $absoluteInstallDir -Force:$Force @cleanupOptions
         switch ($result.Status) {
             "Success" {
                 $operationExitCode = 0
@@ -123,4 +157,3 @@ if ($Uninstall) {
     }
     exit $operationExitCode
 }
-

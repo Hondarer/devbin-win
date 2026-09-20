@@ -2,7 +2,7 @@
 # 操作ログの配置パス解決および Transcript のライフサイクル管理
 #
 # 完全アンインストール時に製品ルート (...\devbin-win) が削除されるため、
-# ログファイルは製品ルートの親ディレクトリに退避して保存します。
+# ログファイルは %ProgramData%\%USERNAME%\log に保存します。
 
 $script:DevbinOperationLogState = @{
     Started = $false
@@ -42,28 +42,14 @@ function Test-DevbinOperationLogDirectoryAllowed {
     )
 }
 
-# 操作ログの配置先ディレクトリ (製品ルートの親ディレクトリ) を取得
+# 操作ログの配置先ディレクトリ (導入先によらずユーザーの log) を取得
 function Get-DevbinOperationLogDirectory {
     param(
         [Parameter(Mandatory)]
         [string]$InstallDir
     )
 
-    $productRoot = Get-DevbinProductRoot -InstallDir $InstallDir
-    if ([string]::IsNullOrWhiteSpace($productRoot)) {
-        return $null
-    }
-
-    $parent = Split-Path -Path $productRoot -Parent
-    if ([string]::IsNullOrWhiteSpace($parent)) {
-        return $null
-    }
-
-    $normalized = Get-NormalizedPathString -PathValue $parent
-    if ($normalized) {
-        return $normalized
-    }
-    return $parent.TrimEnd('\')
+    return Get-DevbinLogDirectory
 }
 
 # タイムスタンプを付与した一意な操作ログのファイルパスを生成 (既存ファイルの上書きを防止)

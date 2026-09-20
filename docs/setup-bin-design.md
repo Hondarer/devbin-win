@@ -29,6 +29,7 @@ subscripts/
    +- packages.psd1       (パッケージ定義)
    +- templates/
       +- python-setup.ps1 (Python 用セットアップスクリプト)
+      +- vscode-setup.ps1 (VS Code 用セットアップスクリプト)
 ```
 
 ### 定義駆動アーキテクチャ
@@ -129,7 +130,7 @@ Devbin/Extract に実装された抽出パターンです。
 ### 概要
 
 PATH、環境変数、ファイル、一時領域、アンインストールなど、OS を操作する処理を集約しています。
-従来の `Setup-Common.psm1` を責務ごとのファイルに分割し、`Devbin.psm1` から読み込みます。
+責務ごとのファイルに分け、`Devbin.psm1` から読み込みます。
 
 | ファイル | 担当 |
 |----------|------|
@@ -138,15 +139,16 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 | FileSystem.ps1 | 長いパス対応のファイル操作、ディレクトリツリー削除 |
 | EnvironmentVariable.ps1 | 環境変数の同期 |
 | UserPath.ps1 | ユーザー PATH の追加、削除、再構成 |
-| VSCodeData.ps1 | VS Code data フォルダーの退避と復元 |
+| VSCodeData.ps1 | VS Code のポータブルデータ保存先の設定と解除 |
 | Vswhere.ps1 | vswhere インスタンスの登録と削除 |
 | ProductRoot.ps1 | 対象ルートの決定と、削除対象として妥当な配置場所かの判定 |
+| UserStorage.ps1 | ユーザー単位の data / log 保存先と選択式クリーンアップ |
 | OperationLog.ps1 | 操作ログの配置と Transcript の開始・終了 |
 | FontRegistration.ps1 | フォント登録の削除 |
 | WindowsTerminal.ps1 | settings.json の読み書きとバックアップ |
 | WindowsTerminalProfile.ps1 | Git Bash / MinGW プロファイルの更新 |
 | ProductUninstall.ps1 | 事前クリーンアップと完全アンインストール |
-| HomeDirectory.ps1 | HOME と XDG ディレクトリの計画と適用 |
+| HomeDirectory.ps1 | 保存先レイアウトの定義、HOME と XDG の計画と適用、コンポーネント単位の設定と解除 |
 | BusySignal.ps1 | 実行中表示 |
 
 ### 主要関数
@@ -172,20 +174,23 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 
 #### VS Code データ管理
 
-- `Backup-VSCodeData`: VS Code data フォルダーのバックアップ
-- `Restore-VSCodeData`: VS Code data フォルダーの復元
+- `Initialize-DevbinVSCodeData`: VS Code の保存先をユーザー単位の data\vscode に設定
+- `Remove-DevbinVSCodeData`: VS Code のアンインストール時に `VSCODE_PORTABLE` を解除 (値が data\vscode の場合のみ)
 
-#### 一時領域と HOME
+#### 一時領域とユーザー保存先
 
 - `New-DevbinTempDirectory` / `Remove-DevbinTempDirectory`: 実行ごとに独立した一時ディレクトリを作成し、一時領域外のファイルは削除しません。
-- `Get-DevbinHomeLayout`: HOME 配下に作成する項目と環境変数名の対応関係を返します。
+- `Initialize-DevbinUserStorage`: 共通の `data` と `log` を作成します。Manage の開始時に呼び出します。
+- `Get-DevbinHomeLayout`: 保存先と環境変数名、その保存先を使うコンポーネント (`ShortNames`) の対応関係を返します。`ShortNames` が空の項目は HOME と XDG で、Manage の開始時にまとめて設定します。
+- `Get-DevbinComponentStorageLayout`: 指定コンポーネントが使う保存先の定義を返します。
+- `Initialize-DevbinComponentStorage` / `Remove-DevbinComponentStorage`: コンポーネントの導入時に保存先を作成して未設定の環境変数を設定し、アンインストール時に devbin-win が設定した値だけを解除します。利用者が変更した値と、導入済みの他コンポーネントと共有する値は残します。
 - `Get-DevbinHomePlan` / `Invoke-DevbinHomePlan`: 変更内容を計画として生成した上で適用します。
 
 #### アンインストール
 
-- `Invoke-CompleteUninstall`: 再インストール用の事前クリーンアップ (bin ディレクトリ削除。VS Code data を維持する指定も可能) を行います。
+- `Invoke-CompleteUninstall`: 再インストール用の事前クリーンアップ (bin ディレクトリ削除) を行います。
 - `Get-DevbinProductRoot`: InstallDir から対象ルート (`...\devbin-win`) を決定します。
-- `Get-DevbinOperationLogDirectory`: 操作ログの配置先 (製品ルートの親ディレクトリ) を返します。
+- `Get-DevbinOperationLogDirectory`: 操作ログの配置先 (`%ProgramData%\%USERNAME%\log`) を返します。
 - `New-DevbinOperationLogPath`: `devbin-win-operation-yyyyMMdd-HHmmss.log` のパスを生成します。既存ファイルは上書きしません。
 - `Start-DevbinOperationLog` / `Stop-DevbinOperationLog`: 操作結果を Transcript で記録します。完全アンインストール時でも削除されないよう製品ルートの外部へ出力し、ログ自体は保持します。
 - `Test-DevbinProductRootAllowed`: 対象ルートが `%ProgramData%\%USERNAME%\devbin-win` と一致するかを判定します。一致しない場合は削除を実行しません。
@@ -241,8 +246,7 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 
 ### 概要
 
-コンポーネント単位の導入・再導入・削除と、その操作計画を集約しています。
-従来の `Setup-Components.psm1` を責務ごとのファイルに分割しました。
+コンポーネント単位の導入・再導入・削除と、その操作計画を、責務ごとのファイルに分けて集約しています。
 依存関係の解決は Devbin/Catalog が行います。
 UI は計画の表示と確認のみを行い、依存解決やマニフェストへの書き込みは行いません。
 
@@ -283,7 +287,7 @@ UI は計画の表示と確認のみを行い、依存解決やマニフェス�
 ### 概要
 
 外部ライブラリを使用せず、コンソール出力と Windows のコンソール入力 API のみで実装したテキストメニューです。
-従来の `Setup-Menu.psm1` を責務ごとのファイルに分割しました。
+責務ごとのファイルに分けています。
 
 | ファイル | 担当 |
 |----------|------|
@@ -385,7 +389,7 @@ lockfile の `resolved` と `integrity` をローカルアーカイブへ差し�
 
 初期選択には例外規則があります。
 オフライン環境へ資材を置いた行為自体が導入の意思表示とみなせるため、`Initialize-MenuState` は資材が揃っている項目を `DefaultChecked = $false` であってもチェック状態にします。
-この例外は初回導入時 (既存の導入が 1 件も無い場合) のみ働き、既に何かを導入済みの環境では従来どおり導入状態に従います。
+この例外は初回導入時 (既存の導入が 1 件も無い場合) のみ働きます。既に何かを導入済みの環境では、選択は導入状態に従います。
 
 ### SourceForge URL 対応
 
