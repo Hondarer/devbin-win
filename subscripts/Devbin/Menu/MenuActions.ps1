@@ -106,7 +106,7 @@ function Show-ChangePlan {
     }
 
     if ($Plan.Reinstall.Count -gt 0) {
-        Write-Host " 再インストール:"
+        Write-Host " 再インストール/アップデート:"
         foreach ($entry in $Plan.Reinstall) {
             Write-Host "   ~ $($entry.Name)"
         }
