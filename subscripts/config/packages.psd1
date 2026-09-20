@@ -322,13 +322,13 @@ endlocal
             Version = "3.14.7"
             ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
             ExtractStrategy = "TargetDirectory"
-            TargetDirectory = "python-3.14"
+            TargetDirectory = "python3"
             PostSetupScript = "python-setup.ps1"
             DownloadUrl = "https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip"
             DependsOn = @("get-pip")
-            PathDirs = @("python-3.14", "python-3.14\Scripts")
+            PathDirs = @("python3", "python3\Scripts")
             EnvVars = @{}
-            DetectFiles = @("python-3.14\python.exe")
+            DetectFiles = @("python3\python.exe")
             SkipIfCommand = "python"
             DefaultChecked = $true
         },
@@ -935,7 +935,7 @@ endlocal
             DependsOn = @("python")
             PathDirs = @()
             EnvVars = @{}
-            DetectFiles = @("python-3.14\Scripts\yamllint.exe")
+            DetectFiles = @("python3\Scripts\yamllint.exe")
             DefaultChecked = $true
         },
 

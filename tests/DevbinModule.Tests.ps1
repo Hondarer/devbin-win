@@ -178,12 +178,12 @@ Describe "Import-PackageCatalog" {
 Describe "Get-PackageTargetDirectory / Get-PythonDirectory" {
 
     $packages = @(
-        (New-TestPackage -ShortName "python" -Extra @{ TargetDirectory = "python-3.14" }),
+        (New-TestPackage -ShortName "python" -Extra @{ TargetDirectory = "python3" }),
         (New-TestPackage -ShortName "nodejs")
     )
 
     It "TargetDirectory があればそれを使う" {
-        Get-PackageTargetDirectory -PackageConfig $packages[0] | Should Be "python-3.14"
+        Get-PackageTargetDirectory -PackageConfig $packages[0] | Should Be "python3"
     }
 
     It "TargetDirectory が無ければ ShortName を使う" {
@@ -191,7 +191,7 @@ Describe "Get-PackageTargetDirectory / Get-PythonDirectory" {
     }
 
     It "Python の配置先を定義から引く" {
-        Get-PythonDirectory -Packages $packages -InstallDir "C:in" | Should Be "C:in\python-3.14"
+        Get-PythonDirectory -Packages $packages -InstallDir "C:in" | Should Be "C:in\python3"
     }
 
     It "定義が無ければ空文字を返す" {
@@ -210,12 +210,12 @@ Describe "Get-PackageTargetDirectory / Get-PythonDirectory" {
 
 Describe "Python 配置先のハードコード" {
 
-    It "コード側に python-3.14 が直書きされていない" {
+    It "コード側に python-3.xx 配置先が直書きされていない" {
         $subscriptsDir = Get-DevbinSubscriptsDir
         $hits = @()
         foreach ($file in (Get-ChildItem $subscriptsDir -Recurse -Include *.ps1, *.psm1)) {
             # packages.psd1 は設定ファイルのため検証対象から除外します。
-            if (Select-String -Path $file.FullName -Pattern "python-3\.14" -Quiet) {
+            if (Select-String -Path $file.FullName -Pattern "python-3\.\d+" -Quiet) {
                 $hits += $file.Name
             }
         }

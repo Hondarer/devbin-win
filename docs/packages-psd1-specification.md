@@ -394,7 +394,7 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
     ShortName = "python"
     ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
     ExtractStrategy = "TargetDirectory"
-    TargetDirectory = "python-3.14"
+    TargetDirectory = "python3"
     PostSetupScript = "python-setup.ps1"
     DownloadUrl = "https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip"
 }
@@ -591,7 +591,7 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
     DependsOn = @("python")
     PathDirs = @()
     EnvVars = @{}
-    DetectFiles = @("python-3.14\Scripts\yamllint.exe")
+    DetectFiles = @("python3\Scripts\yamllint.exe")
     DefaultChecked = $true
 }
 ```

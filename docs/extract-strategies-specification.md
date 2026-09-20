@@ -376,7 +376,7 @@ PostSetupScript を使用した例:
     ShortName = "python"
     ArchivePattern = "python-(\d+\.\d+)\.\d+-embed-amd64\.zip$"
     ExtractStrategy = "TargetDirectory"
-    TargetDirectory = "python-3.14"
+    TargetDirectory = "python3"
     PostSetupScript = "python-setup.ps1"
     DownloadUrl = "https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip"
 }
@@ -637,7 +637,7 @@ Visual Studio Build Tools
 
 #### 処理フロー
 
-1. Python の `TargetDirectory` (現行は `python-3.14`) 配下の `python.exe` を特定
+1. Python の `TargetDirectory` (現行は `python3`) 配下の `python.exe` を特定
 2. `packages\pip-packages\` に `PipPackage` と `PipDependencies` の wheel が揃っていることを確認
 3. `--no-index --find-links` でオフラインインストール
 4. wheel が不足している場合は PyPI へ直接フォールバックせずエラー終了
@@ -660,7 +660,7 @@ Visual Studio Build Tools
     PipPackage = "yamllint"
     PipDependencies = @("pathspec", "pyyaml")
     DependsOn = @("python")
-    DetectFiles = @("python-3.14\Scripts\yamllint.exe")
+    DetectFiles = @("python3\Scripts\yamllint.exe")
 }
 ```
 
