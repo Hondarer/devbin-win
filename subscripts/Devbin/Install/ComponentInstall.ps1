@@ -210,31 +210,33 @@ function Update-Component {
     Write-Host "=== $($pkg.Name) を再インストール中 ==="
     Write-Host ""
 
-    # マニフェストから登録を解除し、PATH を更新します。
+    # 削除対象はマニフェスト解除前に確保します。解除後は PATH から外します。
+    $componentData = $null
+    if ($Manifest.components.ContainsKey($ShortName)) {
+        $componentData = $Manifest.components[$ShortName]
+    }
+    $previousFiles = @()
+    if ($componentData -and $componentData.ContainsKey("files")) {
+        $previousFiles = @($componentData.files) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    }
+
     Remove-ComponentFromManifest -Manifest $Manifest -ShortName $ShortName
     Write-Host "  PATH を更新中..."
     Sync-ComponentManagerPath -InstallDir $InstallDir -Packages $Packages -Manifest $Manifest
 
-    # 自己更新時のバックアップ等、マニフェストに記録されない実行時の生成ファイルを削除します。
-    # 削除対象を持たないコンポーネントでは手順の見出しを出しません。
-    if ($pkg.ContainsKey("CleanupPatterns") -or $pkg.ContainsKey("TargetDirectory")) {
+    # 上書き展開だと Node 付属 npm と既存 node_modules が混ざり、直後の npm cache add が失敗します。
+    $hasCleanupPatterns = $pkg.ContainsKey("CleanupPatterns")
+    $hasTargetDirectory = $pkg.ContainsKey("TargetDirectory")
+    if ($hasCleanupPatterns -or $hasTargetDirectory -or $previousFiles.Count -gt 0) {
         Write-Host ""
         Write-Host "  既存のファイルを削除中..."
     }
-    Remove-ComponentCleanupFiles -ShortName $ShortName -PackageConfig $pkg -InstallDir $InstallDir -Manifest $Manifest
-
-    # TargetDirectory 指定時はディレクトリをクリーンアップします。
-    $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }
-    if ($targetDir) {
-        $targetPath = Join-Path $InstallDir $targetDir
-        if (Test-Path $targetPath) {
-            try {
-                Remove-Item -Path $targetPath -Recurse -Force -ErrorAction Stop
-            } catch {
-                Write-Host "    Warning: Could not remove '$targetDir': $($_.Exception.Message)" -ForegroundColor Yellow
-            }
-        }
-    }
+    Remove-ComponentInstalledFiles `
+        -ShortName $ShortName `
+        -PackageConfig $pkg `
+        -InstallDir $InstallDir `
+        -Manifest $Manifest `
+        -Files $previousFiles
 
     # コンポーネントを再インストールします。
     $result = Install-Component `

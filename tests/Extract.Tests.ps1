@@ -161,6 +161,34 @@ Describe "Invoke-ExtractStrategy" {
         }
     }
 
+    It "Standard 戦略は node_modules 配下のパッケージディレクトリを置き換える" {
+        $workDir = New-TestDirectory
+        try {
+            $archive = Join-Path $workDir "node.zip"
+            New-TestArchive -Path $archive -Entries @("node-v1\node.exe", "node-v1\node_modules\npm\npm-cli.js")
+            $binDir = Join-Path $workDir "bin"
+            New-Item -ItemType Directory -Path (Join-Path $binDir "node_modules\npm") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $binDir "node_modules\npm\old.js") -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $binDir "node_modules\pnpm") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $binDir "node_modules\pnpm\keep.js") -Force | Out-Null
+            $pkg = New-TestPackage -ShortName "nodejs"
+
+            $result = Invoke-ExtractStrategy `
+                -PackageConfig $pkg `
+                -ArchiveFile $archive `
+                -BinDir $binDir `
+                -ScriptDir "C:\nonexistent"
+
+            $result | Should Be $true
+            (Test-Path (Join-Path $binDir "node.exe")) | Should Be $true
+            (Test-Path (Join-Path $binDir "node_modules\npm\npm-cli.js")) | Should Be $true
+            (Test-Path (Join-Path $binDir "node_modules\npm\old.js")) | Should Be $false
+            (Test-Path (Join-Path $binDir "node_modules\pnpm\keep.js")) | Should Be $true
+        } finally {
+            Remove-TestDirectory -Path $workDir
+        }
+    }
+
     It "知らない戦略名は失敗として返す" {
         $pkg = New-TestPackage -ShortName "tool" -Extra @{ ExtractStrategy = "NoSuchStrategy" }
 

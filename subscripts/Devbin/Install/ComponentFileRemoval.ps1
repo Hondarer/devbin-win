@@ -118,7 +118,12 @@ function Remove-ComponentInstalledFiles {
                 $fullPath = Join-Path $InstallDir $file
                 if (Test-Path $fullPath) {
                     try {
-                        Remove-Item -Path $fullPath -Force -ErrorAction Stop
+                        $item = Get-Item $fullPath -ErrorAction Stop
+                        if ($item.PSIsContainer) {
+                            Remove-Item -Path $fullPath -Recurse -Force -ErrorAction Stop
+                        } else {
+                            Remove-Item -Path $fullPath -Force -ErrorAction Stop
+                        }
                         Write-Host "    Removed: $file"
                     } catch {
                         Write-Host "    Warning: Failed to remove '$file': $($_.Exception.Message)" -ForegroundColor Yellow

@@ -265,7 +265,7 @@ UI は計画の表示と確認のみを行い、依存解決やマニフェス�
 
 - `Install-Component`: コンポーネントを取得・展開し、環境変数と PATH を設定してマニフェストに登録します。
 - `Uninstall-Component`: 依存元を確認してコンポーネントを削除し、孤立した非公開の依存関係 (Hidden) も解消します。
-- `Update-Component`: コンポーネントを再インストール (更新) します。
+- `Update-Component`: コンポーネントを再インストール (更新) します。マニフェストに記録した既存ファイルを先に削除してから導入します。Node.js のように `bin` へ展開する Standard 戦略では、この削除を省くと付属 npm と既存の `node_modules` が混ざり、直後の `npm cache add` が失敗します。
 - `Resolve-ComponentSource`: 導入に必要なファイルを確認し、不足していれば取得を試みます。ファイルが揃わない場合は失敗を返します。
 - `Get-ComponentEnvVarValues`: `EnvVars` と `EnvVarIsLiteral` から実際に設定する値を算出します。設定側と削除側で同一の値を参照するよう、計算ロジックを一元化しています。
 - `Remove-ComponentInstalledFiles`: マニフェストのファイル一覧または `DetectFiles` に基づいて実体を削除します。他のコンポーネントが参照しているファイルとディレクトリは保持します。

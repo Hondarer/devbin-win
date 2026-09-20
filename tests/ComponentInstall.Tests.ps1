@@ -166,6 +166,36 @@ Describe "Update-Component" {
             }
         }
     }
+
+    It "再インストールではマニフェストの既存ファイルを先に削除する" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $installDir = New-TestDirectory
+            try {
+                New-Item -ItemType File -Path (Join-Path $installDir "node.exe") -Force | Out-Null
+                New-Item -ItemType Directory -Path (Join-Path $installDir "node_modules\npm") -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $installDir "node_modules\npm\old.js") -Force | Out-Null
+                New-Item -ItemType Directory -Path (Join-Path $installDir "node_modules\pnpm") -Force | Out-Null
+                New-Item -ItemType File -Path (Join-Path $installDir "node_modules\pnpm\keep.js") -Force | Out-Null
+                $packages = @(New-TestPackage -ShortName "nodejs")
+                $manifest = New-TestManifest -Components @{
+                    nodejs = (New-TestManifestEntry -Files @("node.exe", "node_modules\npm\old.js"))
+                    pnpm   = (New-TestManifestEntry -Files @("node_modules\pnpm\keep.js"))
+                }
+
+                Mock Sync-ComponentManagerPath { }
+                Mock Install-Component { return $true }
+
+                Update-Component -ShortName "nodejs" -Packages $packages -InstallDir $installDir -ScriptDir $installDir -Manifest $manifest |
+                    Should Be $true
+                (Test-Path (Join-Path $installDir "node.exe")) | Should Be $false
+                (Test-Path (Join-Path $installDir "node_modules\npm\old.js")) | Should Be $false
+                (Test-Path (Join-Path $installDir "node_modules\pnpm\keep.js")) | Should Be $true
+            } finally {
+                Remove-TestDirectory -Path $installDir
+            }
+        }
+    }
 }
 
 Describe "Resolve-ComponentSource" {

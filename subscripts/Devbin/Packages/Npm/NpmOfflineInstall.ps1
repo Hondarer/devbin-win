@@ -377,8 +377,18 @@ function Invoke-NpmInstallFromCache {
     try {
         $env:PUPPETEER_SKIP_DOWNLOAD = "1"
         foreach ($archivePath in @($status.ArchivePaths)) {
-            $cacheAddOutput = @(& $NpmCommandPath cache add $archivePath --cache $tempCacheDirectory --offline 2>&1)
-            $cacheAddExitCode = $LASTEXITCODE
+            $cacheAddExitCode = $null
+            $cacheAddOutput = @()
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+                $cacheAddOutput = @(& $NpmCommandPath cache add $archivePath --cache $tempCacheDirectory --offline 2>&1)
+                $cacheAddExitCode = $LASTEXITCODE
+                if ($null -eq $cacheAddExitCode -or $cacheAddExitCode -eq 0) {
+                    break
+                }
+                if ($attempt -lt 3) {
+                    Start-Sleep -Milliseconds 300
+                }
+            }
             Write-NpmNativeOutput -Output $cacheAddOutput
             if ($cacheAddExitCode -ne 0 -and $null -ne $cacheAddExitCode) {
                 Write-Host "    Error: npm cache add failed for $archivePath" -ForegroundColor Red
