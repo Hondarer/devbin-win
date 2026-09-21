@@ -198,7 +198,7 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
 - `Split-RootEntriesFromValue`: `;` 区切りの値を対象ルート配下のエントリとそれ以外に分割します。
 - `Remove-DirectoryTree`: ディレクトリツリーを削除します。260 文字を超えるパスで失敗した場合は robocopy の `/MIR` オプションでディレクトリ内を空にしてから削除します。
 - `ConvertFrom-JsonWithComments`: コメント付き JSON (Windows Terminal の settings.json) を読み込みます。
-- `Invoke-ProductUninstall`: 状態に依存しない完全アンインストールを実行します。`bin` とその参照設定を削除し、選択に従って `data` / `log` をクリーンアップします。削除対象は事前に再解析ポイントを検査し、`bin` の削除に失敗した場合は `data` / `log` に触れません。
+- `Invoke-ProductUninstall`: 状態に依存しない完全アンインストールを実行します。`bin` とその参照設定を削除し、選択に従って `data` / `log` をクリーンアップします。削除対象は事前に再解析ポイントを検査し、`bin` の削除に失敗しても、指定された `data` / `log` の削除を続行します。data の削除が指定されていれば、削除失敗時もその参照環境変数・PATH を解除します。bin の削除失敗時は `Failed` と `RestartRequired = $true` を返し、OS 再起動後の完全アンインストール再試行を案内します。メニューはこの場合も終了します。
 
 ## 状態管理 (Devbin/State)
 

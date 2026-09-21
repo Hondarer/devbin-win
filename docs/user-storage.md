@@ -88,7 +88,7 @@ Windows Terminal の `settings.json` は AppData/LocalAppData のままです。
 
 ## 完全アンインストール
 
-`Manage-Bin.cmd` の U と `Setup-Bin.ps1 -Uninstall` は、`bin` を完全に削除したあと、実行前の選択に従って `data` と過去のログをクリーンアップします。既定は data / log とも保持です。data の削除はこの共通領域全体を対象とするため、そこへ置いた設定・キャッシュ・認証ファイルを含みます。
+`Manage-Bin.cmd` の U と `Setup-Bin.ps1 -Uninstall` は、`bin` の削除を試行したあと、実行前の選択に従って `data` と過去のログをクリーンアップします。既定は data / log とも保持です。data の削除はこの共通領域全体を対象とするため、そこへ置いた設定・キャッシュ・認証ファイルを含みます。
 
 ```powershell
 .\subscripts\Setup-Bin.ps1 -Uninstall `
@@ -98,7 +98,7 @@ Windows Terminal の `settings.json` は AppData/LocalAppData のままです。
 
 `-Force` を併用すると質問を省略します。`-Force` 単独では data と log を保持します。PowerShell から `-RemoveData:$false -RemoveLogs:$false` と明示すれば、その項目の質問を省略して保持できます。削除対象は実行前に表示します。
 
-data の削除に成功した後、その配下を参照するユーザー環境変数と PATH を解除します。data の外は削除しません。bin / data / log とその祖先・内部に再解析ポイントがある場合は削除を拒否します。bin の削除に失敗した場合は data / log をクリーンアップしません。削除の失敗はアンインストールの失敗として報告します。
+data の削除が指定されていれば、削除に失敗しても、その配下を参照するユーザー環境変数と PATH を解除します。data の外は削除しません。bin / data / log とその祖先・内部に再解析ポイントがある場合は削除を拒否します。bin の削除に失敗しても、指定された data / log のクリーンアップを続行し、OS 再起動後に改めて完全アンインストールを試行するよう案内します。削除の失敗はアンインストールの失敗として報告します。
 
 log の削除では、記録中のトランスクリプトと `log` フォルダー自体を残します。メニューから完全アンインストールを実行した場合は、その操作を記録しているログが残ります。`log` が利用できない場合は一時フォルダーへ出力します。アプリが自身で生成するログをここへ集約する機能ではありません。
 

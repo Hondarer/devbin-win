@@ -250,7 +250,7 @@ PowerShell から直接実行する場合は、対象を明示します。
 
 ### アンインストール内容
 
-まず、設定値が `bin` 配下を参照しているユーザー PATH、ユーザー環境変数、HKCU フォント登録、Windows Terminal プロファイル、および vswhere の `installationPath` を機械的に削除します。次に、対象ルート `C:\ProgramData\<ユーザー名>\devbin-win` の `bin` をフォルダーごと完全削除します。その後、`-RemoveData` / `-RemoveLogs` の選択に従って同じルート配下の `data` / `log` をクリーンアップします。`bin` を完全に削除できなかった場合は、`data` / `log` のクリーンアップを行いません。`data` 配下を参照する環境設定は、`-RemoveData` で data を削除した場合に限り解除します。
+まず、設定値が `bin` 配下を参照しているユーザー PATH、ユーザー環境変数、HKCU フォント登録、Windows Terminal プロファイル、および vswhere の `installationPath` を機械的に削除します。次に、対象ルート `C:\ProgramData\<ユーザー名>\devbin-win` の `bin` をフォルダーごと完全削除します。その後、`-RemoveData` / `-RemoveLogs` の選択に従って同じルート配下の `data` / `log` をクリーンアップします。`bin` の削除に失敗しても、指定された `data` / `log` のクリーンアップを続行します。`-RemoveData` 指定時は、data の削除に失敗しても、その配下を参照するユーザー環境変数・PATH を解除します。削除失敗は失敗として報告し、`bin` が残った場合は OS 再起動後に改めて完全アンインストールを試行するよう案内します。メニューから実行した場合も、案内を確認して終了します。
 MinGW 用 Windows Terminal プロファイルはパスを含まないため、固定 GUID をキーとして削除します。
 
 環境変数はセミコロン (`;`) 区切りのエントリ単位で除去します。

@@ -251,7 +251,6 @@ function Invoke-ProductUninstall {
             if ($isBusy) {
                 Write-Host ""
                 Write-Host "Error: Some files are currently in use and cannot be removed." -ForegroundColor Red
-                Write-Host "環境設定は解除しました。PC を再起動してから、もう一度実行してフォルダーを削除してください。" -ForegroundColor Yellow
                 Write-Host ""
             } else {
                 Write-Host "Warning: bin フォルダーを削除できません: $($removeResult.ErrorMessage)" -ForegroundColor Yellow
@@ -261,11 +260,8 @@ function Invoke-ProductUninstall {
         Write-Host "bin フォルダーが見つかりません: $binDirectory"
     }
 
-    # bin を完全に削除できない場合は、保持すべき data / log に触れず失敗とします。
-    if ($dirFailed) {
-        Sync-EnvironmentVariables -VariableNames ($removedEnvNames | Select-Object -Unique) | Out-Null
-        return [PSCustomObject]@{ Status = "Failed" }
-    }
+    # bin の削除に失敗しても、選択されたデータ・ログと環境設定の削除を続行します。
+    $binFailed = $dirFailed
 
     try {
         Remove-DevbinUserStorage -RemoveData:$RemoveData -RemoveLogs:$RemoveLogs
@@ -273,8 +269,8 @@ function Invoke-ProductUninstall {
         $dirFailed = $true
         Write-Host "data / log の削除に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
     }
-    # log の削除に失敗しても、削除済み data を参照する変数は残しません。
-    if ($RemoveData -and -not (Test-Path -LiteralPath (Get-DevbinDataDirectory))) {
+    # data が使用中で残っても、削除が指定されていれば参照する環境設定を解除します。
+    if ($RemoveData) {
         try {
             $removedEnvNames += @(Remove-UserEnvVarsPointingToRoot -Root (Get-DevbinDataDirectory))
             Remove-UserPathEntriesPointingToRoot -Root (Get-DevbinDataDirectory)
@@ -286,7 +282,11 @@ function Invoke-ProductUninstall {
     Sync-EnvironmentVariables -VariableNames ($removedEnvNames | Select-Object -Unique) | Out-Null
 
     if ($dirFailed) {
-        return [PSCustomObject]@{ Status = "Failed" }
+        if ($binFailed) {
+            Write-Host "bin の一部が残っています。指定されたデータ・ログと環境設定の削除処理は続行しました。" -ForegroundColor Yellow
+            Write-Host "他のプロセスがファイルを使用している可能性があります。OS を再起動してから、改めて完全アンインストールを試行してください。" -ForegroundColor Yellow
+        }
+        return [PSCustomObject]@{ Status = "Failed"; RestartRequired = $binFailed }
     }
 
     Write-Host ""

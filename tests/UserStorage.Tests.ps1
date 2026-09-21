@@ -190,14 +190,53 @@ InModuleScope Devbin {
             Assert-MockCalled Remove-DirectoryTree -Scope It -Times 0 -Exactly -ParameterFilter { $Path -eq $productRoot }
             ($script:cleanupOrder -join ',') | Should Be 'bin,storage'
         }
-        It 'does not clean data or logs when bin deletion fails' {
+        It 'continues selected cleanup and requests restart when bin deletion fails' {
             $binDirectory = Join-Path (Get-DevbinProductRoot -InstallDir 'ignored') 'bin'
             Mock Test-Path { $true } -ParameterFilter { $LiteralPath -eq $binDirectory }
             Mock Remove-DirectoryTree { [PSCustomObject]@{ Success = $false; ErrorMessage = 'locked' } }
 
-            (Invoke-ProductUninstall -InstallDir 'ignored' -Force -RemoveData -RemoveLogs).Status | Should Be 'Failed'
+            $result = Invoke-ProductUninstall -InstallDir 'ignored' -Force -RemoveData -RemoveLogs
+            $result.Status | Should Be 'Failed'
+            $result.RestartRequired | Should Be $true
 
-            Assert-MockCalled Remove-DevbinUserStorage -Scope It -Times 0 -Exactly
+            Assert-MockCalled Remove-DevbinUserStorage -Scope It -Times 1 -Exactly -ParameterFilter { $RemoveData -and $RemoveLogs }
+            Assert-MockCalled Remove-UserEnvVarsPointingToRoot -Scope It -Times 1 -Exactly -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
+            Assert-MockCalled Remove-UserPathEntriesPointingToRoot -Scope It -Times 1 -Exactly -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
+            Assert-MockCalled Write-Host -Scope It -Times 1 -Exactly -ParameterFilter { $Object -like '*OS を再起動*完全アンインストール*' }
+        }
+        It 'retains unselected data and its references when bin deletion fails' {
+            $binDirectory = Join-Path (Get-DevbinProductRoot -InstallDir 'ignored') 'bin'
+            Mock Test-Path { $true } -ParameterFilter { $LiteralPath -eq $binDirectory }
+            Mock Remove-DirectoryTree { [PSCustomObject]@{ Success = $false; ErrorMessage = 'being used by another process' } }
+
+            (Invoke-ProductUninstall -InstallDir 'ignored' -Force).Status | Should Be 'Failed'
+
+            Assert-MockCalled Remove-DevbinUserStorage -Scope It -Times 1 -Exactly -ParameterFilter { -not $RemoveData -and -not $RemoveLogs }
+            Assert-MockCalled Remove-UserEnvVarsPointingToRoot -Scope It -Times 0 -Exactly -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
+        }
+        It 'clears data references and synchronizes even when bin and data remain locked' {
+            $binDirectory = Join-Path (Get-DevbinProductRoot -InstallDir 'ignored') 'bin'
+            Mock Test-Path { $true } -ParameterFilter { $LiteralPath -eq $binDirectory -or $LiteralPath -eq (Get-DevbinDataDirectory) }
+            Mock Remove-DirectoryTree { [PSCustomObject]@{ Success = $false; ErrorMessage = 'being used by another process' } }
+            Mock Remove-DevbinUserStorage { throw 'data locked' }
+            Mock Remove-UserEnvVarsPointingToRoot { @('HOME') } -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
+
+            $result = Invoke-ProductUninstall -InstallDir 'ignored' -Force -RemoveData -RemoveLogs
+            $result.Status | Should Be 'Failed'
+            $result.RestartRequired | Should Be $true
+
+            Assert-MockCalled Remove-UserEnvVarsPointingToRoot -Scope It -Times 1 -Exactly -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
+            Assert-MockCalled Remove-UserPathEntriesPointingToRoot -Scope It -Times 1 -Exactly -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
+            Assert-MockCalled Sync-EnvironmentVariables -Scope It -Times 1 -Exactly -ParameterFilter { $VariableNames -contains 'HOME' -and $VariableNames -contains 'PATH' }
+        }
+        It 'clears references when data deletion alone fails' {
+            Mock Test-Path { $true } -ParameterFilter { $LiteralPath -eq (Get-DevbinDataDirectory) }
+            Mock Remove-DevbinUserStorage { throw 'data locked' }
+
+            (Invoke-ProductUninstall -InstallDir 'ignored' -Force -RemoveData).Status | Should Be 'Failed'
+
+            Assert-MockCalled Remove-UserEnvVarsPointingToRoot -Scope It -Times 1 -Exactly -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
+            Assert-MockCalled Remove-UserPathEntriesPointingToRoot -Scope It -Times 1 -Exactly -ParameterFilter { $Root -eq (Get-DevbinDataDirectory) }
         }
         It 'collects both choices before the final confirmation' {
             Mock Read-ConfirmationKey { $true } -ParameterFilter { $Prompt -like 'data *' -or $Prompt -like '続行しますか*' }

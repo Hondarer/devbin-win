@@ -193,7 +193,7 @@ function Invoke-MenuProductUninstall {
     Restore-ConsoleInputMode -InputModeState $InputModeState
 
     $result = Invoke-ProductUninstall -InstallDir $State.InstallDir
-    if ($result.Status -eq "Success") {
+    if ($result.Status -eq "Success" -or ($result.Status -eq "Failed" -and $result.RestartRequired)) {
         Write-Host ""
         Write-Host " 任意のキーを押すと終了します..."
         [Console]::ReadKey($true) | Out-Null
