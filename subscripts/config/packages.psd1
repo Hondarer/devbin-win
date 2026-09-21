@@ -385,9 +385,9 @@ endlocal
             DisableIfCommand = "pwsh"
             DefaultChecked = $true
         },
-        # Portable Git - SelfExtractingArchive extraction
+        # Git - SelfExtractingArchive extraction (PortableGit archive)
         @{
-            Name = "Portable Git"
+            Name = "Git"
             ShortName = "git"
             Version = "2.55.0.5"
             ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"

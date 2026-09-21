@@ -99,7 +99,7 @@ Devbin/Extract に実装された抽出パターンです。
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
-| SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
+| SelfExtractingArchive | 自己解凍実行ファイルを実行 | Git (ポータブル版) |
 | InnoSetup | innoextract で Inno Setup インストーラーを展開 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 

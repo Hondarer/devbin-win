@@ -297,8 +297,8 @@ MinGW 用 Windows Terminal プロファイルはパスを含まないため、�
 
 ### Git
 
-- システムに `git.exe` が存在する場合、Portable Git への PATH は追加されません
-- 既存の Git インストールが優先されます
+- 表示名は導入形態によらず `Git` です。devbin-win が導入する配布物は Git for Windows のポータブル版です
+- システムに devbin-win 外の `git.exe` が存在する場合、コンポーネント マネージャーでは `External` と表示して導入を無効化し、既存の Git を優先します
 - インストール後に `core.editor`、`http.sslBackend`、`core.autocrlf` のうち未設定の項目を設定します。詳細については、[Update-Git-Config](./Update-Git-Config.md) を参照してください
 
 ### VS Code

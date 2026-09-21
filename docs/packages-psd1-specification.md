@@ -412,7 +412,7 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
 
 ```powershell
 @{
-    Name = "Portable Git"
+    Name = "Git"
     ShortName = "git"
     PostInstallScripts = @(
         @{
@@ -494,7 +494,7 @@ NuGet、cloc、vswhere のように、配布物が単体の `.exe` で完結す�
 
 ```powershell
 @{
-    Name = "Portable Git"
+    Name = "Git"
     ShortName = "git"
     ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
     ExtractStrategy = "SelfExtractingArchive"

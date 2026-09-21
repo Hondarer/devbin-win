@@ -32,7 +32,7 @@ subscripts/Devbin/Extract/
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
-| SelfExtractingArchive | 自己解凍実行ファイルを実行 | Portable Git |
+| SelfExtractingArchive | 自己解凍実行ファイルを実行 | Git (ポータブル版) |
 | InnoSetup | innoextract で Inno Setup インストーラーを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 | PipInstall | python -m pip install でパッケージをインストール | yamllint |
@@ -501,7 +501,7 @@ NuGet, cloc, vswhere
 
 ```powershell
 @{
-    Name = "Portable Git"
+    Name = "Git"
     ShortName = "git"
     ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
     ExtractStrategy = "SelfExtractingArchive"
@@ -524,7 +524,7 @@ NuGet, cloc, vswhere
 
 #### 適用パッケージ
 
-Portable Git
+Git (ポータブル版)
 
 ### InnoSetup 戦略
 
