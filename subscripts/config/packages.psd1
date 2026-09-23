@@ -23,6 +23,9 @@
             ArchivePattern = "^pnpm-\d+\.\d+\.\d+\.tgz$"
             ExtractStrategy = "NpmInstall"
             NpmPackage = "pnpm"
+            # pnpm 12 は導入時のスクリプト (install.js) でネイティブの実行ファイルを配置します。
+            # スクリプトを止めると、Windows では起動できない仮のファイルが残るため、スクリプトを許可します。
+            NpmIgnoreScripts = $false
             DependsOn = @("nodejs")
             PathDirs = @()
             EnvVars = @{}

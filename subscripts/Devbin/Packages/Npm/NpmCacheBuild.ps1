@@ -45,20 +45,13 @@ function Save-NpmPackageCache {
         New-Item -ItemType Directory -Path $directory -Force | Out-Null
     }
 
-    $ignoreScripts = $true
-    if ($PackageConfig.ContainsKey("NpmIgnoreScripts")) {
-        $ignoreScripts = [bool]$PackageConfig.NpmIgnoreScripts
-    }
     $packageSpecs = @(Get-NpmPackageSpecs -PackageConfig $PackageConfig)
     $previousSkip = $env:PUPPETEER_SKIP_DOWNLOAD
     try {
         # キャッシュ作成時のブラウザー バイナリ自動ダウンロードを抑止 (完全オフライン化)
         $env:PUPPETEER_SKIP_DOWNLOAD = "1"
 
-        $commonArguments = @("--cache", $stagingContent, "--logs-dir", $logsDirectory)
-        if ($ignoreScripts) {
-            $commonArguments += "--ignore-scripts"
-        }
+        $commonArguments = @("--cache", $stagingContent, "--logs-dir", $logsDirectory) + @(Get-NpmScriptArguments -PackageConfig $PackageConfig)
 
         Write-Host "  Downloading $($packageSpecs -join ', ') with npm install -g..."
         $downloadArguments = @(Get-NpmGlobalArguments -Command "install" -Prefix $downloadPrefix) + $commonArguments + $packageSpecs

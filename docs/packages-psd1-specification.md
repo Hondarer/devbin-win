@@ -632,7 +632,7 @@ devbin-win のインストール先を npm のグローバル prefix として�
 - `NpmPackage` (必須): npm パッケージ名
 - `Version` (共通プロパティ): 指定時は `npm install <NpmPackage>@<Version>` として渡す
 - `NpmDependencies` (任意): 本体と一緒に `npm install -g` で明示的に導入し、アンインストール時に一緒に削除する npm package spec
-- `NpmIgnoreScripts` (任意): `$false` の場合のみ npm lifecycle scripts を許可する。未指定時は `$true`
+- `NpmIgnoreScripts` (任意): `$false` の場合のみ npm lifecycle scripts を許可する。未指定時は `$true` で、`--ignore-scripts` を指定する。`$false` の場合は、本体と `NpmDependencies` のパッケージを `--allow-scripts` で許可する。許可リストにない間接依存のスクリプトは、npm が警告を出して実行する (`strict-allow-scripts` が有効な環境では導入が失敗する)。pnpm 12 のように、導入時スクリプトでネイティブの実行ファイルを配置するパッケージに指定する
 - `Browser` (任意): `Edge` を指定すると、導入時に既存 Microsoft Edge を検出してブラウザ関連環境変数を設定する
 
 `ArchivePattern` はカタログの必須項目のため記載しますが、`NpmInstall` では使用しません。

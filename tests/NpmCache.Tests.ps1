@@ -346,3 +346,63 @@ Describe "npm 出力の扱い" {
         $source | Should Not Match '2>&1 \| Out-Host'
     }
 }
+
+Describe "導入時スクリプトの扱い" {
+
+    It "既定ではすべての導入時スクリプトを止める" {
+        $result = InModuleScope DevbinNpm {
+            Get-NpmScriptArguments -PackageConfig @{ ShortName = "demo"; NpmPackage = "demo-cli"; Version = "1.0.0" }
+        }
+
+        (@($result) -join " ") | Should Be "--ignore-scripts"
+    }
+
+    It "NpmIgnoreScripts = `$false では、要求したパッケージのスクリプトだけを許可する" {
+        $result = InModuleScope DevbinNpm {
+            Get-NpmScriptArguments -PackageConfig @{
+                ShortName        = "demo"
+                NpmPackage       = "@scope/demo-cli"
+                Version          = "1.0.0"
+                NpmDependencies  = @("demo-plugin@^1.0.0")
+                NpmIgnoreScripts = $false
+            }
+        }
+
+        (@($result) -join " ") | Should Be "--allow-scripts=@scope/demo-cli,demo-plugin"
+    }
+
+    It "導入時も同じ引数を npm install -g に渡す" {
+        $packagesDir = New-TestDirectory
+        $binDir = New-TestDirectory
+        try {
+            New-TestNpmCache -PackagesDir $packagesDir | Out-Null
+            $config = $script:DemoConfig.Clone()
+            $config.NpmIgnoreScripts = $false
+            $global:DevbinNpmTestArgs = @{
+                NpmCommandPath = "C:\fake\npm.cmd"
+                BinDir         = $binDir
+                PackagesDir    = $packagesDir
+                PackageConfig  = $config
+            }
+
+            InModuleScope DevbinNpm {
+                Mock Invoke-NpmCli {
+                    $global:DevbinNpmCalledArgs = $Arguments
+                    $directory = Join-Path $global:DevbinNpmTestArgs.BinDir "node_modules\demo-cli"
+                    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+                    Set-Content -Path (Join-Path $directory "package.json") -Value '{"name":"demo-cli","version":"1.0.0"}'
+                    return 0
+                }
+                Invoke-NpmInstallFromCache @global:DevbinNpmTestArgs | Out-Null
+            }
+
+            $joined = $global:DevbinNpmCalledArgs -join " "
+            $joined | Should Match "--allow-scripts=demo-cli demo-cli@1\.0\.0$"
+            $joined | Should Not Match "--ignore-scripts"
+        } finally {
+            Remove-Variable -Name DevbinNpmTestArgs, DevbinNpmCalledArgs -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $packagesDir
+            Remove-TestDirectory -Path $binDir
+        }
+    }
+}

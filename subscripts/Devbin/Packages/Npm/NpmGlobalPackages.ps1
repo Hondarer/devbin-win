@@ -47,6 +47,21 @@ function Get-NpmGlobalArguments {
     return @($Command, "-g", "--prefix", $Prefix, "--no-audit", "--no-fund", "--update-notifier=false")
 }
 
+# 導入時スクリプトの扱いを指定する引数です。
+# 既定ではすべて止めます。NpmIgnoreScripts = $false のコンポーネントは、要求したパッケージのスクリプトだけを許可します。
+# npm 11 は許可されていない導入時スクリプトを警告付きで実行し、strict-allow-scripts では導入を失敗させます。
+# allow-scripts を知らない古い npm は、未知の設定として警告するだけで導入を続けます。
+# see: https://docs.npmjs.com/cli/v11/using-npm/config#allow-scripts
+function Get-NpmScriptArguments {
+    param([Parameter(Mandatory)][hashtable]$PackageConfig)
+
+    $ignoreScripts = if ($PackageConfig.ContainsKey("NpmIgnoreScripts")) { [bool]$PackageConfig.NpmIgnoreScripts } else { $true }
+    if ($ignoreScripts) {
+        return @("--ignore-scripts")
+    }
+    return @("--allow-scripts=" + (@(Get-NpmRequestedPackageNames -PackageConfig $PackageConfig) -join ","))
+}
+
 function Get-NpmGlobalPackageDirectory {
     param(
         [Parameter(Mandatory)][string]$BinDir,
@@ -146,10 +161,7 @@ function Invoke-NpmInstallFromCache {
         # 導入時のブラウザー バイナリの自動ダウンロードを抑止します (Microsoft Edge を使用)。
         $env:PUPPETEER_SKIP_DOWNLOAD = "1"
         $arguments = @(Get-NpmGlobalArguments -Command "install" -Prefix $BinDir) + @("--offline", "--cache", $tempCacheDirectory, "--logs-dir", $logsDirectory)
-        $ignoreScripts = if ($PackageConfig.ContainsKey("NpmIgnoreScripts")) { [bool]$PackageConfig.NpmIgnoreScripts } else { $true }
-        if ($ignoreScripts) {
-            $arguments += "--ignore-scripts"
-        }
+        $arguments += @(Get-NpmScriptArguments -PackageConfig $PackageConfig)
         $arguments += @(Get-NpmPackageSpecs -PackageConfig $PackageConfig)
 
         Write-Host "    Installing $($PackageConfig.ShortName) with npm install -g from the offline npm cache..."

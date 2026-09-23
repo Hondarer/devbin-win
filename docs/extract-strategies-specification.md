@@ -681,7 +681,7 @@ devbin-win のインストール先 (`$BinDir`) を npm のグローバル prefi
 | NpmPackage | npm パッケージ名 | string | ✅ |
 | Version | インストールするバージョン (指定時は `@Version` として渡す) | string | ❌ |
 | NpmDependencies | 本体と一緒に `npm install -g` で明示的に導入する npm package spec | string[] | ❌ |
-| NpmIgnoreScripts | npm lifecycle scripts を無効化するか。未指定時は `$true` | bool | ❌ |
+| NpmIgnoreScripts | npm lifecycle scripts を無効化するか。未指定時は `$true` (`--ignore-scripts`)。`$false` の場合は、本体と `NpmDependencies` のスクリプトだけを `--allow-scripts` で許可する | bool | ❌ |
 | Browser | `Edge` の場合、既存 Microsoft Edge を検出してブラウザ関連環境変数を設定 | string | ❌ |
 
 #### 処理フロー
