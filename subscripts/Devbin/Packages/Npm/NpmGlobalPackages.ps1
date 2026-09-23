@@ -22,14 +22,27 @@ function Write-NpmNativeOutput {
 }
 
 # npm を実行し、出力を字下げして表示したうえで終了コードを返します。
+# パッケージの導入時スクリプト (pnpm の "node install.js" など) は node を PATH から探します。
+# 一括導入では Node.js を導入した直後もこのプロセスの PATH に bin が反映されていないため、
+# npm と同じディレクトリの node.exe を実行中だけ PATH の先頭に加えます。
 function Invoke-NpmCli {
     param(
         [Parameter(Mandatory)][string]$NpmCommandPath,
         [Parameter(Mandatory)][string[]]$Arguments
     )
 
-    $output = @(& $NpmCommandPath @Arguments 2>&1)
-    $exitCode = $LASTEXITCODE
+    $previousPath = $env:PATH
+    $nodeDirectory = Split-Path -Parent $NpmCommandPath
+    if (-not [string]::IsNullOrWhiteSpace($nodeDirectory) -and
+        (Test-Path -LiteralPath (Join-Path $nodeDirectory "node.exe") -PathType Leaf)) {
+        $env:PATH = "$nodeDirectory;$previousPath"
+    }
+    try {
+        $output = @(& $NpmCommandPath @Arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $env:PATH = $previousPath
+    }
     Write-NpmNativeOutput -Output $output
     if ($null -eq $exitCode) {
         return 0

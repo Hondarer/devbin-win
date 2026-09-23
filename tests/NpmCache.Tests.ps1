@@ -175,6 +175,33 @@ Describe "npm のグローバル ツリーの参照" {
     }
 }
 
+Describe "Invoke-NpmCli" {
+
+    It "npm と同じディレクトリの node.exe を実行中だけ PATH の先頭に加える" {
+        $binDir = New-TestDirectory
+        $originalPath = $env:PATH
+        try {
+            Set-Content -Path (Join-Path $binDir "node.exe") -Value ""
+            $npmPath = Join-Path $binDir "npm.cmd"
+            [System.IO.File]::WriteAllText($npmPath, "@echo off`r`necho PATH=%PATH%`r`nexit /b 3`r`n")
+            $global:DevbinNpmTestArgs = @{ NpmCommandPath = $npmPath; Arguments = @("install") }
+
+            $exitCode = InModuleScope DevbinNpm {
+                Mock Write-NpmNativeOutput { $global:DevbinNpmOutput = @($Output) }
+                Invoke-NpmCli @global:DevbinNpmTestArgs
+            }
+
+            $exitCode | Should Be 3
+            ($global:DevbinNpmOutput -join "") | Should Match ("^PATH=" + [regex]::Escape("$binDir;"))
+            $env:PATH | Should Be $originalPath
+        } finally {
+            $env:PATH = $originalPath
+            Remove-Variable -Name DevbinNpmTestArgs, DevbinNpmOutput -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $binDir
+        }
+    }
+}
+
 Describe "Invoke-NpmInstallFromCache" {
 
     It "bin を prefix として npm install -g --offline を実行する" {
