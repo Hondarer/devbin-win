@@ -1,6 +1,8 @@
 ﻿# NpmCacheBuild.ps1
-# npm パッケージのオフラインキャッシュ生成 (一時プロジェクトでの依存解決、パック、メタデータ生成)
+# npm パッケージのオフライン キャッシュ生成 (npm install -g による取得と、オフラインでの再現確認)
 
+# 一時 prefix へ npm install -g を実行し、npm 自身のキャッシュをそのまま保存します。
+# 保存したキャッシュだけで npm install -g --offline が完了することを確認してから、既存のキャッシュと置き換えます。
 function Save-NpmPackageCache {
     [CmdletBinding()]
     param(
@@ -32,191 +34,91 @@ function Save-NpmPackageCache {
     $cacheDirectory = Get-NpmPackageCacheDirectory -PackagesDir $PackagesDir -PackageConfig $PackageConfig
     $stagingRoot = Join-Path $npmRoot ".staging"
     $stagingDirectory = Join-Path $stagingRoot ("{0}-{1}" -f $PackageConfig.ShortName, [guid]::NewGuid().ToString("N"))
-    $archiveDirectory = Join-Path $stagingDirectory $script:NpmCacheArchiveDirectoryName
-    $tempProject = Join-Path ([System.IO.Path]::GetTempPath()) ("devbin-npm-project-" + [guid]::NewGuid().ToString("N"))
+    $stagingContent = Get-NpmCacheContentDirectory -CacheDirectory $stagingDirectory
+    $workDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("devbin-npm-cache-" + [guid]::NewGuid().ToString("N"))
+    $downloadPrefix = Join-Path $workDirectory "download"
+    $verifyPrefix = Join-Path $workDirectory "verify"
+    $logsDirectory = Join-Path $workDirectory "logs"
     $oldDirectory = $null
 
-    New-Item -ItemType Directory -Path $archiveDirectory -Force | Out-Null
-    New-Item -ItemType Directory -Path $tempProject -Force | Out-Null
+    foreach ($directory in @($stagingContent, $downloadPrefix, $verifyPrefix, $logsDirectory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
 
     $ignoreScripts = $true
     if ($PackageConfig.ContainsKey("NpmIgnoreScripts")) {
         $ignoreScripts = [bool]$PackageConfig.NpmIgnoreScripts
     }
+    $packageSpecs = @(Get-NpmPackageSpecs -PackageConfig $PackageConfig)
     $previousSkip = $env:PUPPETEER_SKIP_DOWNLOAD
     try {
-        # キャッシュ作成時のブラウザーバイナリ自動ダウンロードを抑止 (完全オフライン化)
+        # キャッシュ作成時のブラウザー バイナリ自動ダウンロードを抑止 (完全オフライン化)
         $env:PUPPETEER_SKIP_DOWNLOAD = "1"
-        $packageSpecs = @(Get-NpmPackageSpecs -PackageConfig $PackageConfig)
-        Write-Host "  Installing $($packageSpecs -join ', ') into a temporary project for packing..."
-        # 直接依存だけを最上位に置き、間接依存は各パッケージ配下へ入れ子にします (npm install -g と同じ配置)。
-        # 導入先の node_modules は複数コンポーネントで共有するため、hoisted レイアウトでは間接依存の版が上書きで衝突します。
-        # オフライン導入は lockfile の配置をそのまま再現するため、配置はキャッシュ作成時に確定させます。
-        # see: https://docs.npmjs.com/cli/v11/using-npm/config#install-strategy
-        $installArgs = @("install", "--no-audit", "--no-fund", "--package-lock=true", "--install-strategy=shallow", "--prefix", $tempProject)
+
+        $commonArguments = @("--cache", $stagingContent, "--logs-dir", $logsDirectory)
         if ($ignoreScripts) {
-            $installArgs += "--ignore-scripts"
-        }
-        $installArgs += @($packageSpecs)
-        & $NpmCommandPath @installArgs | Out-Host
-        if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
-            return $LASTEXITCODE
+            $commonArguments += "--ignore-scripts"
         }
 
-        $lockSource = Join-Path $tempProject "package-lock.json"
-        if (-not (Test-Path $lockSource -PathType Leaf)) {
-            Write-Host "  package-lock.json was not generated for $($PackageConfig.ShortName)" -ForegroundColor Red
-            return 1
+        Write-Host "  Downloading $($packageSpecs -join ', ') with npm install -g..."
+        $downloadArguments = @(Get-NpmGlobalArguments -Command "install" -Prefix $downloadPrefix) + $commonArguments + $packageSpecs
+        $exitCode = Invoke-NpmCli -NpmCommandPath $NpmCommandPath -Arguments $downloadArguments
+        if ($exitCode -ne 0) {
+            return $exitCode
         }
-        Copy-Item -LiteralPath $lockSource -Destination (Join-Path $stagingDirectory $script:NpmCacheLockName) -Force
 
-        $nodeModulesDirectory = Join-Path $tempProject "node_modules"
-        $packageJsonFiles = @(Get-NpmPackageManifestFiles -NodeModulesDirectory $nodeModulesDirectory)
-        if ($packageJsonFiles.Count -eq 0) {
-            Write-Host "  No npm packages were installed for $($PackageConfig.ShortName)" -ForegroundColor Red
+        # 保存したキャッシュだけで導入を再現できることを、別の prefix へのオフライン導入で確認します。
+        Write-Host "  Verifying that the npm cache installs $($PackageConfig.ShortName) offline..."
+        $verifyArguments = @(Get-NpmGlobalArguments -Command "install" -Prefix $verifyPrefix) + @("--offline") + $commonArguments + $packageSpecs
+        $exitCode = Invoke-NpmCli -NpmCommandPath $NpmCommandPath -Arguments $verifyArguments
+        if ($exitCode -ne 0) {
+            Write-Host "  The npm cache for $($PackageConfig.ShortName) cannot install offline" -ForegroundColor Red
             return 1
         }
 
-        $archiveRecords = @()
-        $archiveByIdentity = @{}
-        $archiveNameByIdentity = @{}
-        $script:NpmCurrentArchiveDirectory = $archiveDirectory
-
-        foreach ($manifestFile in $packageJsonFiles) {
-            try {
-                $packageJson = Get-Content $manifestFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-            } catch {
-                Write-Host "  Invalid package.json: $($manifestFile.FullName)" -ForegroundColor Red
-                return 1
-            }
-
-            $packageName = [string]$packageJson.name
-            $packageVersion = [string]$packageJson.version
-            if ([string]::IsNullOrWhiteSpace($packageName) -or [string]::IsNullOrWhiteSpace($packageVersion)) {
-                continue
-            }
-
-            $identity = Get-NpmPackageIdentity -Name $packageName -Version $packageVersion
-            if ($archiveByIdentity.ContainsKey($identity)) {
-                continue
-            }
-
-            $packageStageDirectory = Join-Path $stagingDirectory ("pack-" + [guid]::NewGuid().ToString("N"))
-            New-Item -ItemType Directory -Path $packageStageDirectory -Force | Out-Null
-            try {
-                Write-Host "  Packing $identity"
-                $packArgs = @("pack", $manifestFile.DirectoryName, "--pack-destination", $packageStageDirectory)
-                if ($ignoreScripts) {
-                    $packArgs += "--ignore-scripts"
-                }
-                $packOutput = @(& $NpmCommandPath @packArgs 2>&1)
-                $packOutput | ForEach-Object { Write-Host "    $_" }
-                if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
-                    return $LASTEXITCODE
-                }
-
-                $packedFile = Get-ChildItem -Path $packageStageDirectory -Filter "*.tgz" -File -ErrorAction SilentlyContinue | Select-Object -First 1
-                if (-not $packedFile) {
-                    Write-Host "  npm pack produced no archive for $identity" -ForegroundColor Red
-                    return 1
-                }
-
-                $baseName = Get-NpmPackageArchiveFileName -PackageName $packageName -Version $packageVersion
-                $targetName = $baseName
-                if ($archiveNameByIdentity.Values -contains $targetName) {
-                    $targetName = Get-NpmUniqueArchiveFileName -BaseName $baseName -PackageName $packageName
-                }
-                $targetPath = Join-Path $archiveDirectory $targetName
-                Move-Item -LiteralPath $packedFile.FullName -Destination $targetPath -Force
-
-                $archiveNameByIdentity[$identity] = $targetName
-                $archiveByIdentity[$identity] = $targetPath
-                $archiveRecords += [ordered]@{
-                    name = $packageName
-                    version = $packageVersion
-                    identity = $identity
-                    relativePath = Join-Path $script:NpmCacheArchiveDirectoryName $targetName
-                    size = [int64](Get-Item $targetPath).Length
-                    integrity = Get-NpmArchiveIntegrity -Path $targetPath
-                }
-            } finally {
-                Remove-Item -LiteralPath $packageStageDirectory -Recurse -Force -ErrorAction SilentlyContinue
-            }
-        }
-
-        $rootVersion = if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
-        $rootManifestFile = Find-NpmPackageManifest -NodeModulesDirectory $nodeModulesDirectory -PackageName $npmPackage
-        if (-not $rootManifestFile) {
+        $rootVersion = Get-NpmGlobalPackageVersion -BinDir $verifyPrefix -PackageName $npmPackage
+        $expectedVersion = if ($PackageConfig.ContainsKey("Version")) { [string]$PackageConfig.Version } else { "" }
+        if ([string]::IsNullOrWhiteSpace($rootVersion)) {
             Write-Host "  Root npm package was not found after install: $npmPackage" -ForegroundColor Red
             return 1
         }
-        $rootJson = Get-Content $rootManifestFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-        if (-not [string]::IsNullOrWhiteSpace($rootVersion) -and [string]$rootJson.version -ne $rootVersion) {
-            Write-Host "  Root npm version mismatch: expected $rootVersion, got $($rootJson.version)" -ForegroundColor Red
+        if (-not [string]::IsNullOrWhiteSpace($expectedVersion) -and $rootVersion -ne $expectedVersion) {
+            Write-Host "  Root npm version mismatch: expected $expectedVersion, got $rootVersion" -ForegroundColor Red
             return 1
         }
 
-        $rootIdentity = Get-NpmPackageIdentity -Name ([string]$rootJson.name) -Version ([string]$rootJson.version)
-        if (-not $archiveByIdentity.ContainsKey($rootIdentity)) {
-            Write-Host "  Root npm archive was not packed: $rootIdentity" -ForegroundColor Red
-            return 1
+        $installedPackages = [ordered]@{}
+        foreach ($name in @(Get-NpmRequestedPackageNames -PackageConfig $PackageConfig)) {
+            $installedPackages[$name] = Get-NpmGlobalPackageVersion -BinDir $verifyPrefix -PackageName $name
         }
 
-        $installArchives = @($archiveRecords | Where-Object { $_.identity -eq $rootIdentity })
-        $explicitDependencies = if ($PackageConfig.ContainsKey("NpmDependencies")) { @($PackageConfig.NpmDependencies) } else { @() }
-        foreach ($dependencySpec in $explicitDependencies) {
-            $dependencyName = Get-NpmPackageNameFromSpec -PackageSpec ([string]$dependencySpec)
-            if ([string]::IsNullOrWhiteSpace($dependencyName)) {
-                continue
-            }
-            $dependencyManifest = Find-NpmPackageManifest -NodeModulesDirectory $nodeModulesDirectory -PackageName $dependencyName
-            if (-not $dependencyManifest) {
-                Write-Host "  Explicit npm dependency was not installed: $dependencySpec" -ForegroundColor Red
-                return 1
-            }
-            $dependencyJson = Get-Content $dependencyManifest.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-            $dependencyIdentity = Get-NpmPackageIdentity -Name ([string]$dependencyJson.name) -Version ([string]$dependencyJson.version)
-            $dependencyRecord = $archiveRecords | Where-Object { $_.identity -eq $dependencyIdentity } | Select-Object -First 1
-            if (-not $dependencyRecord) {
-                Write-Host "  Explicit npm dependency archive was not packed: $dependencyIdentity" -ForegroundColor Red
-                return 1
-            }
-            $installArchives += $dependencyRecord
-        }
+        # 作業用の一時ファイルはキャッシュの内容ではないため保存しません。
+        Remove-Item -LiteralPath (Join-Path $stagingContent "_cacache\tmp") -Recurse -Force -ErrorAction SilentlyContinue
 
         $manifest = [ordered]@{
-            schemaVersion = $script:NpmCacheSchemaVersion
-            shortName = [string]$PackageConfig.ShortName
-            rootPackage = [string]$rootJson.name
-            rootVersion = [string]$rootJson.version
+            schemaVersion     = $script:NpmCacheSchemaVersion
+            shortName         = [string]$PackageConfig.ShortName
+            rootPackage       = $npmPackage
+            rootVersion       = $rootVersion
             requestedPackages = @($packageSpecs)
-            rootArchive = [string]$installArchives[0].relativePath
-            installArchives = @($installArchives | ForEach-Object { [string]$_.relativePath } | Select-Object -Unique)
-            archives = @($archiveRecords)
-            platform = [string]$env:PROCESSOR_ARCHITECTURE
-            os = [string]$env:OS
-            nodeVersion = ""
-            npmVersion = ""
-            generatedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            installedPackages = $installedPackages
+            platform          = [string]$env:PROCESSOR_ARCHITECTURE
+            os                = [string]$env:OS
+            nodeVersion       = ""
+            npmVersion        = ""
+            generatedAt       = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
         }
-
         $nodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
         if ($nodeCommand) {
-            $manifest.nodeVersion = (& $nodeCommand.Source --version 2>$null | Select-Object -First 1)
+            $manifest.nodeVersion = [string](& $nodeCommand.Source --version 2>$null | Select-Object -First 1)
         }
         $npmVersionOutput = & $NpmCommandPath --version 2>$null
         if ($npmVersionOutput) {
             $manifest.npmVersion = [string]($npmVersionOutput | Select-Object -First 1)
         }
+        $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Get-NpmCacheManifestPath -CacheDirectory $stagingDirectory) -Encoding UTF8
 
-        $manifestPath = Get-NpmCacheManifestPath -CacheDirectory $stagingDirectory
-        $manifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-
-        $validationConfig = @{}
-        foreach ($key in $PackageConfig.Keys) {
-            $validationConfig[$key] = $PackageConfig[$key]
-        }
-        $validationStatus = Get-NpmCacheStatus -PackageConfig $validationConfig -PackagesDir $PackagesDir -CacheDirectory $stagingDirectory
+        $validationStatus = Get-NpmCacheStatus -PackageConfig $PackageConfig -PackagesDir $PackagesDir -CacheDirectory $stagingDirectory
         if (-not $validationStatus.IsValid) {
             Write-Host "  Generated npm cache failed validation: $($validationStatus.Invalid -join '; ') $($validationStatus.Missing -join '; ')" -ForegroundColor Red
             return 1
@@ -245,7 +147,7 @@ function Save-NpmPackageCache {
         } else {
             $env:PUPPETEER_SKIP_DOWNLOAD = $previousSkip
         }
-        Remove-Item -LiteralPath $tempProject -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $workDirectory -Recurse -Force -ErrorAction SilentlyContinue
         if (Test-Path $stagingDirectory) {
             Remove-Item -LiteralPath $stagingDirectory -Recurse -Force -ErrorAction SilentlyContinue
         }

@@ -75,7 +75,7 @@ PowerShell で `@antfu/ni` の `ni` コマンドを使用する場合は、セ�
 
 ## オフライン環境での npm インストール
 
-Node.js/npm パッケージは、ShortName ごとに依存関係ツリーを保存します。
+Node.js/npm パッケージは、ShortName ごとに npm 自身のキャッシュを保存します。
 オンライン環境で Node.js/npm が使用できる状態で、次のコマンドを実行してください。
 
 ```powershell
@@ -85,18 +85,20 @@ Node.js/npm パッケージは、ShortName ごとに依存関係ツリーを保�
 生成物は `packages\npm-packages\<ShortName>\` の次の構成です。
 
 ```text
-package-lock.json
 npm-cache-manifest.json
-archives\*.tgz
+cache\_cacache\...
 ```
 
-`npm-cache-manifest.json` は、全アーカイブのバージョン、ファイル サイズ、および SHA-512 ハッシュ値を検証するために使用します。
-`Manage-Bin.cmd` は、キャッシュが不足している場合に限り `Get-Packages.ps1` の自動実行を試行します。
+`cache` は一時 prefix への `npm install -g` で作成したキャッシュで、保存前に、このキャッシュだけでオフライン導入を再現できることを確認しています。
+`npm-cache-manifest.json` は、キャッシュが `packages.psd1` の定義 (本体、版、`NpmDependencies`) と一致するかを判定するために使用します。
+`Manage-Bin.cmd` は、キャッシュが不足しているか定義と一致しない場合に限り `Get-Packages.ps1` の自動実行を試行します。
 この処理ではネットワーク接続が発生するため、完全オフラインでの導入環境では事前にキャッシュを準備し、`packages\OFFLINE` を置いてください。
 
-導入時はレジストリ メタデータに依存せず、lockfile の `resolved` と `integrity` をキャッシュ内のローカル `.tgz` に差し替えた一時プロジェクトに対して `npm install --offline` を実行します。
-処理の完了後、一時プロジェクトの `node_modules` とコマンド shim をインストール先へ配置します。
-配置は `npm install -g` と同じで、パッケージは `bin\node_modules\<パッケージ>` に、コマンド shim は `bin` 直下に置かれます。
+導入時は、`bin` を npm のグローバル prefix として `npm install -g --offline` を実行します。
+パッケージは `bin\node_modules\<パッケージ>` に、コマンド shim は `bin` 直下に置かれ、アンインストールは `npm uninstall -g` で行います。
+devbin-win の npm で利用者が `npm install -g`、`npm uninstall -g`、`npm update -g` を実行した場合も、`packages.psd1` に定義したパッケージであれば、次回の Manage-Bin 起動時に導入状態と版がメニューの表示へ反映されます。
+反映されるのはメニューの表示のみであり、環境変数などは変更されません。Manage-Bin が設定する環境変数が必要な場合は、Manage-Bin から再インストールしてください。
+別途インストールした Node.js の npm を使った場合は、その npm の prefix に導入されるため、devbin-win の管理対象にはなりません。
 
 Marp CLI、Mermaid CLI、Puppeteer は Chromium をダウンロードせず、PATH、標準インストール先、および Windows の `App Paths` レジストリから既存の Microsoft Edge を自動検出して使用します。
 Microsoft Edge が検出されない場合は、ブラウザーを必要とするコンポーネントの導入に失敗します。

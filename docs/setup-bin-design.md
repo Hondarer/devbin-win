@@ -265,10 +265,11 @@ UI は計画の表示と確認のみを行い、依存解決やマニフェス�
 
 - `Install-Component`: コンポーネントを取得・展開し、環境変数と PATH を設定してマニフェストに登録します。
 - `Uninstall-Component`: 依存元を確認してコンポーネントを削除し、孤立した非公開の依存関係 (Hidden) も解消します。
-- `Update-Component`: コンポーネントを再インストール (更新) します。マニフェストに記録した既存ファイルを先に削除してから導入します。Node.js のように `bin` へ展開する Standard 戦略では、この削除を省くと付属 npm と既存の `node_modules` が混ざり、直後の `npm cache add` が失敗します。
+- `Update-Component`: コンポーネントを再インストール (更新) します。マニフェストに記録した既存ファイルを先に削除してから導入します。Node.js のように `bin` へ展開する Standard 戦略では、この削除を省くと付属 npm と既存の `node_modules` が混ざり、直後の npm の実行が失敗します。`NpmInstall` は npm が既存のパッケージを置き換えるため、先に削除しません。
+- `Test-ComponentInstalled`: 導入済みかを判定します。マニフェストは devbin が最後に操作した結果であるため、`Packages` と `InstallDir` を渡した場合、`NpmInstall` コンポーネントは npm のグローバル ツリーの実物で判定します。導入、アンインストール、依存元の確認 (`Get-Dependents`) はこの形で呼び出します。
 - `Resolve-ComponentSource`: 導入に必要なファイルを確認し、不足していれば取得を試みます。ファイルが揃わない場合は失敗を返します。
 - `Get-ComponentEnvVarValues`: `EnvVars` と `EnvVarIsLiteral` から実際に設定する値を算出します。設定側と削除側で同一の値を参照するよう、計算ロジックを一元化しています。
-- `Remove-ComponentInstalledFiles`: マニフェストのファイル一覧または `DetectFiles` に基づいて実体を削除します。他のコンポーネントが参照しているファイルとディレクトリは保持します。
+- `Remove-ComponentInstalledFiles`: マニフェストのファイル一覧または `DetectFiles` に基づいて実体を削除します。他のコンポーネントが参照しているファイルとディレクトリは保持します。ファイル一覧で削除した場合、ルート ディレクトリはファイルが残っていないときだけ削除します。`node_modules` には、利用者が `npm -g` で導入したパッケージなど、どのコンポーネントの記録にもないファイルが残ることがあるためです。ファイル一覧のないレガシー導入は所有関係を特定できないため、`DetectFiles` のルート ディレクトリごと削除します。
 
 - `New-ComponentChangePlan`: 定義、現在の状態、選択内容から操作順序の計画を生成します。導入は依存先から、削除は依存元から並べ、残存するパッケージが必要とする依存先は削除対象から除外します。依存関係の欠落や循環は計画生成の段階で失敗として返します。
 - `Invoke-ComponentChangePlan`: 確認画面に表示した計画をそのまま実行します。操作ごとにマニフェストを保存し、保存に失敗した時点で処理を中断します。依存先の導入に失敗した場合、そのコンポーネントに依存する後続処理はスキップします。
@@ -372,13 +373,14 @@ packages.psd1 からダウンロード URL を読み込み、必要なパッケ�
 3. `DownloadHeaders` が指定されている場合は HTTP ヘッダーとして付与し、ファイルをダウンロードします。
 4. 対象パッケージの `ArchivePattern` に一致する旧バージョンのファイル、および不要となった元のファイル名の一時ファイルを削除します。
 5. ダウンロードした `.exe` ファイルのゾーン識別子 (ブロック) を解除します。
-6. `NpmInstall` 定義のパッケージについては `Devbin/Packages/Npm/DevbinNpm.psm1` を呼び出し、ShortName ごとに依存ツリー、`package-lock.json`、`npm-cache-manifest.json` を `packages/npm-packages/<ShortName>/` 配下に保存します。
+6. `NpmInstall` 定義のパッケージについては `Devbin/Packages/Npm/DevbinNpm.psm1` を呼び出し、一時 prefix への `npm install -g` で得た npm のキャッシュと `npm-cache-manifest.json` を、ShortName ごとに `packages/npm-packages/<ShortName>/` 配下へ保存します。保存前に、そのキャッシュだけで `npm install -g --offline` を再現できることを確認します。
 7. Python が利用可能であれば、`packages/pip-packages` を一時ディレクトリへ取り直した wheel で置き換えます。
 8. 全件取得が成功した場合は、現行カタログの許可リストに無い `packages` 配下のファイルを削除します。
 
-`NpmInstall` による導入時は、マニフェスト、lockfile、および全アーカイブの SHA-512 ハッシュ値を検証した上で、一時 npm キャッシュへアーカイブを登録します。
-lockfile の `resolved` と `integrity` をローカルアーカイブへ差し替えた一時プロジェクトに対して `npm install --offline` を実行し、生成された `node_modules` およびコマンド shim をインストール先ディレクトリへマージします。
-依存木はキャッシュ作成時に shallow レイアウト (`npm install -g` と同じ配置) で確定させ、マージはパッケージ単位で行います。コマンド shim は参照先を `node_modules` 配下へ書き換えて配置します。
+`NpmInstall` による導入時は、インストール先を npm のグローバル prefix として、保存したキャッシュの複製から `npm install -g --offline` を実行します。
+配置、コマンド shim、依存関係の解決は npm が行い、アンインストールも `npm uninstall -g` で行います。
+このため、利用者が devbin-win の npm で `npm -g` を実行した結果と、Manage-Bin の操作結果は同じ状態になります。
+`NpmInstall` コンポーネントの表示状態 (`Get-ComponentStatus`) は、マニフェストではなく `bin\node_modules` の実物からそのつど求めます。利用者の `npm -g` 操作はメニューの表示に反映されますが、マニフェストや環境変数などは変更しません。
 キャッシュの不足が検出された場合のみ `Get-Packages.ps1 -PackageShortNames` の自動実行を試行し、取得後も不完全な状態である場合は導入処理を開始しません。
 `packages/OFFLINE` がある場合は導入中の自動取得を行わず、資材が無いメニュー項目は `Unavailable` として非活性にします。
 `Get-Packages.ps1` を明示実行した場合は、マーカーがあっても取得します。

@@ -190,6 +190,10 @@ Export-ModuleMember -Function @(
     'Get-NpmCacheStatus',
     'Save-NpmPackageCache',
     'Invoke-NpmInstallFromCache',
+    'Get-NpmRequestedPackageNames',
+    'Get-NpmGlobalPackageVersion',
+    'Get-NpmComponentOwnedPaths',
+    'Uninstall-NpmGlobalPackages',
     # Extract
     'Unblock-ArchiveFile',
     'Expand-ArchiveToTemp',

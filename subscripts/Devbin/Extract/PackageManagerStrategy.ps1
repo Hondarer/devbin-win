@@ -65,7 +65,7 @@ function Invoke-PipInstallStrategy {
     }
 }
 
-# NpmInstall 戦略: オフライン一時 prefix から node_modules および shim スクリプトを bin 配下に配置
+# NpmInstall 戦略: bin を prefix として、保存済みの npm キャッシュから npm install -g --offline を実行
 function Invoke-NpmInstallStrategy {
     param(
         [string]$BinDir,

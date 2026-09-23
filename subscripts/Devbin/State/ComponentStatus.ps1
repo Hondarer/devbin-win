@@ -129,6 +129,23 @@ function Get-ComponentStatus {
     )
 
     $shortName = $PackageConfig.ShortName
+
+    # NpmInstall は、devbin が最後に操作した結果 (マニフェスト) ではなく、npm のグローバル ツリーの実物で判定します。
+    # 利用者が npm -g で追加、削除、更新した結果を、マニフェストを変更せずに表示へ反映するためです。
+    if ([string]$PackageConfig.ExtractStrategy -eq "NpmInstall" -and $PackageConfig.ContainsKey("NpmPackage") -and
+        -not [string]::IsNullOrWhiteSpace($InstallDir)) {
+        $installedVersion = Get-NpmGlobalPackageVersion -BinDir $InstallDir -PackageName ([string]$PackageConfig.NpmPackage)
+        if ([string]::IsNullOrWhiteSpace($installedVersion)) {
+            return "NotInstalled"
+        }
+        $packageVersion = Resolve-PackageVersion -PackageConfig $PackageConfig -PackagesDir $PackagesDir
+        if (-not [string]::IsNullOrWhiteSpace($packageVersion) -and
+            (Compare-PackageVersion -LeftVersion $packageVersion -RightVersion $installedVersion) -eq 1) {
+            return "Updateable"
+        }
+        return "Installed"
+    }
+
     $inManifest = Test-ComponentInstalled -Manifest $Manifest -ShortName $shortName
 
     # DetectFiles が未指定の場合はマニフェストの登録情報のみで判定

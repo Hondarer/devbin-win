@@ -234,7 +234,7 @@ function Resolve-ComponentSource {
     if ($strategy -eq "NpmInstall") {
         $npmCacheStatus = Get-NpmCacheStatus -PackageConfig $PackageConfig -PackagesDir $PackagesDir
         if (-not $npmCacheStatus.IsValid) {
-            Write-Host "  npm パッケージアーカイブが見つかりません。" -ForegroundColor Yellow
+            Write-Host "  npm キャッシュが見つからないか、定義と一致しません。" -ForegroundColor Yellow
             Write-Host "    不足: $($npmCacheStatus.Missing -join ', ')"
             if ($npmCacheStatus.Invalid.Count -gt 0) {
                 Write-Host "    不正: $($npmCacheStatus.Invalid -join ', ')"

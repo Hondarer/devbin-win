@@ -36,7 +36,7 @@ subscripts/Devbin/Extract/
 | InnoSetup | innoextract で Inno Setup インストーラーを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
 | PipInstall | python -m pip install でパッケージをインストール | yamllint |
-| NpmInstall | 検証済み依存ツリーを npm のオフライン一時 prefix へ展開 | pnpm, @antfu/ni |
+| NpmInstall | 保存した npm キャッシュから bin へ npm install -g --offline | pnpm, @antfu/ni |
 
 ## 共通関数
 
@@ -670,8 +670,9 @@ yamllint
 
 ### NpmInstall 戦略
 
-検証済みの依存関係ツリーを一時プロジェクトへ `npm install --offline` でインストールし、生成された `node_modules` とコマンド shim を devbin-win のインストール先へマージします。
-npm パッケージは ShortName ごとの依存関係ツリー キャッシュから、常にオフラインで導入します。
+devbin-win のインストール先 (`$BinDir`) を npm のグローバル prefix として、`npm install -g --offline` を実行します。
+パッケージは ShortName ごとに保存した npm 自身のキャッシュから、常にオフラインで導入します。
+配置、コマンド shim、依存関係の解決はすべて npm が行うため、利用者が同じ prefix で `npm -g` を実行した結果と違いはありません。
 
 #### パラメーター
 
@@ -679,29 +680,56 @@ npm パッケージは ShortName ごとの依存関係ツリー キャッシュ�
 |-----------|------|-----|------|
 | NpmPackage | npm パッケージ名 | string | ✅ |
 | Version | インストールするバージョン (指定時は `@Version` として渡す) | string | ❌ |
-| NpmDependencies | 本体の依存ツリーとは別に一緒に取得・導入する npm package spec | string[] | ❌ |
+| NpmDependencies | 本体と一緒に `npm install -g` で明示的に導入する npm package spec | string[] | ❌ |
 | NpmIgnoreScripts | npm lifecycle scripts を無効化するか。未指定時は `$true` | bool | ❌ |
 | Browser | `Edge` の場合、既存 Microsoft Edge を検出してブラウザ関連環境変数を設定 | string | ❌ |
 
 #### 処理フロー
 
 1. `$BinDir\npm.cmd` を特定
-2. `packages\npm-packages\<ShortName>` の manifest、lock、全 archive を検証
-3. manifest に記録された全 `.tgz` を一時 npm cache へ登録
-4. lockfile の package archive 参照をローカル tgz に置き換えた一時プロジェクトを作成
-5. 一時プロジェクトへ `npm install --offline` し、導入後に本体の package name/version を検証
-6. 一時プロジェクトの `node_modules` の最上位パッケージを、パッケージ単位で `$BinDir\node_modules` へミラー
-7. `node_modules\.bin` の command shim を、参照先を `node_modules\<パッケージ>` へ書き換えて `$BinDir` 直下へ配置
+2. `packages\npm-packages\<ShortName>` のマニフェストが定義 (本体、版、`NpmDependencies`) と一致し、npm のキャッシュがそろっていることを確認
+3. npm のキャッシュを一時ディレクトリへ複製 (npm はオフラインでもキャッシュへ書き込むため)
+4. `npm install -g --prefix $BinDir --offline --cache <複製> <package spec>` を実行
+5. `$BinDir\node_modules\<NpmPackage>` の版が定義と一致することを確認
+6. 要求したパッケージのディレクトリ (`node_modules\<パッケージ>`) を所有パスとしてマニフェストへ記録
 
-依存関係ツリーは、`npm install -g` と同じ shallow レイアウト (直接依存だけを最上位に置き、間接依存を各パッケージ配下へ入れ子にする配置) で扱います。
-`$BinDir\node_modules` は複数のコンポーネントで共有するため、hoisted レイアウトのままマージすると、間接依存の版が後から導入したコンポーネントで上書きされます。
-オフライン導入は lockfile の配置をそのまま再現するので、配置は `Get-Packages.ps1` によるキャッシュ作成時に `--install-strategy=shallow` で確定させます。
+アンインストールは `npm uninstall -g --prefix $BinDir` で、本体と `NpmDependencies` のパッケージを削除します。
+npm を実行できない場合は、パッケージのディレクトリと、そのパッケージを指すコマンド shim を直接削除します。
+再インストールは npm が既存のパッケージを置き換えるため、先にファイルを削除しません。
+
+npm のグローバル ツリーでは、最上位のパッケージがそれぞれ独立しています。
+依存関係は peer 依存も含めて各パッケージの配下に入れ子で置かれ、パッケージ間では共有されません。
+グローバル ツリーにはロックファイルもないため、状態は `$BinDir\node_modules` の実物だけで決まります。
+
+#### npm -g との相互運用
+
+利用者が devbin-win の npm で `npm install -g`、`npm uninstall -g`、`npm update -g` を実行した結果は、Manage-Bin のメニューの表示へ反映されます。
+対象は、`packages.psd1` に `NpmInstall` として定義したパッケージだけです。
+
+マニフェストは、devbin が最後に操作した結果です。
+`NpmInstall` コンポーネントの状態は、マニフェストではなく `$BinDir\node_modules` の実物からそのつど求めます (`Get-ComponentStatus`)。
+導入、アンインストール、依存元の確認で導入済みかを判定する場合も、同じく実物で判定します (`Test-ComponentInstalled`、`Get-Dependents`)。
+
+| グローバル ツリーの状態 | Manage-Bin の表示 |
+|---|---|
+| 導入されていない | 未導入 (マニフェストに記録があっても) |
+| 定義より古い版が導入されている | 更新可能 |
+| 定義と同じか新しい版が導入されている | 導入済み |
+
+利用者の `npm -g` の結果によって、マニフェスト、環境変数、PATH、ユーザー データの保存先を変更することはありません。
+`npm -g` も環境変数を変更しないため、この表示は `npm -g` の結果と同じ状態を指します。
+`bin` に PATH が通っていれば、`npm -g` で導入したコマンドはそのまま使用できます。
+Manage-Bin で導入時に設定する環境変数 (Puppeteer の `PUPPETEER_SKIP_DOWNLOAD` など) が必要な場合は、Manage-Bin から再インストールしてください。
+`npm -g` で導入したパッケージも Manage-Bin からアンインストールでき、`npm -g` で削除したパッケージは、マニフェストに記録が残っていても Manage-Bin から導入できます。
+`packages` のキャッシュは、`Get-Packages.ps1` と、Manage-Bin の導入時における自動取得でのみ更新します。`npm -g` で導入した版はキャッシュへ取り込みません。
 
 #### オフライン対応
 
-`Get-Packages.ps1` 実行時に npm が利用可能であれば、対象 npm パッケージの依存関係ツリー、`package-lock.json`、および `npm-cache-manifest.json` が `packages\npm-packages\<ShortName>\` に保存されます。
+`Get-Packages.ps1` は、一時 prefix に対して、ShortName ごとのキャッシュ ディレクトリを指定して `npm install -g` を実行します。
+続けて、同じキャッシュだけを使って別の一時 prefix へ `npm install -g --offline` を実行し、オフラインで導入を再現できることを確認します。
+検証済みのキャッシュ (パッケージのメタデータと tarball) と `npm-cache-manifest.json` を `packages\npm-packages\<ShortName>\` に保存します。
+tarball の整合性は、npm がキャッシュから読み出すときに SHA-512 で検証します。
 キャッシュ不足時は `Get-Packages.ps1 -PackageShortNames <ShortName>` の自動実行を試行し、取得後も不足する場合はエラーで停止します。
-`NpmInstall` 自体は npm レジストリへ直接フォールバックしません。
 
 #### 使用例
 
@@ -719,9 +747,9 @@ npm パッケージは ShortName ごとの依存関係ツリー キャッシュ�
 }
 ```
 
-`Get-Packages.ps1` は一時 prefix に対して `npm install --ignore-scripts --package-lock=true` を実行後、配下の各パッケージを `npm pack` します。
-アーカイブ作成の完了後にマニフェストを書き込むため、未完了のキャッシュは有効と判定されません。
-既存キャッシュは `-Force` 指定時のみ再生成します。
+`Get-Packages.ps1` は一時 prefix に対して、専用のキャッシュ ディレクトリを指定した `npm install -g` を実行し、同じキャッシュからのオフライン導入を確認してからマニフェストを書き込みます。
+作業中のキャッシュは `packages\npm-packages\.staging` に作成し、確認が済んでから既存のキャッシュと置き換えるため、未完了のキャッシュは有効と判定されません。
+定義と一致する既存キャッシュは `-Force` 指定時のみ再生成します。
 
 #### 適用パッケージ
 

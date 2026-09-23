@@ -151,7 +151,7 @@ function Remove-ComponentInstalledFiles {
             }
         }
 
-        # ファイル削除後、残存したルートディレクトリのうち他コンポーネントから参照されていない空ディレクトリを削除します。
+        # ファイル削除後、残存したルートディレクトリのうち他コンポーネントから参照されていないものを削除します。
         # (VersionNormalized テンプレート未解決時や DetectFiles にファイルパスが指定されている場合に対応)
         $sourcePaths = if ($Files.Count -gt 0) { $Files } else {
             if ($PackageConfig.ContainsKey("DetectFiles")) { @($PackageConfig.DetectFiles) } else { @() }
@@ -165,6 +165,16 @@ function Remove-ComponentInstalledFiles {
                     $hasOtherRefs = ($allOtherFiles.Keys |
                         Where-Object { $_ -and $_ -match "^$([regex]::Escape($rd))[\\\/]" } |
                         Measure-Object).Count -gt 0
+                    # マニフェストのファイル一覧で所有関係が記録されている場合は、ファイルが残っていないディレクトリだけを削除します。
+                    # node_modules のようなルートには、利用者が npm -g で導入したパッケージなど、
+                    # どのコンポーネントの記録にもないファイルが残ることがあるためです。
+                    # DetectFiles による削除 (マニフェストを持たないレガシー導入) は所有関係を特定できないため、ディレクトリごと削除します。
+                    if (-not $hasOtherRefs -and $Files.Count -gt 0) {
+                        $hasRemainingFiles = $null -ne (Get-ChildItem -LiteralPath $rdPath -Recurse -File -Force -ErrorAction SilentlyContinue | Select-Object -First 1)
+                        if ($hasRemainingFiles) {
+                            continue
+                        }
+                    }
                     if (-not $hasOtherRefs) {
                         try {
                             Remove-Item -Path $rdPath -Recurse -Force -ErrorAction SilentlyContinue

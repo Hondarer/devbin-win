@@ -231,7 +231,7 @@ packages フォルダー内でアーカイブファイルを検索する際に�
 - `InnoSetup` - innoextract で Inno Setup インストーラを解凍
 - `VSBuildTools` - Visual Studio Build Tools のセットアップ
 - `PipInstall` - python -m pip install でパッケージをインストール
-- `NpmInstall` - 検証済み依存木を npm のオフライン一時 prefix へ展開
+- `NpmInstall` - 保存した npm キャッシュから bin へ npm install -g --offline
 
 #### DownloadUrl
 
@@ -608,8 +608,9 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 
 ### NpmInstall 戦略
 
-検証済みの依存関係ツリーを一時プロジェクトへ `npm install --offline` でインストールし、生成された `node_modules` とコマンド shim を devbin-win のインストール先へマージします。
-オンライン環境では `Get-Packages.ps1` が依存関係ツリーを解決し、導入時は保存済みアーカイブと一時 npm キャッシュのみを使用します。
+devbin-win のインストール先を npm のグローバル prefix として、保存した npm キャッシュから `npm install -g --offline` を実行します。
+アンインストールは `npm uninstall -g` で行い、依存関係の管理は npm に任せます。
+利用者が `npm -g` で追加、削除、更新したパッケージも、Manage-Bin の起動時にメニューの表示へ反映されます (環境変数などは変更されません)。
 
 ```powershell
 @{
@@ -630,24 +631,26 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 **追加パラメーター**:
 - `NpmPackage` (必須): npm パッケージ名
 - `Version` (共通プロパティ): 指定時は `npm install <NpmPackage>@<Version>` として渡す
-- `NpmDependencies` (任意): 本体の依存木とは別に、一緒に取得・導入する npm package spec
+- `NpmDependencies` (任意): 本体と一緒に `npm install -g` で明示的に導入し、アンインストール時に一緒に削除する npm package spec
 - `NpmIgnoreScripts` (任意): `$false` の場合のみ npm lifecycle scripts を許可する。未指定時は `$true`
 - `Browser` (任意): `Edge` を指定すると、導入時に既存 Microsoft Edge を検出してブラウザ関連環境変数を設定する
 
-`Get-Packages.ps1` は各 `NpmInstall` の依存木を次の形式で保存します。
+`ArchivePattern` はカタログの必須項目のため記載しますが、`NpmInstall` では使用しません。
+
+`Get-Packages.ps1` は各 `NpmInstall` のキャッシュを次の形式で保存します。
 
 ```text
 packages/npm-packages/<ShortName>/
-  package-lock.json
   npm-cache-manifest.json
-  archives/*.tgz
+  cache/_cacache/...
 ```
 
-`npm-cache-manifest.json` には、全パッケージのバージョン、アーカイブ パス、ファイル サイズ、および SHA-512 ハッシュ値が記録されます。
-導入時はマニフェスト、lockfile、および全アーカイブを検証し、lockfile の `resolved` と `integrity` をローカル アーカイブに差し替えてから、一時プロジェクトへ `npm install --offline` を実行します。
-依存木は `npm install -g` と同じ shallow レイアウトで保存するため、導入先の共有 `node_modules` では各パッケージが自身の依存を配下に持ち、コンポーネント間で間接依存の版が衝突しません。
-不足または改変が検出された場合は、npm install を開始しません。
-キャッシュ不足時は `Get-Packages.ps1` の自動実行を試行し、取得後も不足する場合はエラーで停止します。
+`cache` は、一時 prefix への `npm install -g` で npm 自身が作成したキャッシュ (パッケージのメタデータと tarball) です。
+保存前に、このキャッシュだけで `npm install -g --offline` を再現できることを確認します。
+`npm-cache-manifest.json` には、本体の版、要求した package spec、導入された各パッケージの版、作成時の npm と Node.js の版が記録されます。
+導入時は、マニフェストが定義 (本体、版、`NpmDependencies`) と一致することを確認してから `npm install -g --offline` を実行します。
+一致しない場合やキャッシュが不足する場合は `Get-Packages.ps1` の自動実行を試行し、取得後も不足する場合はエラーで停止します。
+tarball の整合性は、npm がキャッシュから読み出すときに SHA-512 で検証します。
 PowerShell の `ni` は標準エイリアス `New-Item` と衝突するため、必要な場合はセッション内で `Remove-Item Alias:ni -Force` を実行してください。
 
 ## 新規パッケージの追加手順

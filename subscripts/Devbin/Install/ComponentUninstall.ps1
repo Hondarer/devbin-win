@@ -18,14 +18,14 @@ function Uninstall-Component {
         return $false
     }
 
-    if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $ShortName)) {
+    if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $ShortName -Packages $Packages -InstallDir $InstallDir)) {
         Write-Host "  '$ShortName' はインストールされていません" -ForegroundColor Cyan
         return $true
     }
 
     # 当該コンポーネントに依存している他のコンポーネントを確認します。
     if (-not $Force) {
-        $dependents = Get-Dependents -ShortName $ShortName -Packages $Packages -Manifest $Manifest
+        $dependents = Get-Dependents -ShortName $ShortName -Packages $Packages -Manifest $Manifest -InstallDir $InstallDir
         if ($dependents.Count -gt 0) {
             $depNames = $dependents | ForEach-Object {
                 $d = Get-PackageByShortName -ShortName $_ -Packages $Packages
@@ -47,40 +47,29 @@ function Uninstall-Component {
     Write-Host "=== $($pkg.Name) をアンインストール中 ==="
     Write-Host ""
 
-    if ($pkg.ExtractStrategy -eq "NpmInstall") {
-        $npmPackage = if ($pkg.ContainsKey("NpmPackage")) { [string]$pkg.NpmPackage } else { "" }
-        $npmCmd = Join-Path $InstallDir "npm.cmd"
-
-        if (-not [string]::IsNullOrWhiteSpace($npmPackage) -and (Test-Path $npmCmd)) {
-            Write-Host "  npm uninstall を実行中: $npmPackage"
-            & $npmCmd uninstall -g --prefix $InstallDir $npmPackage
-            if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
-                Write-Host "    Warning: npm uninstall exited with code $LASTEXITCODE" -ForegroundColor Yellow
-            }
-        } else {
-            Write-Host "  npm uninstall をスキップしました (npm または NpmPackage が見つかりません)" -ForegroundColor Yellow
-        }
-    }
-
-    # 見出し直後の最初の手順には空行を入れません。
-    if ($pkg.ExtractStrategy -eq "NpmInstall") {
-        Write-Host ""
-    }
-    Write-Host "  ファイルを削除中..."
-
-    # マニフェストに記録されたファイル一覧に基づいて配置ファイルを削除します。
     $componentData = $Manifest.components[$ShortName]
-    $files = if ($componentData -and $componentData.ContainsKey("files")) {
-        @($componentData.files) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    if ($pkg.ExtractStrategy -eq "NpmInstall") {
+        # 利用者の npm uninstall -g と同じ操作です。本体と NpmDependencies を削除し、依存関係の整理は npm に委ねます。
+        Uninstall-NpmGlobalPackages `
+            -NpmCommandPath (Join-Path $InstallDir "npm.cmd") `
+            -BinDir $InstallDir `
+            -PackageNames @(Get-NpmRequestedPackageNames -PackageConfig $pkg) | Out-Null
     } else {
-        @()
+        Write-Host "  ファイルを削除中..."
+
+        # マニフェストに記録されたファイル一覧に基づいて配置ファイルを削除します。
+        $files = if ($componentData -and $componentData.ContainsKey("files")) {
+            @($componentData.files) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        } else {
+            @()
+        }
+        Remove-ComponentInstalledFiles `
+            -ShortName $ShortName `
+            -PackageConfig $pkg `
+            -InstallDir $InstallDir `
+            -Manifest $Manifest `
+            -Files $files
     }
-    Remove-ComponentInstalledFiles `
-        -ShortName $ShortName `
-        -PackageConfig $pkg `
-        -InstallDir $InstallDir `
-        -Manifest $Manifest `
-        -Files $files
 
     # コンポーネントに関連する環境変数を削除します。
     $envVarsConfig = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }
@@ -172,10 +161,10 @@ function Remove-OrphanDependencies {
         if (-not $isHidden) { continue }
 
         # 依存先パッケージがインストール済みであるか確認します。
-        if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $dep)) { continue }
+        if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $dep -Packages $Packages -InstallDir $InstallDir)) { continue }
 
         # 当該依存先を参照している他のコンポーネントが存在しないか確認します。
-        $remainingDependents = Get-Dependents -ShortName $dep -Packages $Packages -Manifest $Manifest
+        $remainingDependents = Get-Dependents -ShortName $dep -Packages $Packages -Manifest $Manifest -InstallDir $InstallDir
         if ($remainingDependents.Count -eq 0) {
             Write-Host ""
             Write-Host "  孤立した依存パッケージを削除: $($depPkg.Name)" -ForegroundColor Cyan

@@ -124,12 +124,23 @@ function Remove-ComponentFromManifest {
     }
 }
 
-# マニフェスト内に該当コンポーネントが登録されているかを検証
+# 該当コンポーネントがインストールされているかを検証
+# マニフェストは devbin が最後に操作した結果です。NpmInstall コンポーネントは利用者が npm -g で追加・削除できるため、
+# Packages と InstallDir を渡した場合は、マニフェストではなく npm のグローバル ツリーの実物で判定します。
 function Test-ComponentInstalled {
     param(
         [hashtable]$Manifest,
-        [string]$ShortName
+        [string]$ShortName,
+        [array]$Packages = @(),
+        [string]$InstallDir = ""
     )
+
+    if (-not [string]::IsNullOrWhiteSpace($InstallDir) -and @($Packages).Count -gt 0) {
+        $pkg = Get-PackageByShortName -ShortName $ShortName -Packages $Packages
+        if ($pkg -and [string]$pkg.ExtractStrategy -eq "NpmInstall" -and $pkg.ContainsKey("NpmPackage")) {
+            return -not [string]::IsNullOrWhiteSpace((Get-NpmGlobalPackageVersion -BinDir $InstallDir -PackageName ([string]$pkg.NpmPackage)))
+        }
+    }
 
     return $Manifest.components.ContainsKey($ShortName)
 }

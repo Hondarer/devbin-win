@@ -94,7 +94,7 @@ function New-ComponentChangePlan {
     # 残存するパッケージが必要としている依存先は削除対象から除外します。
     $uninstallShortNames = @($toUninstall | ForEach-Object { [string]$_.ShortName })
     foreach ($item in $toUninstall) {
-        $dependents = @(Get-Dependents -ShortName $item.ShortName -Packages $Packages -Manifest $Manifest)
+        $dependents = @(Get-Dependents -ShortName $item.ShortName -Packages $Packages -Manifest $Manifest -InstallDir $InstallDir)
         # 新規インストール予定およびレガシーコンポーネントはマニフェストに記録されていないため、選択状態も併せて検証します。
         $dependents += @($Items | Where-Object {
             $Checked[$_.ShortName] -and $_.ContainsKey("DependsOn") -and
@@ -148,7 +148,8 @@ function New-ComponentChangePlan {
         $orderedShortNames = @(Get-UninstallOrder `
             -ShortNames @($toUninstall | ForEach-Object { $_.ShortName }) `
             -Packages $Packages `
-            -Manifest $Manifest)
+            -Manifest $Manifest `
+            -InstallDir $InstallDir)
 
         foreach ($shortName in $orderedShortNames) {
             $item = $toUninstall | Where-Object { $_.ShortName -eq $shortName } | Select-Object -First 1

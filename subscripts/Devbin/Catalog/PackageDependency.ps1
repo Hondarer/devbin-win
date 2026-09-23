@@ -83,7 +83,9 @@ function Get-Dependents {
     param(
         [string]$ShortName,
         [array]$Packages,
-        [hashtable]$Manifest
+        [hashtable]$Manifest,
+        # 指定した場合、NpmInstall コンポーネントは npm のグローバル ツリーの実物で導入済みかを判定します。
+        [string]$InstallDir = ""
     )
 
     $dependents = @()
@@ -94,7 +96,7 @@ function Get-Dependents {
             continue
         }
         # インストール済みコンポーネントのみを対象とする
-        if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $pkg.ShortName)) {
+        if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $pkg.ShortName -Packages $Packages -InstallDir $InstallDir)) {
             continue
         }
 
@@ -114,7 +116,8 @@ function Get-UninstallOrder {
     param(
         [string[]]$ShortNames,
         [array]$Packages,
-        [hashtable]$Manifest
+        [hashtable]$Manifest,
+        [string]$InstallDir = ""
     )
 
     $remaining = [System.Collections.Generic.List[string]]::new()
@@ -133,7 +136,7 @@ function Get-UninstallOrder {
         $progress = $false
         for ($idx = $remaining.Count - 1; $idx -ge 0; $idx--) {
             $name = $remaining[$idx]
-            $dependents = @(Get-Dependents -ShortName $name -Packages $Packages -Manifest $Manifest)
+            $dependents = @(Get-Dependents -ShortName $name -Packages $Packages -Manifest $Manifest -InstallDir $InstallDir)
             $blockedBy = @($dependents | Where-Object { $remaining -contains $_ })
             if ($blockedBy.Count -eq 0) {
                 $ordered += $name

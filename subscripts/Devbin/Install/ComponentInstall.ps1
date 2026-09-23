@@ -22,7 +22,7 @@ function Install-Component {
     }
 
     # インストール済みの場合は処理をスキップします。
-    if (Test-ComponentInstalled -Manifest $Manifest -ShortName $ShortName) {
+    if (Test-ComponentInstalled -Manifest $Manifest -ShortName $ShortName -Packages $Packages -InstallDir $InstallDir) {
         Write-Host "  '$ShortName' は既にインストール済みです" -ForegroundColor Cyan
         return $true
     }
@@ -37,7 +37,7 @@ function Install-Component {
                 Write-Host "Error: 循環依存を検出しました: $ShortName -> $dep" -ForegroundColor Red
                 return $false
             }
-            if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $dep)) {
+            if (-not (Test-ComponentInstalled -Manifest $Manifest -ShortName $dep -Packages $Packages -InstallDir $InstallDir)) {
                 Write-Host ""
                 Write-Host "  依存コンポーネントをインストール: $dep" -ForegroundColor Cyan
                 $depResult = Install-Component `
@@ -101,8 +101,11 @@ function Install-Component {
     }
     $archiveFile = $source.ArchiveFile
 
+    # npm install -g は npm がグローバル ツリーを管理するため、ファイルの差分は取りません。
+    $isNpmInstall = ($pkg.ExtractStrategy -eq "NpmInstall")
+
     # インストール前のディレクトリスナップショットを取得します。
-    $snapshotBefore = Get-DirectorySnapshot -InstallDir $InstallDir
+    $snapshotBefore = if ($isNpmInstall) { $null } else { Get-DirectorySnapshot -InstallDir $InstallDir }
 
     # 抽出戦略を実行します。
     $result = Invoke-ExtractStrategy `
@@ -118,13 +121,18 @@ function Install-Component {
         return $false
     }
 
-    # インストール前後のスナップショット差分から配置されたファイル一覧を算出します。
-    $installedFiles = Get-FileSnapshotDiff -InstallDir $InstallDir -Before $snapshotBefore
+    if ($isNpmInstall) {
+        # 要求したパッケージのディレクトリだけを所有パスとして記録します。削除は npm uninstall -g で行います。
+        $installedFiles = @(Get-NpmComponentOwnedPaths -BinDir $InstallDir -PackageConfig $pkg)
+    } else {
+        # インストール前後のスナップショット差分から配置されたファイル一覧を算出します。
+        $installedFiles = Get-FileSnapshotDiff -InstallDir $InstallDir -Before $snapshotBefore
 
-    # TargetDirectory 指定時はディレクトリ名を代表エントリとして記録します。
-    $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }
-    if ($targetDir -and (Test-Path (Join-Path $InstallDir $targetDir))) {
-        $installedFiles = @($targetDir)
+        # TargetDirectory 指定時はディレクトリ名を代表エントリとして記録します。
+        $targetDir = if ($pkg.ContainsKey("TargetDirectory")) { $pkg.TargetDirectory } else { $null }
+        if ($targetDir -and (Test-Path (Join-Path $InstallDir $targetDir))) {
+            $installedFiles = @($targetDir)
+        }
     }
 
     $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
@@ -156,16 +164,22 @@ function Install-Component {
     }
 
     # インストール情報をマニフェストに記録します。
-    $version = if (Get-Command Resolve-PackageVersion -ErrorAction SilentlyContinue) {
-        Resolve-PackageVersion -PackageConfig $pkg -PackagesDir $packagesDir -ArchiveFile $(if ($archiveFile) { $archiveFile } else { "" })
+    if ($isNpmInstall) {
+        $version = Get-NpmGlobalPackageVersion -BinDir $InstallDir -PackageName ([string]$pkg.NpmPackage)
+        $archiveFileName = "(npm install -g)"
     } else {
-        if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
+        $version = if (Get-Command Resolve-PackageVersion -ErrorAction SilentlyContinue) {
+            Resolve-PackageVersion -PackageConfig $pkg -PackagesDir $packagesDir -ArchiveFile $(if ($archiveFile) { $archiveFile } else { "" })
+        } else {
+            if ($pkg.ContainsKey("Version")) { $pkg.Version } else { "" }
+        }
+        $archiveFileName = Split-Path $(if ($archiveFile) { $archiveFile } else { "(no-archive)" }) -Leaf
     }
     Add-ComponentToManifest `
         -Manifest $Manifest `
         -ShortName $ShortName `
         -Version $version `
-        -ArchiveFile (Split-Path $(if ($archiveFile) { $archiveFile } else { "(no-archive)" }) -Leaf) `
+        -ArchiveFile $archiveFileName `
         -Files $installedFiles `
         -PathDirs $pathDirs `
         -EnvVars $appliedEnvVars
@@ -224,19 +238,23 @@ function Update-Component {
     Write-Host "  PATH を更新中..."
     Sync-ComponentManagerPath -InstallDir $InstallDir -Packages $Packages -Manifest $Manifest
 
-    # 上書き展開だと Node 付属 npm と既存 node_modules が混ざり、直後の npm cache add が失敗します。
-    $hasCleanupPatterns = $pkg.ContainsKey("CleanupPatterns")
-    $hasTargetDirectory = $pkg.ContainsKey("TargetDirectory")
-    if ($hasCleanupPatterns -or $hasTargetDirectory -or $previousFiles.Count -gt 0) {
-        Write-Host ""
-        Write-Host "  既存のファイルを削除中..."
+    # npm install -g は既存のパッケージを npm 自身が置き換えるため、先に削除しません。
+    # 先に削除すると、導入に失敗したときにパッケージが失われます。
+    if ($pkg.ExtractStrategy -ne "NpmInstall") {
+        # 上書き展開すると、Node.js 付属の npm と既存の node_modules が混ざり、直後の npm の実行が失敗します。
+        $hasCleanupPatterns = $pkg.ContainsKey("CleanupPatterns")
+        $hasTargetDirectory = $pkg.ContainsKey("TargetDirectory")
+        if ($hasCleanupPatterns -or $hasTargetDirectory -or $previousFiles.Count -gt 0) {
+            Write-Host ""
+            Write-Host "  既存のファイルを削除中..."
+        }
+        Remove-ComponentInstalledFiles `
+            -ShortName $ShortName `
+            -PackageConfig $pkg `
+            -InstallDir $InstallDir `
+            -Manifest $Manifest `
+            -Files $previousFiles
     }
-    Remove-ComponentInstalledFiles `
-        -ShortName $ShortName `
-        -PackageConfig $pkg `
-        -InstallDir $InstallDir `
-        -Manifest $Manifest `
-        -Files $previousFiles
 
     # コンポーネントを再インストールします。
     $result = Install-Component `

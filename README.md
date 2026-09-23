@@ -57,15 +57,16 @@ from [textlint/textlint](https://github.com/textlint/textlint)
 
 ## npm パッケージのオフライン準備
 
-オンライン環境で Node.js/npm を使用して、依存ツリーを準備します。
+オンライン環境で Node.js/npm を使用して、npm のキャッシュを準備します。
 
 ```powershell
 .\subscripts\Get-Packages.ps1
 ```
 
-`packages/npm-packages/<ShortName>/` に `package-lock.json`、`npm-cache-manifest.json`、依存パッケージの `.tgz` が生成されます。
+`packages/npm-packages/<ShortName>/` に、`npm install -g` で作成した npm のキャッシュ (`cache`) と `npm-cache-manifest.json` が生成されます。
 生成後は `packages` フォルダーを含めてリポジトリ全体をオフライン環境へコピーし、`Manage-Bin.cmd` を実行してください。
-導入時の npm install は検証済みのローカル キャッシュに対して `--offline` で実行されます。
+導入は `bin` を npm のグローバル prefix とした `npm install -g --offline` で行うため、devbin-win の npm で利用者が直接実行する `npm -g` 操作と、Manage-Bin による操作結果は同じ状態になります。
+利用者が `npm -g` で追加、削除、更新したパッケージも、次回の Manage-Bin 起動時にメニューの表示へ反映されます (環境変数などは変更されません)。
 
 ### pandoc
 

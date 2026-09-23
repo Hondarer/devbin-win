@@ -146,12 +146,12 @@ Describe "Get-ManagedPackageKeepRelativePaths / Remove-UnreferencedPackageFiles"
         $dir = New-TestDirectory
         try {
             $packagesDir = Join-Path $dir "packages"
-            New-Item -ItemType Directory -Path (Join-Path $packagesDir "npm-packages\pnpm\archives") -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $packagesDir "npm-packages\pnpm\cache\_cacache\index-v5") -Force | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $packagesDir "pip-packages") -Force | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $packagesDir "vsbt") -Force | Out-Null
             New-Item -ItemType File -Path (Join-Path $packagesDir "OFFLINE") -Force | Out-Null
             New-Item -ItemType File -Path (Join-Path $packagesDir "tool-2.0.0.zip") -Force | Out-Null
-            New-Item -ItemType File -Path (Join-Path $packagesDir "npm-packages\pnpm\package-lock.json") -Force | Out-Null
+            New-Item -ItemType File -Path (Join-Path $packagesDir "npm-packages\pnpm\cache\_cacache\index-v5\entry") -Force | Out-Null
             New-Item -ItemType File -Path (Join-Path $packagesDir "pip-packages\pip-26.2.1-py3-none-any.whl") -Force | Out-Null
             New-Item -ItemType File -Path (Join-Path $packagesDir "vsbt\channel_release.json") -Force | Out-Null
 
@@ -165,7 +165,7 @@ Describe "Get-ManagedPackageKeepRelativePaths / Remove-UnreferencedPackageFiles"
             $keep = @(Get-ManagedPackageKeepRelativePaths -Packages $packages -PackagesDir $packagesDir)
             ($keep -contains "OFFLINE") | Should Be $true
             ($keep -contains "tool-2.0.0.zip") | Should Be $true
-            ($keep -contains "npm-packages\pnpm\package-lock.json") | Should Be $true
+            ($keep -contains "npm-packages\pnpm\cache\_cacache\index-v5\entry") | Should Be $true
             ($keep -contains "pip-packages\pip-26.2.1-py3-none-any.whl") | Should Be $true
             ($keep -contains "vsbt\channel_release.json") | Should Be $true
         } finally {
@@ -599,7 +599,7 @@ Describe "取得処理の一本化" {
         $npmDir = Join-Path $subscriptsDir "Devbin\Packages\Npm"
         $files = @(Get-ChildItem $npmDir -Filter "*.ps1" | ForEach-Object { $_.Name } | Sort-Object)
 
-        ($files -join ",") | Should Be "NpmCacheBuild.ps1,NpmCacheLayout.ps1,NpmCacheVerify.ps1,NpmOfflineInstall.ps1"
+        ($files -join ",") | Should Be "NpmCacheBuild.ps1,NpmCacheLayout.ps1,NpmCacheVerify.ps1,NpmGlobalPackages.ps1"
         (Test-Path (Join-Path $subscriptsDir "Setup-NpmCache.psm1")) | Should Be $false
     }
 }
