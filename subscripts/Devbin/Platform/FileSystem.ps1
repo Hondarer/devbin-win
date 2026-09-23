@@ -16,6 +16,11 @@ function Convert-ToLongPath {
         }
     }
 
+    # UNC パス (\\server\share) は \\?\UNC\server\share の形式に変換
+    if ($Path.StartsWith("\\")) {
+        return "\\?\UNC\" + $Path.Substring(2)
+    }
+
     return "\\?\$Path"
 }
 
