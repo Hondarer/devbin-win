@@ -263,6 +263,104 @@ Describe "Initialize-ConsoleInputType" {
     }
 }
 
+Describe "メニューのマウスクリック" {
+
+    It "左ボタンの新しい押下とダブルクリックを検出し、解放とドラッグは無視する" {
+        InModuleScope Devbin {
+            $inputState = @{ LeftButtonDown = $false }
+            $leftPress = [pscustomobject]@{ dwEventFlags = 0; dwButtonState = [uint32]1 }
+            $leftMove = [pscustomobject]@{ dwEventFlags = 1; dwButtonState = [uint32]1 }
+            $leftRelease = [pscustomobject]@{ dwEventFlags = 0; dwButtonState = [uint32]0 }
+            $doubleClick = [pscustomobject]@{ dwEventFlags = 2; dwButtonState = [uint32]1 }
+
+            (Test-MenuLeftClickPress -InputModeState $inputState -MouseEvent $leftPress) | Should Be $true
+            (Test-MenuLeftClickPress -InputModeState $inputState -MouseEvent $leftMove) | Should Be $false
+            (Test-MenuLeftClickPress -InputModeState $inputState -MouseEvent $leftRelease) | Should Be $false
+            $inputState.LeftButtonDown | Should Be $false
+            (Test-MenuLeftClickPress -InputModeState $inputState -MouseEvent $doubleClick) | Should Be $true
+        }
+    }
+
+    It "表示中の別行をクリックすると選択行だけを移動する" {
+        InModuleScope Devbin {
+            Mock Move-MenuCursor {
+                param($State, $Delta)
+                $State.CursorIndex += $Delta
+                return "continue"
+            }
+            Mock Invoke-MenuCursorToggle { throw "選択状態は切り替えない" }
+
+            $state = @{
+                Items = @(@{ ShortName = "a" }, @{ ShortName = "b" }, @{ ShortName = "c" }, @{ ShortName = "d" })
+                CursorIndex = 2
+                ViewportTop = 1
+                ViewportSize = 3
+            }
+            $mouseEvent = [pscustomobject]@{
+                dwEventFlags = 0
+                dwButtonState = [uint32]1
+                dwMousePosition = [pscustomobject]@{ Y = 7 }
+            }
+
+            (Handle-MouseInput -State $state -MouseEvent $mouseEvent) | Should Be "continue"
+            $state.CursorIndex | Should Be 3
+        }
+    }
+
+    It "現在の選択行をクリックすると Space と共通の切り替え処理を呼ぶ" {
+        InModuleScope Devbin {
+            Mock Invoke-MenuCursorToggle {
+                $State.ToggleCalled = $true
+                return "continue"
+            }
+            Mock Move-MenuCursor { throw "選択行は移動しない" }
+
+            $state = @{
+                Items = @(@{ ShortName = "a" }, @{ ShortName = "b" })
+                CursorIndex = 1
+                ViewportTop = 0
+                ViewportSize = 2
+                ToggleCalled = $false
+            }
+            $mouseEvent = [pscustomobject]@{
+                dwEventFlags = 0
+                dwButtonState = [uint32]1
+                dwMousePosition = [pscustomobject]@{ Y = 6 }
+            }
+
+            (Handle-MouseInput -State $state -MouseEvent $mouseEvent) | Should Be "continue"
+            $state.ToggleCalled | Should Be $true
+        }
+    }
+
+    It "一覧外のクリックと右クリックは無視する" {
+        InModuleScope Devbin {
+            Mock Move-MenuCursor { throw "項目は移動しない" }
+            Mock Invoke-MenuCursorToggle { throw "選択状態は切り替えない" }
+
+            $state = @{
+                Items = @(@{ ShortName = "a" })
+                CursorIndex = 0
+                ViewportTop = 0
+                ViewportSize = 1
+            }
+            $outsideClick = [pscustomobject]@{
+                dwEventFlags = 0
+                dwButtonState = [uint32]1
+                dwMousePosition = [pscustomobject]@{ Y = 4 }
+            }
+            $rightClick = [pscustomobject]@{
+                dwEventFlags = 0
+                dwButtonState = [uint32]2
+                dwMousePosition = [pscustomobject]@{ Y = 5 }
+            }
+
+            (Handle-MouseInput -State $state -MouseEvent $outsideClick) | Should Be "continue"
+            (Handle-MouseInput -State $state -MouseEvent $rightClick) | Should Be "continue"
+        }
+    }
+}
+
 Describe "メニューの分割" {
 
     $subscriptsDir = Get-DevbinSubscriptsDir

@@ -96,7 +96,7 @@ function Render-Footer {
     # キーバインド + 選択数
     [Console]::SetCursorPosition(0, $footerStart + 2)
     $checkedCount = ($State.Checked.Values | Where-Object { $_ }).Count
-    [Console]::Write((" ↑↓/Wheel 移動 | Space 選択切り替え | A 全選択 | N 全解除 | Enter 適用 | U 完全アンインストール | Q 終了 | 選択: $checkedCount / $(@(Get-MenuItemList -State $State).Count)").PadRight($width))
+    [Console]::Write((" ↑↓/Wheel/Click:移動 | Space/同じ行Click:切替 | A:全選択 N:全解除 Enter:適用 U:削除 Q:終了 | 選択: $checkedCount / $(@(Get-MenuItemList -State $State).Count)").PadRight($width))
 
     [Console]::ResetColor()
 }

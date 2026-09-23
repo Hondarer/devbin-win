@@ -1,6 +1,32 @@
 ﻿# MenuLoop.ps1
 # キー入力ディスパッチおよびメニューメインループ
 
+# カーソル行の選択状態を切り替え、ビューポート内の項目と件数を再描画します。
+function Invoke-MenuCursorToggle {
+    param([hashtable]$State)
+
+    Toggle-CheckedItem -State $State -Index $State.CursorIndex
+    # 依存関係の連動選択があるため、ビューポート内の全項目行を再描画します。
+    $items = @(Get-MenuItemList -State $State)
+    $viewEnd = [Math]::Min($items.Count, $State.ViewportTop + $State.ViewportSize)
+    for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
+        $item = $items[$i]
+        if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.ShortName)) {
+            continue
+        }
+        Render-MenuLine -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) -Number ($i + 1) `
+            -Item $item -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $item) `
+            -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $item) `
+            -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `
+            -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $item) `
+            -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") `
+            -IsCursor ($i -eq $State.CursorIndex) `
+            -Packages $State.Packages
+    }
+    Render-Footer -State $State
+    return "continue"
+}
+
 # キー入力を処理します (戻り値: "continue" または "quit")。
 function Handle-KeyInput {
     param(
@@ -19,25 +45,7 @@ function Handle-KeyInput {
         }
 
         "Spacebar" {
-            Toggle-CheckedItem -State $State -Index $State.CursorIndex
-            # 依存関係の連動選択があるため、ビューポート内の全項目行を再描画します。
-            $items = @(Get-MenuItemList -State $State)
-            $viewEnd = [Math]::Min($items.Count, $State.ViewportTop + $State.ViewportSize)
-            for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
-                $item = $items[$i]
-                if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.ShortName)) {
-                    continue
-                }
-                Render-MenuLine -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) -Number ($i + 1) `
-                    -Item $item -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $item) `
-                    -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $item) `
-                    -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `
-                    -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $item) `
-                    -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") `
-                    -IsCursor ($i -eq $State.CursorIndex) `
-                    -Packages $State.Packages
-            }
-            Render-Footer -State $State
+            return Invoke-MenuCursorToggle -State $State
         }
 
         "Enter" {

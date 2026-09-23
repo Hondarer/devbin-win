@@ -5,6 +5,8 @@ $script:INPUT_RECORD_KEY_EVENT = 0x0001
 $script:INPUT_RECORD_MOUSE_EVENT = 0x0002
 $script:INPUT_RECORD_WINDOW_BUFFER_SIZE_EVENT = 0x0004
 $script:MOUSE_WHEELED_EVENT = 0x0004
+$script:MOUSE_DOUBLE_CLICK_EVENT = 0x0002
+$script:FROM_LEFT_1ST_BUTTON_PRESSED = 0x0001
 $script:SHIFT_PRESSED = 0x0010
 $script:LEFT_ALT_PRESSED = 0x0002
 $script:RIGHT_ALT_PRESSED = 0x0001
@@ -144,7 +146,7 @@ function Enable-ConsoleMouseInput {
     }
 
     [Devbin.ConsoleInputNative]::FlushConsoleInputBuffer($inputHandle) | Out-Null
-    return @{ Enabled = $true; Handle = $inputHandle; OriginalMode = $originalMode }
+    return @{ Enabled = $true; Handle = $inputHandle; OriginalMode = $originalMode; LeftButtonDown = $false }
 }
 
 function Restore-ConsoleInputMode {
@@ -180,10 +182,13 @@ function Read-MenuInput {
             }
 
             $script:INPUT_RECORD_MOUSE_EVENT {
-                if ($record.MouseEvent.dwEventFlags -ne $script:MOUSE_WHEELED_EVENT) {
-                    continue
+                if ($record.MouseEvent.dwEventFlags -eq $script:MOUSE_WHEELED_EVENT) {
+                    return @{ Kind = "Mouse"; MouseEvent = $record.MouseEvent }
                 }
-                return @{ Kind = "Mouse"; MouseEvent = $record.MouseEvent }
+                if (Test-MenuLeftClickPress -InputModeState $InputModeState -MouseEvent $record.MouseEvent) {
+                    return @{ Kind = "Mouse"; MouseEvent = $record.MouseEvent }
+                }
+                continue
             }
 
             $script:INPUT_RECORD_WINDOW_BUFFER_SIZE_EVENT {
@@ -193,13 +198,57 @@ function Read-MenuInput {
     }
 }
 
+# 左ボタンの新しい押下のみをクリックとして扱い、押し続けた移動をクリックにしません。
+function Test-MenuLeftClickPress {
+    param(
+        [hashtable]$InputModeState,
+        $MouseEvent
+    )
+
+    $leftButtonDown = (($MouseEvent.dwButtonState -band $script:FROM_LEFT_1ST_BUTTON_PRESSED) -ne 0)
+    $wasLeftButtonDown = [bool]$InputModeState.LeftButtonDown
+    $InputModeState.LeftButtonDown = $leftButtonDown
+
+    if ($MouseEvent.dwEventFlags -eq $script:MOUSE_DOUBLE_CLICK_EVENT) {
+        return $leftButtonDown
+    }
+    if ($MouseEvent.dwEventFlags -ne 0) {
+        return $false
+    }
+
+    return $leftButtonDown -and -not $wasLeftButtonDown
+}
+
 function Handle-MouseInput {
     param(
         [hashtable]$State,
         $MouseEvent
     )
 
-    if ($MouseEvent.dwEventFlags -ne $script:MOUSE_WHEELED_EVENT) {
+    if ($MouseEvent.dwEventFlags -eq $script:MOUSE_WHEELED_EVENT) {
+        $menuTop = $script:HEADER_ROWS
+        $menuBottom = $script:HEADER_ROWS + $State.ViewportSize - 1
+        $mouseRow = [int]$MouseEvent.dwMousePosition.Y
+        if ($mouseRow -lt $menuTop -or $mouseRow -gt $menuBottom) {
+            return "continue"
+        }
+
+        $wheelDeltaBits = [int](($MouseEvent.dwButtonState -shr 16) -band 0xFFFF)
+        $wheelDelta = if ($wheelDeltaBits -ge 0x8000) { $wheelDeltaBits - 0x10000 } else { $wheelDeltaBits }
+        if ($wheelDelta -eq 0) {
+            return "continue"
+        }
+
+        if ($wheelDelta -gt 0) {
+            return Move-MenuCursor -State $State -Delta -1
+        }
+        return Move-MenuCursor -State $State -Delta 1
+    }
+
+    if ($MouseEvent.dwEventFlags -ne 0 -and $MouseEvent.dwEventFlags -ne $script:MOUSE_DOUBLE_CLICK_EVENT) {
+        return "continue"
+    }
+    if (($MouseEvent.dwButtonState -band $script:FROM_LEFT_1ST_BUTTON_PRESSED) -eq 0) {
         return "continue"
     }
 
@@ -210,15 +259,17 @@ function Handle-MouseInput {
         return "continue"
     }
 
-    $wheelDeltaBits = [int](($MouseEvent.dwButtonState -shr 16) -band 0xFFFF)
-    $wheelDelta = if ($wheelDeltaBits -ge 0x8000) { $wheelDeltaBits - 0x10000 } else { $wheelDeltaBits }
-    if ($wheelDelta -eq 0) {
+    $targetIndex = $State.ViewportTop + $mouseRow - $menuTop
+    $items = @(Get-MenuItemList -State $State)
+    if ($targetIndex -lt 0 -or $targetIndex -ge $items.Count) {
+        return "continue"
+    }
+    if ($null -eq $items[$targetIndex] -or [string]::IsNullOrWhiteSpace([string]$items[$targetIndex].ShortName)) {
         return "continue"
     }
 
-    if ($wheelDelta -gt 0) {
-        return Move-MenuCursor -State $State -Delta -1
+    if ($targetIndex -eq $State.CursorIndex) {
+        return Invoke-MenuCursorToggle -State $State
     }
-
-    return Move-MenuCursor -State $State -Delta 1
+    return Move-MenuCursor -State $State -Delta ($targetIndex - $State.CursorIndex)
 }
