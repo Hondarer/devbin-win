@@ -49,7 +49,11 @@ function Save-NpmPackageCache {
         $env:PUPPETEER_SKIP_DOWNLOAD = "1"
         $packageSpecs = @(Get-NpmPackageSpecs -PackageConfig $PackageConfig)
         Write-Host "  Installing $($packageSpecs -join ', ') into a temporary project for packing..."
-        $installArgs = @("install", "--no-audit", "--no-fund", "--package-lock=true", "--prefix", $tempProject)
+        # 直接依存だけを最上位に置き、間接依存は各パッケージ配下へ入れ子にします (npm install -g と同じ配置)。
+        # 導入先の node_modules は複数コンポーネントで共有するため、hoisted レイアウトでは間接依存の版が上書きで衝突します。
+        # オフライン導入は lockfile の配置をそのまま再現するため、配置はキャッシュ作成時に確定させます。
+        # see: https://docs.npmjs.com/cli/v11/using-npm/config#install-strategy
+        $installArgs = @("install", "--no-audit", "--no-fund", "--package-lock=true", "--install-strategy=shallow", "--prefix", $tempProject)
         if ($ignoreScripts) {
             $installArgs += "--ignore-scripts"
         }

@@ -690,7 +690,12 @@ npm パッケージは ShortName ごとの依存関係ツリー キャッシュ�
 3. manifest に記録された全 `.tgz` を一時 npm cache へ登録
 4. lockfile の package archive 参照をローカル tgz に置き換えた一時プロジェクトを作成
 5. 一時プロジェクトへ `npm install --offline` し、導入後に本体の package name/version を検証
-6. 一時プロジェクトの `node_modules` と command shim を `$BinDir` へマージ
+6. 一時プロジェクトの `node_modules` の最上位パッケージを、パッケージ単位で `$BinDir\node_modules` へミラー
+7. `node_modules\.bin` の command shim を、参照先を `node_modules\<パッケージ>` へ書き換えて `$BinDir` 直下へ配置
+
+依存関係ツリーは、`npm install -g` と同じ shallow レイアウト (直接依存だけを最上位に置き、間接依存を各パッケージ配下へ入れ子にする配置) で扱います。
+`$BinDir\node_modules` は複数のコンポーネントで共有するため、hoisted レイアウトのままマージすると、間接依存の版が後から導入したコンポーネントで上書きされます。
+オフライン導入は lockfile の配置をそのまま再現するので、配置は `Get-Packages.ps1` によるキャッシュ作成時に `--install-strategy=shallow` で確定させます。
 
 #### オフライン対応
 

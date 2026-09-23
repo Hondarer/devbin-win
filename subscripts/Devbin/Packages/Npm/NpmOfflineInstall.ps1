@@ -309,6 +309,39 @@ function New-NpmOfflineInstallProject {
     [IO.File]::WriteAllText((Join-Path $ProjectDirectory $script:NpmCacheLockName), $localLockJson)
 }
 
+function Get-NpmTopLevelPackageNames {
+    param([Parameter(Mandatory)][string]$NodeModulesDirectory)
+
+    $names = @()
+    if (-not (Test-Path -LiteralPath $NodeModulesDirectory -PathType Container)) {
+        return $names
+    }
+
+    # .bin や .package-lock.json など、先頭が . の項目はパッケージではありません。
+    foreach ($entry in @(Get-ChildItem -LiteralPath $NodeModulesDirectory -Directory -Force | Where-Object { -not $_.Name.StartsWith('.') })) {
+        if ($entry.Name.StartsWith('@')) {
+            foreach ($scopedEntry in @(Get-ChildItem -LiteralPath $entry.FullName -Directory -Force | Where-Object { -not $_.Name.StartsWith('.') })) {
+                $names += "$($entry.Name)/$($scopedEntry.Name)"
+            }
+            continue
+        }
+        $names += $entry.Name
+    }
+
+    return $names
+}
+
+function ConvertTo-NpmPrefixShimContent {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Content)
+
+    # node_modules\.bin 用の shim は、パッケージを 1 階層上 (..) から参照します。
+    # prefix 直下へ置く shim は npm install -g と同じく node_modules 配下を参照するよう書き換えます。
+    # see: https://github.com/npm/cmd-shim
+    $converted = $Content.Replace('%dp0%\..\', '%dp0%\node_modules\')
+    $converted = $converted.Replace('$basedir/../', '$basedir/node_modules/')
+    return $converted
+}
+
 function Copy-NpmOfflineInstallToPrefix {
     param(
         [Parameter(Mandatory)][string]$ProjectDirectory,
@@ -324,19 +357,27 @@ function Copy-NpmOfflineInstallToPrefix {
         throw 'robocopy.exe is required to copy the offline npm installation'
     }
 
-    # グローバルな npm インベントリファイルを上書きすることなく、パッケージディレクトリをマージします。
+    # shallow レイアウトの最上位は、直接依存 (と、その peer 依存) だけです。間接依存は各パッケージ配下に入れ子で含まれます。
+    # 共有の node_modules に旧版のファイルが混ざらないよう、パッケージ単位で配置先をミラーします。
     # robocopy の終了コード 0 から 7 は正常終了 (ファイルコピー成功を含む) を示します。
-    & $robocopy.Source $sourceNodeModules $targetNodeModules '/E' '/XD' (Join-Path $sourceNodeModules '.bin') '/XF' '.package-lock.json' '/NFL' '/NDL' '/NJH' '/NJS' '/NP' | Out-Null
-    if ($LASTEXITCODE -gt 7) {
-        throw "robocopy failed for npm node_modules (exit code: $LASTEXITCODE)"
+    foreach ($packageName in @(Get-NpmTopLevelPackageNames -NodeModulesDirectory $sourceNodeModules)) {
+        $packageRelativePath = $packageName -replace '/', [System.IO.Path]::DirectorySeparatorChar
+        $sourcePackageDirectory = Join-Path $sourceNodeModules $packageRelativePath
+        $targetPackageDirectory = Join-Path $targetNodeModules $packageRelativePath
+        & $robocopy.Source $sourcePackageDirectory $targetPackageDirectory '/MIR' '/NFL' '/NDL' '/NJH' '/NJS' '/NP' | Out-Null
+        if ($LASTEXITCODE -gt 7) {
+            throw "robocopy failed for npm package '$packageName' (exit code: $LASTEXITCODE)"
+        }
     }
 
     $sourceBinDirectory = Join-Path $sourceNodeModules '.bin'
     if (Test-Path $sourceBinDirectory -PathType Container) {
         New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
-        & $robocopy.Source $sourceBinDirectory $BinDir '/E' '/NFL' '/NDL' '/NJH' '/NJS' '/NP' | Out-Null
-        if ($LASTEXITCODE -gt 7) {
-            throw "robocopy failed for npm command shims (exit code: $LASTEXITCODE)"
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        foreach ($shim in @(Get-ChildItem -LiteralPath $sourceBinDirectory -File -Force)) {
+            $content = [IO.File]::ReadAllText($shim.FullName, $utf8NoBom)
+            $converted = ConvertTo-NpmPrefixShimContent -Content $content
+            [IO.File]::WriteAllText((Join-Path $BinDir $shim.Name), $converted, $utf8NoBom)
         }
     }
 }
@@ -402,7 +443,8 @@ function Invoke-NpmInstallFromCache {
         }
         New-NpmOfflineInstallProject -CacheStatus $status -PackageConfig $PackageConfig -ProjectDirectory $tempProjectDirectory
 
-        $args = @("install", "--prefix", $tempProjectDirectory, "--cache", $tempCacheDirectory, "--offline", "--no-audit", "--no-fund")
+        # 配置は lockfile (キャッシュ作成時の shallow レイアウト) に従います。lockfile の外で解決が起きた場合も同じ配置にします。
+        $args = @("install", "--prefix", $tempProjectDirectory, "--cache", $tempCacheDirectory, "--offline", "--no-audit", "--no-fund", "--install-strategy=shallow")
         if ($ignoreScripts) {
             $args += "--ignore-scripts"
         }

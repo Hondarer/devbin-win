@@ -96,6 +96,7 @@ archives\*.tgz
 
 導入時はレジストリ メタデータに依存せず、lockfile の `resolved` と `integrity` をキャッシュ内のローカル `.tgz` に差し替えた一時プロジェクトに対して `npm install --offline` を実行します。
 処理の完了後、一時プロジェクトの `node_modules` とコマンド shim をインストール先へ配置します。
+配置は `npm install -g` と同じで、パッケージは `bin\node_modules\<パッケージ>` に、コマンド shim は `bin` 直下に置かれます。
 
 Marp CLI、Mermaid CLI、Puppeteer は Chromium をダウンロードせず、PATH、標準インストール先、および Windows の `App Paths` レジストリから既存の Microsoft Edge を自動検出して使用します。
 Microsoft Edge が検出されない場合は、ブラウザーを必要とするコンポーネントの導入に失敗します。

@@ -31,7 +31,7 @@ function New-TestNpmCache {
     $relativePath = "archives/$archiveName"
 
     $manifest = [ordered]@{
-        schemaVersion = 1
+        schemaVersion = 2
         shortName = $ShortName
         rootPackage = $NpmPackage
         rootVersion = $Version
@@ -353,5 +353,66 @@ Describe "npm 出力の扱い" {
 
         $source | Should Match 'function Write-NpmNativeOutput'
         $source | Should Not Match '2>&1 \| Out-Host'
+    }
+}
+
+Describe "npm オフライン導入の prefix への配置" {
+
+    It "node_modules\.bin 用の shim を prefix 直下用の参照へ書き換える" {
+        $global:DevbinNpmShimSource = @(
+            '"%dp0%\..\@scope\demo-cli\bin\cli.js" %*'
+            'exec node  "$basedir/../@scope/demo-cli/bin/cli.js" "$@"'
+        ) -join "`n"
+        try {
+            $converted = InModuleScope DevbinNpm {
+                ConvertTo-NpmPrefixShimContent -Content $global:DevbinNpmShimSource
+            }
+            $converted | Should Match ([regex]::Escape('"%dp0%\node_modules\@scope\demo-cli\bin\cli.js"'))
+            $converted | Should Match ([regex]::Escape('"$basedir/node_modules/@scope/demo-cli/bin/cli.js"'))
+            $converted | Should Not Match ([regex]::Escape('\..\'))
+            $converted | Should Not Match ([regex]::Escape('/../'))
+        } finally {
+            Remove-Variable -Name DevbinNpmShimSource -Scope Global -ErrorAction SilentlyContinue
+        }
+    }
+
+    It "最上位のパッケージ単位で配置し、入れ子の依存と同じスコープの他パッケージを保つ" {
+        $projectDir = New-TestDirectory
+        $binDir = New-TestDirectory
+        try {
+            $sourceNodeModules = Join-Path $projectDir "node_modules"
+            New-Item -ItemType Directory -Path (Join-Path $sourceNodeModules "@scope\demo-cli\node_modules\helper") -Force | Out-Null
+            Set-Content -Path (Join-Path $sourceNodeModules "@scope\demo-cli\package.json") -Value '{"name":"@scope/demo-cli","version":"2.0.0"}'
+            Set-Content -Path (Join-Path $sourceNodeModules "@scope\demo-cli\node_modules\helper\package.json") -Value '{"name":"helper","version":"13.0.0"}'
+            New-Item -ItemType Directory -Path (Join-Path $sourceNodeModules ".bin") -Force | Out-Null
+            Set-Content -Path (Join-Path $sourceNodeModules ".bin\demo.cmd") -Value '"%dp0%\..\@scope\demo-cli\bin\cli.js" %*'
+            Set-Content -Path (Join-Path $sourceNodeModules ".package-lock.json") -Value '{}'
+
+            $targetNodeModules = Join-Path $binDir "node_modules"
+            New-Item -ItemType Directory -Path (Join-Path $targetNodeModules "@scope\demo-cli") -Force | Out-Null
+            Set-Content -Path (Join-Path $targetNodeModules "@scope\demo-cli\stale.js") -Value 'old'
+            New-Item -ItemType Directory -Path (Join-Path $targetNodeModules "@scope\other") -Force | Out-Null
+            Set-Content -Path (Join-Path $targetNodeModules "@scope\other\package.json") -Value '{}'
+            New-Item -ItemType Directory -Path (Join-Path $targetNodeModules "helper") -Force | Out-Null
+            Set-Content -Path (Join-Path $targetNodeModules "helper\package.json") -Value '{"name":"helper","version":"2.0.0"}'
+
+            $global:DevbinNpmCopyProject = $projectDir
+            $global:DevbinNpmCopyBin = $binDir
+            InModuleScope DevbinNpm {
+                Copy-NpmOfflineInstallToPrefix -ProjectDirectory $global:DevbinNpmCopyProject -BinDir $global:DevbinNpmCopyBin
+            }
+
+            (Test-Path (Join-Path $targetNodeModules "@scope\demo-cli\node_modules\helper\package.json")) | Should Be $true
+            (Test-Path (Join-Path $targetNodeModules "@scope\demo-cli\stale.js")) | Should Be $false
+            (Test-Path (Join-Path $targetNodeModules "@scope\other\package.json")) | Should Be $true
+            (Get-Content (Join-Path $targetNodeModules "helper\package.json") -Raw) | Should Match '"2.0.0"'
+            (Test-Path (Join-Path $targetNodeModules ".package-lock.json")) | Should Be $false
+            (Test-Path (Join-Path $targetNodeModules ".bin")) | Should Be $false
+            (Get-Content (Join-Path $binDir "demo.cmd") -Raw) | Should Match ([regex]::Escape('"%dp0%\node_modules\@scope\demo-cli\bin\cli.js"'))
+        } finally {
+            Remove-Variable -Name DevbinNpmCopyProject, DevbinNpmCopyBin -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $projectDir
+            Remove-TestDirectory -Path $binDir
+        }
     }
 }

@@ -1,7 +1,9 @@
 ﻿# NpmCacheLayout.ps1
 # npm キャッシュのパス解決、アーカイブ命名、ハッシュ値計算ヘルパー
 
-$script:NpmCacheSchemaVersion = 1
+# 2: 依存ツリーを shallow レイアウト (npm install -g と同じく、直接依存だけを最上位に置く配置) で記録します。
+# 1 の hoisted レイアウトは、共有の node_modules へ複数コンポーネントをマージすると間接依存の版が衝突するため無効とします。
+$script:NpmCacheSchemaVersion = 2
 $script:NpmCacheManifestName = "npm-cache-manifest.json"
 $script:NpmCacheLockName = "package-lock.json"
 $script:NpmCacheArchiveDirectoryName = "archives"

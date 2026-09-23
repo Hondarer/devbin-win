@@ -645,6 +645,7 @@ packages/npm-packages/<ShortName>/
 
 `npm-cache-manifest.json` には、全パッケージのバージョン、アーカイブ パス、ファイル サイズ、および SHA-512 ハッシュ値が記録されます。
 導入時はマニフェスト、lockfile、および全アーカイブを検証し、lockfile の `resolved` と `integrity` をローカル アーカイブに差し替えてから、一時プロジェクトへ `npm install --offline` を実行します。
+依存木は `npm install -g` と同じ shallow レイアウトで保存するため、導入先の共有 `node_modules` では各パッケージが自身の依存を配下に持ち、コンポーネント間で間接依存の版が衝突しません。
 不足または改変が検出された場合は、npm install を開始しません。
 キャッシュ不足時は `Get-Packages.ps1` の自動実行を試行し、取得後も不足する場合はエラーで停止します。
 PowerShell の `ni` は標準エイリアス `New-Item` と衝突するため、必要な場合はセッション内で `Remove-Item Alias:ni -Force` を実行してください。
