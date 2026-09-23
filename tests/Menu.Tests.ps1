@@ -263,6 +263,110 @@ Describe "Initialize-ConsoleInputType" {
     }
 }
 
+Describe "Set-MenuImeClosed" {
+
+    It "確認済みの Manage-Bin 入力先だけに IME 閉状態を設定する" {
+        InModuleScope Devbin {
+            $script:imeFocusWindow = [IntPtr]123
+            Mock Get-MenuImeTarget { return @{ IsTarget = $true; FocusWindow = $script:imeFocusWindow; ThreadId = [uint32]7; Reason = "" } }
+            Mock Set-MenuImeOpenStatus { return @{ Success = $true; Reason = "" } }
+            Mock Test-MenuImeJapaneseLayout { return $true }
+            Mock Send-MenuImeOffKey { return @{ Success = $true; Reason = "" } }
+
+            $result = Set-MenuImeClosed
+
+            $result.Success | Should Be $true
+            Assert-MockCalled Set-MenuImeOpenStatus -Times 1 -ParameterFilter { $FocusWindow -eq [IntPtr]123 }
+            Assert-MockCalled Test-MenuImeJapaneseLayout -Times 1 -ParameterFilter { $ThreadId -eq 7 }
+            Assert-MockCalled Send-MenuImeOffKey -Times 1
+        }
+    }
+
+    It "TSF の端末で IMM 操作が失敗しても日本語レイアウトでは IME OFF キーで閉じる" {
+        InModuleScope Devbin {
+            Mock Get-MenuImeTarget { return @{ IsTarget = $true; FocusWindow = [IntPtr]123; ThreadId = [uint32]7; Reason = "" } }
+            Mock Set-MenuImeOpenStatus { return @{ Success = $false; Reason = "IME の開状態が OFF になりませんでした" } }
+            Mock Test-MenuImeJapaneseLayout { return $true }
+            Mock Send-MenuImeOffKey { return @{ Success = $true; Reason = "" } }
+
+            $result = Set-MenuImeClosed
+
+            $result.Success | Should Be $true
+            Assert-MockCalled Send-MenuImeOffKey -Times 1
+        }
+    }
+
+    It "日本語以外のレイアウトでは IME OFF キーを送信しない" {
+        InModuleScope Devbin {
+            $script:menuImeOffKeySent = $false
+            Mock Get-MenuImeTarget { return @{ IsTarget = $true; FocusWindow = [IntPtr]123; ThreadId = [uint32]7; Reason = "" } }
+            Mock Set-MenuImeOpenStatus { return @{ Success = $false; Reason = "IME ウィンドウを取得できません" } }
+            Mock Test-MenuImeJapaneseLayout { return $false }
+            Mock Send-MenuImeOffKey { $script:menuImeOffKeySent = $true }
+
+            $result = Set-MenuImeClosed
+
+            $result.Success | Should Be $false
+            $result.Reason | Should Be "IME ウィンドウを取得できません"
+            $script:menuImeOffKeySent | Should Be $false
+        }
+    }
+
+    It "対象端末を確認できない場合は IMM を操作しない" {
+        InModuleScope Devbin {
+            $script:menuImeOpenStatusCalled = $false
+            $script:menuImeOffKeySent = $false
+            Mock Get-MenuImeTarget { return @{ IsTarget = $false; Reason = "前景端末を確認できません" } }
+            Mock Set-MenuImeOpenStatus { $script:menuImeOpenStatusCalled = $true }
+            Mock Send-MenuImeOffKey { $script:menuImeOffKeySent = $true }
+
+            $result = Set-MenuImeClosed
+
+            $result.Success | Should Be $false
+            $result.Reason | Should Be "前景端末を確認できません"
+            $script:menuImeOpenStatusCalled | Should Be $false
+            $script:menuImeOffKeySent | Should Be $false
+        }
+    }
+}
+
+Describe "Test-MenuImeHostTerminal" {
+
+    It "端末の環境変数と前景プロセス名が一致する場合だけ対象とする" {
+        InModuleScope Devbin {
+            $savedWtSession = $env:WT_SESSION
+            $savedTermProgram = $env:TERM_PROGRAM
+            try {
+                $env:WT_SESSION = "test-session"
+                $env:TERM_PROGRAM = $null
+                Test-MenuImeHostTerminal -ProcessName "WindowsTerminal" | Should Be $true
+                Test-MenuImeHostTerminal -ProcessName "Code" | Should Be $false
+
+                $env:WT_SESSION = $null
+                $env:TERM_PROGRAM = "vscode"
+                Test-MenuImeHostTerminal -ProcessName "Code" | Should Be $true
+                Test-MenuImeHostTerminal -ProcessName "Code - Insiders" | Should Be $true
+                Test-MenuImeHostTerminal -ProcessName "WindowsTerminal" | Should Be $false
+                Test-MenuImeHostTerminal -ProcessName "notepad" | Should Be $false
+            } finally {
+                $env:WT_SESSION = $savedWtSession
+                $env:TERM_PROGRAM = $savedTermProgram
+            }
+        }
+    }
+}
+
+Describe "SendInput の構造体" {
+
+    It "INPUT のサイズが OS の定義と一致する" {
+        InModuleScope Devbin {
+            Initialize-ConsoleInputType
+            $expected = if ([IntPtr]::Size -eq 8) { 40 } else { 28 }
+            [Runtime.InteropServices.Marshal]::SizeOf([type][Devbin.ConsoleInputNative+INPUT]) | Should Be $expected
+        }
+    }
+}
+
 Describe "メニューのマウスクリック" {
 
     It "左ボタンの新しい押下とダブルクリックを検出し、解放とドラッグは無視する" {

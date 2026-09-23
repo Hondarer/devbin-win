@@ -124,6 +124,9 @@ function Invoke-MenuLoop {
 
     $originalCursorVisible = [Console]::CursorVisible
     $inputModeState = Enable-ConsoleMouseInput
+    try {
+        Set-MenuImeClosed | Out-Null
+    } catch { }
 
     try {
         while ($true) {
