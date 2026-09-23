@@ -1,5 +1,5 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
 REM Development Tools Component Manager Bootstrap Script
 REM Interactive menu for selective setup/unsetup of components

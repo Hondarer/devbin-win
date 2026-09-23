@@ -1,5 +1,5 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
 REM Get current script directory
 set "SCRIPT_DIR=%~dp0"
