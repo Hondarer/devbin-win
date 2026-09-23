@@ -461,3 +461,48 @@ Describe "操作ログ" {
         $source | Should Match 'Stop-DevbinOperationLog'
     }
 }
+
+Describe "Sync-EnvironmentVariables の表示字下げ" {
+
+    It "Indent 4 では開始行と完了行を 4 スペースで出す" {
+        InModuleScope Devbin {
+            Mock Write-Host {}
+            Sync-EnvironmentVariables -VariableNames @("DEVBIN_TEST_ENV_INDENT_ABSENT_9f3c") -Indent 4 | Out-Null
+            Assert-MockCalled Write-Host -Scope It -Times 1 -Exactly -ParameterFilter {
+                $Object -eq "    Synchronizing environment variables with current process..."
+            }
+            Assert-MockCalled Write-Host -Scope It -Times 1 -Exactly -ParameterFilter {
+                $Object -eq "    Successfully synchronized 1/1 environment variables"
+            }
+        }
+    }
+
+    It "Indent を省略すると行頭から出す" {
+        InModuleScope Devbin {
+            Mock Write-Host {}
+            Sync-EnvironmentVariables -VariableNames @("DEVBIN_TEST_ENV_INDENT_ABSENT_9f3c") | Out-Null
+            Assert-MockCalled Write-Host -Scope It -Times 1 -Exactly -ParameterFilter {
+                $Object -eq "Synchronizing environment variables with current process..."
+            }
+            Assert-MockCalled Write-Host -Scope It -Times 1 -Exactly -ParameterFilter {
+                $Object -eq "Successfully synchronized 1/1 environment variables"
+            }
+        }
+    }
+
+    It "Silent では Indent を渡しても表示しない" {
+        InModuleScope Devbin {
+            Mock Write-Host {}
+            Sync-EnvironmentVariables -VariableNames @("DEVBIN_TEST_ENV_INDENT_ABSENT_9f3c") -Indent 4 -Silent | Out-Null
+            Assert-MockCalled Write-Host -Scope It -Times 0 -Exactly
+        }
+    }
+
+    It "導入と削除は保存先の同期表示を 4 スペースで出す" {
+        $subscriptsDir = Get-DevbinSubscriptsDir
+        $installSource = Get-Content (Join-Path $subscriptsDir "Devbin\Install\ComponentInstall.ps1") -Raw
+        $uninstallSource = Get-Content (Join-Path $subscriptsDir "Devbin\Install\ComponentUninstall.ps1") -Raw
+        $installSource | Should Match 'Sync-EnvironmentVariables -VariableNames \$storageEnvNames -Indent 4'
+        $uninstallSource | Should Match 'Sync-EnvironmentVariables -VariableNames \$storageEnvNames -Indent 4'
+    }
+}

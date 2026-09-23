@@ -149,7 +149,7 @@ function Install-Component {
         $storageEnvNames = @(Initialize-DevbinComponentStorage -ShortName $ShortName)
         if ($storageEnvNames.Count -gt 0) {
             Write-Host "  ユーザー データの保存先を設定しました: $($storageEnvNames -join ', ')"
-            Sync-EnvironmentVariables -VariableNames $storageEnvNames | Out-Null
+            Sync-EnvironmentVariables -VariableNames $storageEnvNames -Indent 4 | Out-Null
         }
     } catch {
         Write-Host "    Warning: ユーザー データの保存先を設定できません: $($_.Exception.Message)" -ForegroundColor Yellow

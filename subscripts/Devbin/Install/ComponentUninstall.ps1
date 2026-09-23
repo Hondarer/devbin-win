@@ -119,7 +119,7 @@ function Uninstall-Component {
         }
         if ($storageEnvNames.Count -gt 0) {
             Write-Host "  ユーザー データの保存先の設定を解除しました: $($storageEnvNames -join ', ')"
-            Sync-EnvironmentVariables -VariableNames $storageEnvNames | Out-Null
+            Sync-EnvironmentVariables -VariableNames $storageEnvNames -Indent 4 | Out-Null
         }
     } catch {
         Write-Host "    Warning: ユーザー データの保存先を解除できません: $($_.Exception.Message)" -ForegroundColor Yellow

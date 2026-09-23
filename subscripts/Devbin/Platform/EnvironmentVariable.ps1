@@ -5,8 +5,11 @@
 function Sync-EnvironmentVariable {
     param(
         [string]$VariableName,
-        [switch]$Silent = $false
+        [switch]$Silent = $false,
+        [int]$Indent = 0
     )
+
+    $prefix = " " * $Indent
 
     try {
         if ($VariableName -eq "PATH") {
@@ -43,7 +46,7 @@ function Sync-EnvironmentVariable {
                 $env:PATH = $cleanPath
 
                 if (-not $Silent) {
-                    Write-Host "Synchronized PATH environment variable to current process"
+                    Write-Host "${prefix}Synchronized PATH environment variable to current process"
                 }
             }
         } else {
@@ -55,13 +58,13 @@ function Sync-EnvironmentVariable {
             if ($finalValue) {
                 Set-Item -Path "Env:$VariableName" -Value $finalValue
                 if (-not $Silent) {
-                    Write-Host "Synchronized $VariableName environment variable to current process"
+                    Write-Host "${prefix}Synchronized $VariableName environment variable to current process"
                 }
             } else {
                 if (Test-Path "Env:$VariableName") {
                     Remove-Item -Path "Env:$VariableName" -ErrorAction SilentlyContinue
                     if (-not $Silent) {
-                        Write-Host "Removed $VariableName from current process (not set in registry)"
+                        Write-Host "${prefix}Removed $VariableName from current process (not set in registry)"
                     }
                 }
             }
@@ -70,7 +73,7 @@ function Sync-EnvironmentVariable {
         return $true
     } catch {
         if (-not $Silent) {
-            Write-Host "Warning: Failed to sync $VariableName environment variable: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "${prefix}Warning: Failed to sync $VariableName environment variable: $($_.Exception.Message)" -ForegroundColor Yellow
         }
         return $false
     }
@@ -80,22 +83,25 @@ function Sync-EnvironmentVariable {
 function Sync-EnvironmentVariables {
     param(
         [string[]]$VariableNames = @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT"),
-        [switch]$Silent = $false
+        [switch]$Silent = $false,
+        [int]$Indent = 0
     )
 
+    $prefix = " " * $Indent
+
     if (-not $Silent) {
-        Write-Host "Synchronizing environment variables with current process..."
+        Write-Host "${prefix}Synchronizing environment variables with current process..."
     }
 
     $syncCount = 0
     foreach ($varName in $VariableNames) {
-        if (Sync-EnvironmentVariable -VariableName $varName -Silent:$Silent) {
+        if (Sync-EnvironmentVariable -VariableName $varName -Silent:$Silent -Indent $Indent) {
             $syncCount++
         }
     }
 
     if (-not $Silent) {
-        Write-Host "Successfully synchronized $syncCount/$($VariableNames.Count) environment variables"
+        Write-Host "${prefix}Successfully synchronized $syncCount/$($VariableNames.Count) environment variables"
     }
 
     return $syncCount -eq $VariableNames.Count
