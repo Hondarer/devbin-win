@@ -20,7 +20,9 @@ function Save-PipWheelPackages {
         return 0
     }
 
-    $pipArgs = @("-m", "pip", "download", "--only-binary=:all:")
+    # PIP_CACHE_DIR は devbin 同梱の pip と共有されるため、バージョンの異なる pip が
+    # 書いたエントリーを読んで警告が出ないよう、HTTP キャッシュを使わずに取得する
+    $pipArgs = @("-m", "pip", "download", "--only-binary=:all:", "--no-cache-dir")
     if (-not [string]::IsNullOrWhiteSpace($TargetPythonVersion)) {
         $pipArgs += @("--python-version", $TargetPythonVersion, "--implementation", "cp", "--platform", "win_amd64")
     }

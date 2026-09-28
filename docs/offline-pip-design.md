@@ -74,7 +74,7 @@ pysetup --> [pip-packages] : find-links 指定
 `Get-Packages.ps1` は次の処理を行います。
 
 1. `pip-26.2.1.tar.gz` を `packages` にダウンロード
-2. Python が利用可能であれば、`pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml` を一時ディレクトリへ実行し、検証後に `packages/pip-packages` をその内容で置き換える。`<ver>` は `packages.psd1` の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従します。旧 ABI の wheel は置き換えにより残しません
+2. Python が利用可能であれば、`pip download --only-binary=:all: --no-cache-dir --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml` を一時ディレクトリへ実行し、検証後に `packages/pip-packages` をその内容で置き換える。`<ver>` は `packages.psd1` の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従します。旧 ABI の wheel は置き換えにより残しません。`--no-cache-dir` を付けるのは、`PIP_CACHE_DIR` を devbin 同梱の pip と共有しており、バージョンの異なる pip が書いたキャッシュを読むと `Cache entry deserialization failed` の警告が出るためです
 
 ### python-setup.ps1
 
