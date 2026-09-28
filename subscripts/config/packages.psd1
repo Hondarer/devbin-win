@@ -392,12 +392,12 @@ endlocal
         @{
             Name = "Git"
             ShortName = "git"
-            Version = "2.55.0.5"
+            Version = "2.56.0"
             ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
             ExtractStrategy = "SelfExtractingArchive"
             TargetDirectory = "git"
             ExtractArgs = @("-y", "-o{TargetPath}")
-            DownloadUrl = "https://sourceforge.net/projects/git-for-windows.mirror/files/v2.55.0.windows.5/PortableGit-2.55.0.5-64-bit.7z.exe/download"
+            DownloadUrl = "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.1/PortableGit-2.56.0-64-bit.7z.exe"
             PostExtract = @{
                 CopyFiles = @(
                     @{ Source = "subscripts\Add-MinGW-Path.cmd"; Destination = "Add-MinGW-Path.cmd" },
