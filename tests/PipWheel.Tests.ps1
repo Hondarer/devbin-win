@@ -96,6 +96,23 @@ Describe "Test-PipWheelPackages" {
         }
     }
 
+    It "extras を含む仕様は取得引数に保持し、wheel は本体名と版で照合する" {
+        $package = New-TestPackage -ShortName "markitdown" -Version "0.1.8" -Extra @{ PipPackage = "markitdown[all]" }
+        $specs = @(Get-PipWheelDownloadSpecs -PackageConfigs @($package))
+        ($specs -join ",") | Should Be "markitdown[all]==0.1.8"
+        $dir = New-TestDirectory
+        try {
+            New-Item -ItemType File -Path (Join-Path $dir "markitdown-0.1.8-py3-none-any.whl") -Force | Out-Null
+            @(Test-PipWheelPackages -DirectoryPath $dir -PackageNames $specs).Count | Should Be 0
+            @(Test-PipWheelPackages -DirectoryPath $dir -PackageNames @("markitdown[all]")).Count | Should Be 0
+            $missing = @(Test-PipWheelPackages -DirectoryPath $dir -PackageNames @("markitdown[all]==0.1.7"))
+            $missing.Count | Should Be 1
+            $missing[0] | Should Be "markitdown==0.1.7"
+        } finally {
+            Remove-TestDirectory -Path $dir
+        }
+    }
+
     It "不足している wheel を返す" {
         $dir = New-TestDirectory
         try {

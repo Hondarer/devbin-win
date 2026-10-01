@@ -94,7 +94,8 @@ function Test-PipWheelPackages {
         }
 
         $packageSpecParts = ([string]$packageName -split '==', 2)
-        $packageNameOnly = $packageSpecParts[0]
+        # extras は wheel ファイル名に含まれないため、本体の配布名で照合する
+        $packageNameOnly = $packageSpecParts[0] -replace '\[[^\]]*\]$', ''
         $requiredVersion = if ($packageSpecParts.Count -gt 1) { $packageSpecParts[1] } else { "" }
         $normalizedName = Get-NormalizedPipPackageName -Name $packageNameOnly
         $found = $false

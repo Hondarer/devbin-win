@@ -55,6 +55,24 @@ from [textlint/textlint](https://github.com/textlint/textlint)
 - [v15.8.0](https://www.npmjs.com/package/textlint/v/15.8.0)
     - `textlint-rule-preset-ja-technical-writing`、`textlint-rule-preset-ja-spacing` を依存パッケージとして同梱します。
 
+### MkDocs / MkDocs Material / Markdown Callouts / MkDocs Awesome Nav
+
+Python の共有環境 (`bin/python3`) に、次のパッケージを指定バージョンで配置します。
+
+- `mkdocs==1.6.1`
+- `mkdocs-material==9.7.7`
+- `markdown-callouts==0.4.0`
+- `mkdocs-awesome-nav==3.3.0`
+
+`pymdown-extensions` と `watchdog` は推移的依存として取得・導入します。
+`Get-Packages.ps1` で依存込み wheel を `packages/pip-packages/` に準備し、`Manage-Bin.cmd` からオフラインで導入します。
+
+### MarkItDown
+
+- `markitdown[all]==0.1.8`
+    - 全 extras の依存パッケージとともに共有 Python (`bin/python3`) へ配置します。
+    - wheel は `Get-Packages.ps1` で `packages/pip-packages/` に準備します。
+
 ## npm パッケージのオフライン準備
 
 オンライン環境で Node.js/npm を使用して、npm のキャッシュを準備します。

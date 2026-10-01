@@ -942,6 +942,81 @@ endlocal
             DefaultChecked = $true
         },
 
+        # MkDocs - pip install
+        @{
+            Name = "MkDocs"
+            ShortName = "mkdocs"
+            Version = "1.6.1"
+            ArchivePattern = "^$"
+            ExtractStrategy = "PipInstall"
+            PipPackage = "mkdocs"
+            DependsOn = @("python")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("python3\Scripts\mkdocs.exe")
+            DefaultChecked = $true
+        },
+
+        # MkDocs Material - pip install
+        @{
+            Name = "MkDocs Material"
+            ShortName = "mkdocs-material"
+            Version = "9.7.7"
+            ArchivePattern = "^$"
+            ExtractStrategy = "PipInstall"
+            PipPackage = "mkdocs-material"
+            DependsOn = @("python", "mkdocs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("python3\Lib\site-packages\material\__init__.py")
+            DefaultChecked = $true
+        },
+
+        # Markdown Callouts - pip install
+        @{
+            Name = "Markdown Callouts"
+            ShortName = "markdown-callouts"
+            Version = "0.4.0"
+            ArchivePattern = "^$"
+            ExtractStrategy = "PipInstall"
+            PipPackage = "markdown-callouts"
+            DependsOn = @("python")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("python3\Lib\site-packages\markdown_callouts\__init__.py")
+            DefaultChecked = $true
+        },
+
+        # MkDocs Awesome Nav - pip install
+        @{
+            Name = "MkDocs Awesome Nav"
+            ShortName = "mkdocs-awesome-nav"
+            Version = "3.3.0"
+            ArchivePattern = "^$"
+            ExtractStrategy = "PipInstall"
+            PipPackage = "mkdocs-awesome-nav"
+            DependsOn = @("python", "mkdocs")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("python3\Lib\site-packages\mkdocs_awesome_nav\__init__.py")
+            DefaultChecked = $true
+        },
+
+        # MarkItDown - pip install (all extras)
+        @{
+            Name = "MarkItDown"
+            ShortName = "markitdown"
+            Version = "0.1.8"
+            ArchivePattern = "^$"
+            ExtractStrategy = "PipInstall"
+            PipPackage = "markitdown[all]"
+            DependsOn = @("python")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("python3\Scripts\markitdown.exe")
+            DefaultChecked = $true
+        },
+
         # textlint - npm global install
         @{
             Name = "textlint"

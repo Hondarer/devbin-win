@@ -597,7 +597,7 @@ Setup-VSBT.ps1 を呼び出して Visual Studio Build Tools をセットアッ�
 ```
 
 **追加パラメーター**:
-- `PipPackage` (必須): pip パッケージ名
+- `PipPackage` (必須): pip パッケージ名。`markitdown[all]` のような extras 指定も取得・導入時に保持し、wheel の照合には extras を除いた本体名を使う
 - `PipDependencies` (任意): オフライン用に一緒に取得・確認する pip 依存パッケージ名
 - `Version` (共通プロパティ): 指定時は `pip install <PipPackage>==<Version>` として渡す
 
