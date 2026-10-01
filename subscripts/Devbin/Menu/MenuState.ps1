@@ -15,6 +15,32 @@ function Get-MenuItems {
     return $items
 }
 
+# 表示行を生成します。区切りには ShortName がなく、状態管理の Items には含めません。
+function Get-MenuRowList {
+    param([hashtable]$State)
+
+    $previousGroup = ""
+    foreach ($item in @(Get-MenuItemList -State $State)) {
+        $group = if ($item.ContainsKey("MenuGroup")) { [string]$item.MenuGroup } else { "" }
+        if ($group -and $group -ne $previousGroup) {
+            @{ IsHeading = $true; Name = $group }
+        }
+        $item
+        $previousGroup = $group
+    }
+}
+
+# 区切りを除いた、コンポーネントの連続番号を返します。
+function Get-MenuRowNumber {
+    param([array]$Rows, [int]$Index)
+
+    $number = 0
+    for ($i = 0; $i -le $Index -and $i -lt $Rows.Count; $i++) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$Rows[$i].ShortName)) { $number++ }
+    }
+    return $number
+}
+
 # メニュー項目一覧をパイプラインへ出力します (呼び出し側で @(Get-MenuItemList) により配列化可能)。
 function Get-MenuItemList {
     param([hashtable]$State)
@@ -309,7 +335,7 @@ function Initialize-MenuState {
         Disabled       = $disabled
         DisableReasons = $disableReasons
         OfflineMode    = $offlineMode
-        CursorIndex    = 0
+        CursorIndex    = $(if ($items.Count -gt 0 -and $items[0].MenuGroup) { 1 } else { 0 })
         Statuses       = $statuses
         Manifest       = $Manifest
         Packages       = $Packages

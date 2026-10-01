@@ -7,14 +7,14 @@ function Invoke-MenuCursorToggle {
 
     Toggle-CheckedItem -State $State -Index $State.CursorIndex
     # 依存関係の連動選択があるため、ビューポート内の全項目行を再描画します。
-    $items = @(Get-MenuItemList -State $State)
+    $items = @(Get-MenuRowList -State $State)
     $viewEnd = [Math]::Min($items.Count, $State.ViewportTop + $State.ViewportSize)
     for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
         $item = $items[$i]
-        if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.ShortName)) {
+        if ($null -eq $item) {
             continue
         }
-        Render-MenuLine -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) -Number ($i + 1) `
+        Render-MenuLine -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) -Number (Get-MenuRowNumber -Rows $items -Index $i) `
             -Item $item -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $item) `
             -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $item) `
             -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `

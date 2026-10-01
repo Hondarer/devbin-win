@@ -13,7 +13,7 @@ function Update-Viewport {
     }
 
     if ($State.ContainsKey("Items") -and $null -ne $State.Items) {
-        $count = @($State.Items).Count
+        $count = @(Get-MenuRowList -State $State).Count
         $size = [Math]::Max(1, [int]$State.ViewportSize)
         $maxTop = [Math]::Max(0, $count - $size)
         if ($State.ViewportTop -gt $maxTop) {
@@ -31,13 +31,19 @@ function Move-MenuCursor {
         [int]$Delta
     )
 
-    $items = @(Get-MenuItemList -State $State)
+    $items = @(Get-MenuRowList -State $State)
     if ($Delta -eq 0 -or $items.Count -eq 0) {
         return "continue"
     }
 
     $oldIdx = $State.CursorIndex
     $newIdx = [Math]::Max(0, [Math]::Min($items.Count - 1, $oldIdx + $Delta))
+    # 区切り行を移動方向へ読み飛ばします。端では元の選択行に留まります。
+    $direction = if ($Delta -gt 0) { 1 } else { -1 }
+    while ($newIdx -ge 0 -and $newIdx -lt $items.Count -and [string]::IsNullOrWhiteSpace([string]$items[$newIdx].ShortName)) {
+        $newIdx += $direction
+    }
+    if ($newIdx -lt 0 -or $newIdx -ge $items.Count) { return "continue" }
     if ($newIdx -eq $oldIdx) {
         return "continue"
     }
@@ -52,7 +58,7 @@ function Move-MenuCursor {
         # ビューポート内の移動の場合: 変更された 2 行のみを部分更新します。
         $old = $items[$oldIdx]
         if ($null -ne $old) {
-            Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number ($oldIdx + 1) `
+            Render-MenuLine -Row ($script:HEADER_ROWS + $oldIdx - $State.ViewportTop) -Number (Get-MenuRowNumber -Rows $items -Index $oldIdx) `
                 -Item $old -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $old) `
                 -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $old) `
                 -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $old) `
@@ -63,7 +69,7 @@ function Move-MenuCursor {
 
         $new = $items[$newIdx]
         if ($null -ne $new) {
-            Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number ($newIdx + 1) `
+            Render-MenuLine -Row ($script:HEADER_ROWS + $newIdx - $State.ViewportTop) -Number (Get-MenuRowNumber -Rows $items -Index $newIdx) `
                 -Item $new -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $new) `
                 -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $new) `
                 -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $new) `
@@ -110,7 +116,9 @@ function Clear-AllMenuItemsChecked {
 function Toggle-CheckedItem {
     param([hashtable]$State, [int]$Index)
 
-    $item = @(Get-MenuItemList -State $State)[$Index]
+    $rows = @(Get-MenuRowList -State $State)
+    if ($Index -lt 0 -or $Index -ge $rows.Count) { return }
+    $item = $rows[$Index]
     if ($null -eq $item) {
         return
     }

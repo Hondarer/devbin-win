@@ -28,7 +28,24 @@ function Get-DisabledStatusDisplay {
     return @{ Label = "External"; Color = [ConsoleColor]::DarkGray }
 }
 
-# コンポーネント行を 1 行描画します。
+# 日本語の体系名を画面セル幅で切り詰め、折り返しを防ぎます。
+function Get-MenuHeadingText {
+    param([string]$Name, [int]$Width)
+
+    if ($Width -le 0) { return "" }
+    $text = " --- $Name "
+    $line = ""
+    $cells = 0
+    foreach ($character in $text.ToCharArray()) {
+        $characterWidth = if ($character -match '[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE10-\uFE19\uFE30-\uFE6F\uFF01-\uFF60\uFFE0-\uFFE6]') { 2 } else { 1 }
+        if ($cells + $characterWidth -gt $Width) { break }
+        $line += $character
+        $cells += $characterWidth
+    }
+    return $line + ('-' * ($Width - $cells))
+}
+
+# コンポーネント行または体系の区切りを 1 行描画します。
 function Render-MenuLine {
     param(
         [int]$Row,
@@ -44,6 +61,16 @@ function Render-MenuLine {
     )
 
     [Console]::SetCursorPosition(0, $Row)
+
+    if ($Item.IsHeading) {
+        $width = [Math]::Max(1, [Console]::WindowWidth - 1)
+        $line = Get-MenuHeadingText -Name $Item.Name -Width $width
+        [Console]::ForegroundColor = [ConsoleColor]::Cyan
+        [Console]::BackgroundColor = [ConsoleColor]::Black
+        [Console]::Write($line)
+        [Console]::ResetColor()
+        return
+    }
 
     $prefix    = if ($IsCursor) { ">" } else { " " }
     $checkbox  = if ($IsDisabled -and -not $IsChecked) { "[-]" } elseif ($IsReinstall) { "[R]" } elseif ($IsChecked) { "[X]" } else { "[ ]" }
@@ -138,22 +165,22 @@ function Render-Menu {
 
     # ビューポートサイズを算出します (コンソールウィンドウのリサイズにも対応)。
     # WindowHeight の最終行への書き込みによる不要なバッファースクロールを防ぐため、1 行の余白を確保します。
-    $items = @(Get-MenuItemList -State $State)
+    $items = @(Get-MenuRowList -State $State)
     $itemCount = $items.Count
     $maxViewport = [Console]::WindowHeight - 1 - $script:HEADER_ROWS - $script:FOOTER_ROWS
     $State.ViewportSize = [Math]::Min($itemCount, [Math]::Max(1, $maxViewport))
     Update-Viewport -State $State
 
-    # ビューポート内のアイテム行を描画します (範囲外または ShortName 未定義項目はスキップ)。
+    # ビューポート内のコンポーネントと区切りを描画します。
     $viewEnd = [Math]::Min($itemCount, $State.ViewportTop + $State.ViewportSize)
     for ($i = $State.ViewportTop; $i -lt $viewEnd; $i++) {
         $item = $items[$i]
-        if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.ShortName)) {
+        if ($null -eq $item) {
             continue
         }
         Render-MenuLine `
             -Row ($script:HEADER_ROWS + $i - $State.ViewportTop) `
-            -Number ($i + 1) `
+            -Number (Get-MenuRowNumber -Rows $items -Index $i) `
             -Item $item `
             -IsChecked (Get-MenuFlag -Map $State.Checked -ItemOrName $item) `
             -IsReinstall (Get-MenuFlag -Map $State.Reinstall -ItemOrName $item) `

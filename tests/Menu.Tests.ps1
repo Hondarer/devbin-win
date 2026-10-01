@@ -489,3 +489,126 @@ Describe "メニューの分割" {
         @($topLevel | Where-Object { -not ($_ -is [System.Management.Automation.Language.AssignmentStatementAst]) }).Count | Should Be 0
     }
 }
+
+Describe "体系別メニューの区切り" {
+
+    It "体系の先頭に区切りを生成し、選択対象と番号には含めない" {
+        InModuleScope Devbin {
+            $state = @{ Items = @(
+                @{ ShortName = "a"; MenuGroup = "基盤" },
+                @{ ShortName = "b"; MenuGroup = "基盤" },
+                @{ ShortName = "c"; MenuGroup = "文書" }
+            ); Checked = @{}; Reinstall = @{}; Disabled = @{}; Statuses = @{} }
+            $rows = @(Get-MenuRowList -State $state)
+            $rows.Count | Should Be 5
+            $rows[0].IsHeading | Should Be $true
+            $rows[0].Name | Should Be "基盤"
+            $rows[3].Name | Should Be "文書"
+            @(Get-MenuItemList -State $state).Count | Should Be 3
+            (Get-MenuRowNumber -Rows $rows -Index 4) | Should Be 3
+            Toggle-CheckedItem -State $state -Index 0
+            $state.Checked.Count | Should Be 0
+            Set-AllMenuItemsChecked -State $state
+            $state.Checked.Count | Should Be 3
+            Clear-AllMenuItemsChecked -State $state
+            @($state.Checked.Values | Where-Object { $_ }).Count | Should Be 0
+            Toggle-CheckedItem -State $state -Index 4
+            $state.Checked.c | Should Be $true
+            $state.Checked.a | Should Be $false
+        }
+    }
+
+    It "上下移動は区切りを飛ばし、先頭と末尾では現在行に留まる" {
+        InModuleScope Devbin {
+            Mock Render-MenuLine { }
+            $state = @{ Items = @(
+                @{ ShortName = "a"; MenuGroup = "基盤" },
+                @{ ShortName = "b"; MenuGroup = "文書" }
+            ); CursorIndex = 1; ViewportTop = 0; ViewportSize = 4
+                Checked = @{}; Reinstall = @{}; Disabled = @{}; Statuses = @{}; Packages = @() }
+            Move-MenuCursor -State $state -Delta -1 | Out-Null
+            $state.CursorIndex | Should Be 1
+            Move-MenuCursor -State $state -Delta 1 | Out-Null
+            $state.CursorIndex | Should Be 3
+            Move-MenuCursor -State $state -Delta 1 | Out-Null
+            $state.CursorIndex | Should Be 3
+            Move-MenuCursor -State $state -Delta -1 | Out-Null
+            $state.CursorIndex | Should Be 1
+        }
+    }
+
+    It "スクロールした一覧の区切りクリックは無視し、項目クリックとホイールは行位置で動作する" {
+        InModuleScope Devbin {
+            Mock Render-MenuLine { }
+            Mock Invoke-MenuCursorToggle { throw "区切りは選択できない" }
+            $state = @{ Items = @(
+                @{ ShortName = "a"; MenuGroup = "基盤" },
+                @{ ShortName = "b"; MenuGroup = "文書" }
+            ); CursorIndex = 1; ViewportTop = 1; ViewportSize = 3
+                Checked = @{}; Reinstall = @{}; Disabled = @{}; Statuses = @{}; Packages = @() }
+            $click = [pscustomobject]@{ dwEventFlags = 0; dwButtonState = [uint32]1
+                dwMousePosition = [pscustomobject]@{ Y = 6 } }
+            Handle-MouseInput -State $state -MouseEvent $click | Out-Null
+            $state.CursorIndex | Should Be 1
+            $click.dwMousePosition.Y = 7
+            Handle-MouseInput -State $state -MouseEvent $click | Out-Null
+            $state.CursorIndex | Should Be 3
+            $wheel = [pscustomobject]@{ dwEventFlags = 4; dwButtonState = [uint32](120 -shl 16)
+                dwMousePosition = [pscustomobject]@{ Y = 5 } }
+            Handle-MouseInput -State $state -MouseEvent $wheel | Out-Null
+            $state.CursorIndex | Should Be 1
+        }
+    }
+
+    It "ビューポートの上限は区切りを含む表示行数で計算する" {
+        InModuleScope Devbin {
+            $state = @{ Items = @(
+                @{ ShortName = "a"; MenuGroup = "基盤" },
+                @{ ShortName = "b"; MenuGroup = "文書" }
+            ); CursorIndex = 3; ViewportTop = 0; ViewportSize = 2 }
+            Update-Viewport -State $state
+            $state.ViewportTop | Should Be 2
+        }
+    }
+
+    It "初期カーソルは最初のコンポーネントに置く" {
+        InModuleScope Devbin {
+            Mock Get-ComponentStatus { return "NotInstalled" }
+            Mock Test-DevbinOfflineMode { return $false }
+            $packages = @(@{ ShortName = "a"; MenuGroup = "基盤"; DefaultChecked = $true })
+            $state = Initialize-MenuState -Packages $packages -Manifest @{} -InstallDir "C:\devbin-test" -ScriptDir "C:\devbin-test\subscripts"
+            $state.CursorIndex | Should Be 1
+            $state.Items.Count | Should Be 1
+            $state.Checked.a | Should Be $true
+        }
+    }
+
+    It "現行カタログの10体系は表示順を保ち、すべての依存元が先に定義される" {
+        InModuleScope Devbin {
+            $catalog = Import-PackageCatalog -Path (Join-Path $script:DevbinSubscriptsDir "config\packages.psd1")
+            $state = @{ Items = @(Get-MenuItems -Packages $catalog.Packages) }
+            $rows = @(Get-MenuRowList -State $state)
+            $groups = @($rows | Where-Object { $_.IsHeading } | ForEach-Object { $_.Name })
+            ($groups -join ",") | Should Be "基盤・ランタイム,パッケージ管理,C/C++・ビルド,品質・計測,ドキュメント変換・生成,MkDocs,スライド・図版・メディア,文書処理用ライブラリ,Git ホスティング・AI,システム・文字コード"
+            $positions = @{}
+            for ($i = 0; $i -lt $catalog.Packages.Count; $i++) { $positions[$catalog.Packages[$i].ShortName] = $i }
+            foreach ($pkg in $catalog.Packages) {
+                foreach ($dep in $pkg.DependsOn) {
+                    ($positions[$dep] -lt $positions[$pkg.ShortName]) | Should Be $true
+                }
+            }
+            $rows.Count | Should Be ($state.Items.Count + 10)
+        }
+    }
+}
+
+Describe "区切りの表示幅" {
+    It "日本語を2セルとして数え、狭い幅でも折り返さない" {
+        InModuleScope Devbin {
+            (Get-MenuHeadingText -Name "基盤" -Width 12) | Should Be " --- 基盤 --"
+            (Get-MenuHeadingText -Name "基盤" -Width 8) | Should Be " --- 基-"
+            (Get-MenuHeadingText -Name "MkDocs" -Width 16) | Should Be " --- MkDocs ----"
+            (Get-MenuHeadingText -Name "基盤" -Width 0) | Should Be ""
+        }
+    }
+}

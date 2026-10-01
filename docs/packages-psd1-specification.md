@@ -69,6 +69,7 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | SkipIfCommand | このコマンドが PATH にある場合は PathDirs の追加をスキップ | string | なし (常に追加) |
 | DisableIfCommand | このコマンドが devbin-win 外部の PATH に見つかった場合、メニューでのインストール操作を無効化する。インストール済みであればアンインストールは可能 | string | なし (常に有効) |
 | DisableIfFont | このフォント名を持つ登録が HKCU/HKLM にあり、かつ HKCU の value data が devbin-win 配下を指していない場合、メニューでのインストール操作を無効化する。UI 表示は `External` に統一 | string | なし (常に有効) |
+| MenuGroup | メニューの体系名。定義順で体系が変わる位置に選択できない区切りを表示 | string | なし (区切りなし) |
 | Hidden | `$true` なら CLI メニューに表示しない | bool | `$false` (表示) |
 | DefaultChecked | 初回導入時に、メニューで最初からチェック状態にするか | bool | `$false` (チェックしない) |
 | SelfUpdating | `$true` なら、導入後にツール自身が実行ファイルを更新するものとして扱い、`Updateable` 判定を行わない | bool | `$false` (更新判定あり) |

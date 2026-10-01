@@ -536,7 +536,7 @@ function Handle-MouseInput {
     }
 
     $targetIndex = $State.ViewportTop + $mouseRow - $menuTop
-    $items = @(Get-MenuItemList -State $State)
+    $items = @(Get-MenuRowList -State $State)
     if ($targetIndex -lt 0 -or $targetIndex -ge $items.Count) {
         return "continue"
     }
