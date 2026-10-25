@@ -212,7 +212,7 @@ gh は GitHub の Issue・Pull Request・リリース等をコマンドライン
 
 - **用途**: GitHub の Issue/PR/Release 操作、ワークフロー実行
 - **配置ファイル**: `bin\gh.exe`
-- **バージョン**: 2.101.0
+- **バージョン**: 2.102.1
 - **プロジェクト**: [cli/cli](https://github.com/cli/cli)
 
 ### Copilot CLI について

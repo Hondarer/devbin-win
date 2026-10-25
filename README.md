@@ -12,7 +12,7 @@ Windows 用開発バイナリの自動配置ツールです。
 from [https://nodejs.org/en](https://nodejs.org/en)
 
 - [https://nodejs.org/en/download/](https://nodejs.org/en/download/)
-    - [node-v26.9.0-win-x64.zip](https://nodejs.org/dist/v26.9.0/node-v26.9.0-win-x64.zip)
+    - [node-v26.12.1-win-x64.zip](https://nodejs.org/dist/v26.12.1/node-v26.12.1-win-x64.zip)
 
 ### Marp CLI
 
@@ -141,11 +141,11 @@ from [plantuml](https://github.com/plantuml/plantuml)
 from [python.org](https://www.python.org/)
 
 - [Python Releases for Windows](https://www.python.org/downloads/windows/)
-    - [Python 3.14.7](https://www.python.org/downloads/release/python-3147/)
-        - [Windows embeddable package (64-bit)](https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip)
+    - [Python 3.14.9](https://www.python.org/downloads/release/python-3149/)
+        - [Windows embeddable package (64-bit)](https://www.python.org/ftp/python/3.14.9/python-3.14.9-embed-amd64.zip)
 
-- [pip 26.2.1](https://pypi.org/project/pip/26.2.1/)
-    - [pip-26.2.1.tar.gz](https://files.pythonhosted.org/packages/ae/15/4500e320e6b101ec3b719ae85b697d9940b6cda672bc555bd6016fc60c6f/pip-26.2.1.tar.gz)
+- [pip 26.2.2](https://pypi.org/project/pip/26.2.2/)
+    - [pip-26.2.2.tar.gz](https://files.pythonhosted.org/packages/fa/e8/0842d757e483e895e670f655084cfe8b8c72580c6769a76b30b2789a0608/pip-26.2.2.tar.gz)
 
 完全オフライン環境での pip インストールに対応しています。
 pip のソース tarball は Get-Packages.ps1 の実行により `packages` フォルダーへ保存され、pip wheel ファイルは `packages/pip-packages` に自動ダウンロードされます。
@@ -173,14 +173,14 @@ Windows PowerShell 5.1 を置き換えずに共存します。
 from [Git](https://git-scm.com/)
 
 - [Install for Windows](https://git-scm.com/install/windows)
-    - [Portable 2.56.0](https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.1/PortableGit-2.56.0-64-bit.7z.exe)
+    - [Portable 2.56.0.3](https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.3/PortableGit-2.56.0.3-64-bit.7z.exe)
 
 ### Visual Studio Code
 
 from [Visual Studio Code](https://code.visualstudio.com/)
 
 - [Download Visual Studio Code](https://code.visualstudio.com/Download)
-    - [x64 archive 1.138.0](https://update.code.visualstudio.com/1.138.0/win32-x64-archive/stable)
+    - [x64 archive 1.143.1](https://update.code.visualstudio.com/1.143.1/win32-x64-archive/stable)
 
 ### PsTools
 
@@ -332,8 +332,8 @@ from [editorconfig-checker/editorconfig-checker](https://github.com/editorconfig
 
 from [cli/cli](https://github.com/cli/cli)
 
-- [/releases/tag/v2.101.0](https://github.com/cli/cli/releases/tag/v2.101.0)
-    - [gh_2.101.0_windows_amd64.zip](https://github.com/cli/cli/releases/download/v2.101.0/gh_2.101.0_windows_amd64.zip)
+- [/releases/tag/v2.102.1](https://github.com/cli/cli/releases/tag/v2.102.1)
+    - [gh_2.102.1_windows_amd64.zip](https://github.com/cli/cli/releases/download/v2.102.1/gh_2.102.1_windows_amd64.zip)
 
 ### GitHub Copilot CLI
 

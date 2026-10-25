@@ -4,7 +4,7 @@
 
 本文書では、完全オフライン環境での pip インストールを実現するための実装方針を説明します。
 
-pip 本体として PyPI のソース tarball `pip-26.2.1.tar.gz` を取得します。
+pip 本体として PyPI のソース tarball `pip-26.2.2.tar.gz` を取得します。
 `python-setup.ps1` はこの tarball を一時展開し、埋め込み Python の `._pth` に `src` を一時追加した状態で `python -m pip` を実行します。
 `packages/pip-packages` には Python 初期設定用の `pip`、`setuptools`、`wheel`、`packaging`、`pytest`、追加ツールの `yamllint`、`mkdocs==1.6.1`、`mkdocs-material==9.7.7`、`markdown-callouts==0.4.0`、`mkdocs-awesome-nav==3.3.0`、`markitdown[all]==0.1.8`、`libclang==18.1.1`、およびそれぞれの依存 wheel を保存し、オフライン インストールに利用します。
 MkDocs 関連の 4 パッケージは `PipInstall` コンポーネントとして共有 Python に導入します。`pymdown-extensions` と `watchdog` は推移的依存として取得・導入し、独立したコンポーネントにはしません。
@@ -23,7 +23,7 @@ pytest は埋め込み Python にプリインストールされるため、シ�
 @startuml オフライン pip インストールのアーキテクチャ
 caption オフライン pip インストールのアーキテクチャ
 package "packages フォルダー" {
-  [pip-26.2.1.tar.gz]
+  [pip-26.2.2.tar.gz]
   folder "pip-packages" {
     [pip-*.whl]
     [setuptools-*.whl]
@@ -41,14 +41,14 @@ package "処理層" {
   [Get-Packages.ps1] as getpkg
   [python-setup.ps1] as pysetup
   folder "temp" {
-    [pip-26.2.1/src]
+    [pip-26.2.2/src]
   }
 }
 
-getpkg --> [pip-26.2.1.tar.gz] : ダウンロード
+getpkg --> [pip-26.2.2.tar.gz] : ダウンロード
 getpkg --> [pip-packages] : コアパッケージと追加ツールの wheel をダウンロード
-pysetup --> [pip-26.2.1.tar.gz] : 一時展開
-pysetup --> [pip-26.2.1/src] : `._pth` に一時追加
+pysetup --> [pip-26.2.2.tar.gz] : 一時展開
+pysetup --> [pip-26.2.2/src] : `._pth` に一時追加
 pysetup --> [pip-packages] : find-links 指定
 @enduml
 ```
@@ -57,16 +57,16 @@ pysetup --> [pip-packages] : find-links 指定
 
 ### packages.psd1
 
-`get-pip` パッケージは、次の定義で `pip-26.2.1.tar.gz` を保持します。
+`get-pip` パッケージは、次の定義で `pip-26.2.2.tar.gz` を保持します。
 
 ```powershell
 @{
     Name = "pip source tarball"
     ShortName = "get-pip"
-    Version = "26.2.1"
+    Version = "26.2.2"
     ArchivePattern = "^pip-\d+\.\d+\.\d+\.tar\.gz$"
     ExtractStrategy = "CopyToPackages"
-    DownloadUrl = "https://files.pythonhosted.org/packages/ae/15/4500e320e6b101ec3b719ae85b697d9940b6cda672bc555bd6016fc60c6f/pip-26.2.1.tar.gz"
+    DownloadUrl = "https://files.pythonhosted.org/packages/fa/e8/0842d757e483e895e670f655084cfe8b8c72580c6769a76b30b2789a0608/pip-26.2.2.tar.gz"
     Hidden = $true
 }
 ```
@@ -75,8 +75,8 @@ pysetup --> [pip-packages] : find-links 指定
 
 `Get-Packages.ps1` は次の処理を行います。
 
-1. `pip-26.2.1.tar.gz` を `packages` にダウンロード
-2. Python が利用可能であれば、`pip download --only-binary=:all: --no-cache-dir --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint==1.38.0 pathspec pyyaml mkdocs==1.6.1 mkdocs-material==9.7.7 markdown-callouts==0.4.0 mkdocs-awesome-nav==3.3.0 "markitdown[all]==0.1.8" libclang==18.1.1` を一時ディレクトリへ実行し、検証後に `packages/pip-packages` をその内容で置き換える。`<ver>` は `packages.psd1` の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従します。旧 ABI の wheel は置き換えにより残しません。`--no-cache-dir` を付けるのは、`PIP_CACHE_DIR` を devbin 同梱の pip と共有しており、バージョンの異なる pip が書いたキャッシュを読むと `Cache entry deserialization failed` の警告が出るためです
+1. `pip-26.2.2.tar.gz` を `packages` にダウンロード
+2. Python が利用可能であれば、`pip download --only-binary=:all: --no-cache-dir --python-version <ver> --implementation cp --platform win_amd64 pip==26.2.2 certifi==2026.10.23 setuptools wheel packaging pytest yamllint==1.38.0 pathspec pyyaml mkdocs==1.6.1 mkdocs-material==9.7.7 markdown-callouts==0.4.0 mkdocs-awesome-nav==3.3.0 "markitdown[all]==0.1.8" libclang==18.1.1` を一時ディレクトリへ実行し、検証後に `packages/pip-packages` をその内容で置き換える。`<ver>` は `packages.psd1` の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従します。旧 ABI の wheel は置き換えにより残しません。`--no-cache-dir` を付けるのは、`PIP_CACHE_DIR` を devbin 同梱の pip と共有しており、バージョンの異なる pip が書いたキャッシュを読むと `Cache entry deserialization failed` の警告が出るためです
 
 ### python-setup.ps1
 
@@ -85,7 +85,7 @@ pysetup --> [pip-packages] : find-links 指定
 1. 埋め込み Python の `._pth` を更新し、`Lib\site-packages` と `import site` を有効化
 2. `packages\pip-*.tar.gz` を検出
 3. tarball を一時ディレクトリへ展開
-4. 展開先の `pip-26.2.1\src` を埋め込み Python の `._pth` に一時追加
+4. 展開先の `pip-26.2.2\src` を埋め込み Python の `._pth` に一時追加
 5. 共通のコアパッケージ一覧を使って `pip`、`setuptools`、`wheel`、`packaging`、`pytest` をインストール
 6. オンライン時は追加で依存込み wheel を `packages/pip-packages` に保存
 7. `._pth` と一時展開ディレクトリをクリーンアップ
@@ -94,10 +94,10 @@ pysetup --> [pip-packages] : find-links 指定
 
 ```bash
 # オフライン
-python -m pip install --no-index --find-links=packages/pip-packages pip setuptools wheel packaging pytest
+python -m pip install --no-index --find-links=packages/pip-packages pip==26.2.2 certifi==2026.10.23 setuptools wheel packaging pytest
 
 # オンライン
-python -m pip install pip setuptools wheel packaging pytest
+python -m pip install pip==26.2.2 certifi==2026.10.23 setuptools wheel packaging pytest
 ```
 
 ## 動作フロー
@@ -112,7 +112,7 @@ participant "Get-Packages.ps1" as GetPkg
 participant "PyPI (Internet)" as PyPI
 
 User -> GetPkg: ダウンロード実行
-GetPkg -> PyPI: pip-26.2.1.tar.gz をダウンロード
+GetPkg -> PyPI: pip-26.2.2.tar.gz をダウンロード
 GetPkg -> GetPkg: packages/ に保存
 GetPkg -> GetPkg: Python の有無を確認
 
@@ -134,8 +134,8 @@ caption オフライン pip インストールフロー
 actor User
 participant "Setup-Bin.ps1" as Setup
 participant "python-setup.ps1" as PySetup
-participant "pip-26.2.1.tar.gz" as PipSrc
-participant "pip-26.2.1/src" as PipModule
+participant "pip-26.2.2.tar.gz" as PipSrc
+participant "pip-26.2.2/src" as PipModule
 
 User -> Setup: インストール実行
 Setup -> Setup: Python を展開
@@ -156,8 +156,8 @@ caption 初回オンライン pip インストールフロー
 actor User
 participant "Setup-Bin.ps1" as Setup
 participant "python-setup.ps1" as PySetup
-participant "pip-26.2.1.tar.gz" as PipSrc
-participant "pip-26.2.1/src" as PipModule
+participant "pip-26.2.2.tar.gz" as PipSrc
+participant "pip-26.2.2/src" as PipModule
 participant "PyPI (Internet)" as PyPI
 
 User -> Setup: インストール実行
@@ -186,7 +186,7 @@ Python が利用可能な環境では、`Get-Packages.ps1` 実行時点で wheel
 ### 手動での wheel 取得
 
 ```bash
-pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml libclang==18.1.1 --dest packages/pip-packages
+pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip==26.2.2 certifi==2026.10.23 setuptools wheel packaging pytest yamllint pyyaml libclang==18.1.1 --dest packages/pip-packages
 ```
 
 `<ver>` には `packages.psd1` の Python バージョン (例: `3.14`) を指定してください。
@@ -197,7 +197,8 @@ pip download --only-binary=:all: --python-version <ver> --implementation cp --pl
 ```text
 packages/
 +-- pip-packages/
-|   +-- pip-26.2.1-py3-none-any.whl
+|   +-- pip-26.2.2-py3-none-any.whl
+|   +-- certifi-2026.10.23-py3-none-any.whl
 |   +-- setuptools-*.whl
 |   +-- wheel-*.whl
 |   +-- packaging-*.whl
@@ -210,7 +211,7 @@ packages/
 |   +-- pathspec-*.whl
 |   +-- PyYAML-*.whl
 |   \-- libclang-18.1.1-py2.py3-none-win_amd64.whl
-\-- pip-26.2.1.tar.gz
+\-- pip-26.2.2.tar.gz
 ```
 
 ## pip パッケージの追加
@@ -229,3 +230,9 @@ pytest のようにすべての devbin Python 環境へ導入するパッケー�
 本設計では、`Get-Packages.ps1` がソース tarball と依存関係を含めた wheel を準備し、`python-setup.ps1` は埋め込み Python の `._pth` を一時拡張して、pip と pytest を含むコア パッケージをインストールします。
 pip パッケージ型の追加ツール (yamllint 等) は、`Devbin/Extract` の `PipInstall` 戦略が `packages/pip-packages` の wheel からインストールします。
 これにより、完全オフライン環境で Python のテスト実行環境を導入できます。
+
+## eMudhra 証明書問題への対応
+
+pip は 26.2.2、certifi は 2026.10.23 に固定し、取得・キャッシュ検証・Python 初期設定で同じ版を使用します。旧版の wheel のみではオフライン導入条件を満たしません。pip 内蔵の certifi は独立した certifi の更新では置き換わらないため、pip のソース tarball も 26.2.2 に更新しています。
+
+既存環境はパッケージ取得後にコンポーネント マネージャーで Python を更新してください。Python の初期設定で pip と certifi を導入します。既存の仮想環境は個別の更新が必要です。

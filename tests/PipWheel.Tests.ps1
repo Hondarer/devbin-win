@@ -17,7 +17,7 @@ Describe "Get-PipWheelPackageNames" {
 
     It "IncludeCorePackages で Python 初期設定用のコアパッケージを返す" {
         $names = @(Get-PipWheelPackageNames -IncludeCorePackages)
-        ($names -join ",") | Should Be "pip,setuptools,wheel,packaging,pytest"
+        ($names -join ",") | Should Be "pip==26.2.2,certifi==2026.10.23,setuptools,wheel,packaging,pytest"
     }
 
     It "Python 初期設定スクリプトがコアパッケージ一覧をインストールに使う" {
@@ -96,6 +96,23 @@ Describe "Test-PipWheelPackages" {
         }
     }
 
+    It "旧 pip と certifi のキャッシュを対策済みとして受け入れない" {
+        $dir = New-TestDirectory
+        try {
+            foreach ($name in @("pip-26.2.1-py3-none-any.whl", "certifi-2026.9.25-py3-none-any.whl", "setuptools-84.0.0-py3-none-any.whl", "wheel-0.48.0-py3-none-any.whl", "packaging-26.3-py3-none-any.whl", "pytest-9.1.1-py3-none-any.whl")) {
+                New-Item -ItemType File -Path (Join-Path $dir $name) -Force | Out-Null
+            }
+            $required = @(Get-PipWheelPackageNames -IncludeCorePackages)
+            $missing = @(Test-PipWheelPackages -DirectoryPath $dir -PackageNames $required)
+            ($missing -join ",") | Should Be "pip==26.2.2,certifi==2026.10.23"
+            foreach ($name in @("pip-26.2.2-py3-none-any.whl", "certifi-2026.10.23-py3-none-any.whl")) {
+                New-Item -ItemType File -Path (Join-Path $dir $name) -Force | Out-Null
+            }
+            @(Test-PipWheelPackages -DirectoryPath $dir -PackageNames $required).Count | Should Be 0
+        } finally {
+            Remove-TestDirectory -Path $dir
+        }
+    }
     It "extras を含む仕様は取得引数に保持し、wheel は本体名と版で照合する" {
         $package = New-TestPackage -ShortName "markitdown" -Version "0.1.8" -Extra @{ PipPackage = "markitdown[all]" }
         $specs = @(Get-PipWheelDownloadSpecs -PackageConfigs @($package))
@@ -172,7 +189,7 @@ Describe "Invoke-PipWheelDownload" {
                 } -ParameterFilter { $Name -eq "python.exe" }
                 Mock Save-PipWheelPackages {
                     New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
-                    foreach ($name in @("pip-26.2.1-py3-none-any.whl", "setuptools-84.0.0-py3-none-any.whl", "wheel-0.48.0-py3-none-any.whl", "packaging-26.3-py3-none-any.whl", "pytest-9.1.1-py3-none-any.whl")) {
+                    foreach ($name in @("pip-26.2.2-py3-none-any.whl", "certifi-2026.10.23-py3-none-any.whl", "setuptools-84.0.0-py3-none-any.whl", "wheel-0.48.0-py3-none-any.whl", "packaging-26.3-py3-none-any.whl", "pytest-9.1.1-py3-none-any.whl")) {
                         New-Item -ItemType File -Path (Join-Path $DestinationDir $name) -Force | Out-Null
                     }
                     return 0
@@ -181,7 +198,7 @@ Describe "Invoke-PipWheelDownload" {
                 $result = Invoke-PipWheelDownload -Packages @() -PipInstallPackages @() -DestinationDir $dest -IncludeCorePackages
                 $result.Success | Should Be $true
                 $result.Skipped | Should Be $false
-                (Test-Path (Join-Path $dest "pip-26.2.1-py3-none-any.whl")) | Should Be $true
+                (Test-Path (Join-Path $dest "pip-26.2.2-py3-none-any.whl")) | Should Be $true
                 (Test-Path (Join-Path $dest "pyyaml-6.0.3-cp313-cp313-win_amd64.whl")) | Should Be $false
                 (Test-Path (Join-Path $dest "pip-26.1.1-py3-none-any.whl")) | Should Be $false
             } finally {

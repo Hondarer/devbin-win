@@ -299,7 +299,7 @@ ZIP を展開し、すべてのファイルを bin ディレクトリに配置�
     ShortName = "nodejs"
     ArchivePattern = "node-v.*-win-x64\.zip$"
     ExtractStrategy = "Standard"
-    DownloadUrl = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-win-x64.zip"
+    DownloadUrl = "https://nodejs.org/dist/v26.12.1/node-v26.12.1-win-x64.zip"
 }
 ```
 
@@ -397,7 +397,7 @@ ZIP を展開後、指定されたディレクトリ名で配置します。
     ExtractStrategy = "TargetDirectory"
     TargetDirectory = "python3"
     PostSetupScript = "python-setup.ps1"
-    DownloadUrl = "https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip"
+    DownloadUrl = "https://www.python.org/ftp/python/3.14.9/python-3.14.9-embed-amd64.zip"
 }
 ```
 
@@ -486,7 +486,7 @@ endlocal
 NuGet、cloc、vswhere のように、配布物が単体の `.exe` で完結するツールに適しています。
 
 `DownloadFileName` は、保存ファイル名を明示的に固定したい場合に指定します。
-たとえば VS Code の公式固定版 URL は末尾が `stable` となるため、`DownloadFileName = "VSCode-win32-x64-1.138.0.zip"` のように指定します。
+たとえば VS Code の公式固定版 URL は末尾が `stable` となるため、`DownloadFileName = "VSCode-win32-x64-1.143.1.zip"` のように指定します。
 未指定の場合であっても `Version` が定義されていれば、保存ファイル名は自動的にバージョン付きのファイル名へ正規化されます (区切り文字の差異は同一バージョンとして判定)。
 
 ### SelfExtractingArchive 戦略

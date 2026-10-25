@@ -1,11 +1,11 @@
 ﻿# PipPackage.ps1
 # pip パッケージ名の正規化およびオフライン wheel ファイルの検証
 #
-# Python の初期セットアップに必要な基本パッケージ (pip / setuptools / wheel / packaging / pytest) と、
+# Python の初期セットアップに必要な基本パッケージ (pip / certifi / setuptools / wheel / packaging / pytest) と、
 # 各種追加パッケージに必要な wheel の切り替えは -IncludeCorePackages スイッチで制御します。
 
 # Python 初期セットアップ用の基本コアパッケージ一覧
-$script:DevbinPipCorePackages = @("pip", "setuptools", "wheel", "packaging", "pytest")
+$script:DevbinPipCorePackages = @("pip==26.2.2", "certifi==2026.10.23", "setuptools", "wheel", "packaging", "pytest")
 
 # PEP 503 に準拠した pip パッケージ名の正規化
 function Get-NormalizedPipPackageName {

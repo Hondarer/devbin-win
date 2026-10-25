@@ -107,7 +107,7 @@ ZIP を展開し、すべてのファイルを bin ディレクトリに配置�
     ShortName = "nodejs"
     ArchivePattern = "node-v.*-win-x64\.zip$"
     ExtractStrategy = "Standard"
-    DownloadUrl = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-win-x64.zip"
+    DownloadUrl = "https://nodejs.org/dist/v26.12.1/node-v26.12.1-win-x64.zip"
 }
 ```
 
@@ -378,7 +378,7 @@ PostSetupScript を使用した例:
     ExtractStrategy = "TargetDirectory"
     TargetDirectory = "python3"
     PostSetupScript = "python-setup.ps1"
-    DownloadUrl = "https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip"
+    DownloadUrl = "https://www.python.org/ftp/python/3.14.9/python-3.14.9-embed-amd64.zip"
 }
 ```
 

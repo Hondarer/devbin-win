@@ -117,7 +117,7 @@ Devbin/Extract に実装された抽出パターンです。
 - `Resolve-DependencyOrder`: 導入順を解決します。循環依存と未定義の依存先は順序ではなく失敗として返します。
 - `Get-UninstallOrder`: 削除順 (依存元から依存先) を求めます。
 - `Get-PackageDownloadFileName`: 保存アーカイブ名を決定します。版表記の判定は区切り文字と大文字小文字の違いを吸収するため、取得側と導入側で同一の名前になります。
-- `Get-PipWheelPackageNames` / `Test-PipWheelPackages`: pip パッケージ名の正規化 (PEP 503) と wheel の検証を行います。Python 初期設定用のコアパッケージ (`pip`、`setuptools`、`wheel`、`packaging`、`pytest`) は `-IncludeCorePackages` で指定し、取得・検証・インストールで同一の一覧を使用します。
+- `Get-PipWheelPackageNames` / `Test-PipWheelPackages`: pip パッケージ名の正規化 (PEP 503) と wheel の検証を行います。Python 初期設定用のコアパッケージ (`pip==26.2.2`、`certifi==2026.10.23`、`setuptools`、`wheel`、`packaging`、`pytest`) は `-IncludeCorePackages` で指定し、取得・検証・インストールで同一の一覧を使用します。
 - `Get-PythonDirectory`: Python の配置先をパッケージ定義の `TargetDirectory` から取得します。
 
 ## 実行コンテキスト (Devbin/Context)
@@ -217,7 +217,7 @@ PATH、環境変数、ファイル、一時領域、アンインストールな�
   "components": {
     "nodejs": {
       "installedAt": "2026-04-09T10:00:00Z",
-      "archiveFile": "node-v26.9.0-win-x64.zip",
+      "archiveFile": "node-v26.12.1-win-x64.zip",
       "files": ["node.exe", "npm.cmd"],
       "pathDirs": [],
       "envVars": {}
