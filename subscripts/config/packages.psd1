@@ -416,6 +416,22 @@
             DefaultChecked = $true
         },
 
+        # libclang - pip install (Clang Python Bindings と libclang.dll)
+        @{
+            Name = "libclang"
+            ShortName = "libclang"
+            MenuGroup = "C/C++・ビルド"
+            Version = "18.1.1"
+            ArchivePattern = "^$"
+            ExtractStrategy = "PipInstall"
+            PipPackage = "libclang"
+            DependsOn = @("python")
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("python3\Lib\site-packages\clang\native\libclang.dll")
+            DefaultChecked = $true
+        },
+
         # editorconfig-checker - Subdirectory extraction
         @{
             Name = "editorconfig-checker"

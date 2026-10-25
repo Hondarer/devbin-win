@@ -252,6 +252,17 @@ from [LLVM Project](https://github.com/llvm/llvm-project)
 - [/releases/tag/llvmorg-23.1.1](https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.1)
     - [clang+llvm-23.1.1-x86_64-pc-windows-msvc.tar.xz](https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/clang+llvm-23.1.1-x86_64-pc-windows-msvc.tar.xz)
 
+### libclang
+
+from [sighingnow/libclang](https://github.com/sighingnow/libclang)
+
+PyPI の wheel `libclang==18.1.1` を共有 Python (`bin/python3`) へ配置します。
+`clang.cindex` と、Windows x64 向けの `libclang.dll` を同梱します。
+wheel は `Get-Packages.ps1` で `packages/pip-packages/` に準備します。
+
+- [libclang 18.1.1](https://pypi.org/project/libclang/18.1.1/)
+    - [libclang-18.1.1-py2.py3-none-win_amd64.whl](https://files.pythonhosted.org/packages/0b/2d/3f480b1e1d31eb3d6de5e3ef641954e5c67430d5ac93b7fa7e07589576c7/libclang-18.1.1-py2.py3-none-win_amd64.whl)
+
 ### NuGet
 
 from [NuGet](https://www.nuget.org/)

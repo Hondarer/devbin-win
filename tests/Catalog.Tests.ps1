@@ -83,6 +83,17 @@ Describe "packages.psd1" {
         $agy.DisableIfCommand | Should Be "agy"
     }
 
+    It "libclang は共有 Python へ 18.1.1 を導入する" {
+        $libclang = $packages | Where-Object { $_.ShortName -eq "libclang" }
+        $libclang.ExtractStrategy | Should Be "PipInstall"
+        $libclang.PipPackage | Should Be "libclang"
+        $libclang.Version | Should Be "18.1.1"
+        $libclang.MenuGroup | Should Be "C/C++・ビルド"
+        ($libclang.DependsOn -join ",") | Should Be "python"
+        ($libclang.DetectFiles -join ",") | Should Be "python3\Lib\site-packages\clang\native\libclang.dll"
+        $libclang.DefaultChecked | Should Be $true
+    }
+
     It "get-pip の ArchivePattern は旧 tarball も対象にする" {
         $getPip = $packages | Where-Object { $_.ShortName -eq "get-pip" }
         ("pip-26.2.1.tar.gz" -match $getPip.ArchivePattern) | Should Be $true

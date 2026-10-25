@@ -6,7 +6,7 @@
 
 pip 本体として PyPI のソース tarball `pip-26.2.1.tar.gz` を取得します。
 `python-setup.ps1` はこの tarball を一時展開し、埋め込み Python の `._pth` に `src` を一時追加した状態で `python -m pip` を実行します。
-`packages/pip-packages` には Python 初期設定用の `pip`、`setuptools`、`wheel`、`packaging`、`pytest`、追加ツールの `yamllint`、`mkdocs==1.6.1`、`mkdocs-material==9.7.7`、`markdown-callouts==0.4.0`、`mkdocs-awesome-nav==3.3.0`、`markitdown[all]==0.1.8`、およびそれぞれの依存 wheel を保存し、オフライン インストールに利用します。
+`packages/pip-packages` には Python 初期設定用の `pip`、`setuptools`、`wheel`、`packaging`、`pytest`、追加ツールの `yamllint`、`mkdocs==1.6.1`、`mkdocs-material==9.7.7`、`markdown-callouts==0.4.0`、`mkdocs-awesome-nav==3.3.0`、`markitdown[all]==0.1.8`、`libclang==18.1.1`、およびそれぞれの依存 wheel を保存し、オフライン インストールに利用します。
 MkDocs 関連の 4 パッケージは `PipInstall` コンポーネントとして共有 Python に導入します。`pymdown-extensions` と `watchdog` は推移的依存として取得・導入し、独立したコンポーネントにはしません。
 pytest は埋め込み Python にプリインストールされるため、システム Python の環境には依存しません。
 
@@ -33,6 +33,7 @@ package "packages フォルダー" {
     [yamllint-*.whl]
     [pathspec-*.whl]
     [PyYAML-*.whl]
+    [libclang-*.whl]
   }
 }
 
@@ -75,7 +76,7 @@ pysetup --> [pip-packages] : find-links 指定
 `Get-Packages.ps1` は次の処理を行います。
 
 1. `pip-26.2.1.tar.gz` を `packages` にダウンロード
-2. Python が利用可能であれば、`pip download --only-binary=:all: --no-cache-dir --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint==1.38.0 pathspec pyyaml mkdocs==1.6.1 mkdocs-material==9.7.7 markdown-callouts==0.4.0 mkdocs-awesome-nav==3.3.0 "markitdown[all]==0.1.8"` を一時ディレクトリへ実行し、検証後に `packages/pip-packages` をその内容で置き換える。`<ver>` は `packages.psd1` の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従します。旧 ABI の wheel は置き換えにより残しません。`--no-cache-dir` を付けるのは、`PIP_CACHE_DIR` を devbin 同梱の pip と共有しており、バージョンの異なる pip が書いたキャッシュを読むと `Cache entry deserialization failed` の警告が出るためです
+2. Python が利用可能であれば、`pip download --only-binary=:all: --no-cache-dir --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint==1.38.0 pathspec pyyaml mkdocs==1.6.1 mkdocs-material==9.7.7 markdown-callouts==0.4.0 mkdocs-awesome-nav==3.3.0 "markitdown[all]==0.1.8" libclang==18.1.1` を一時ディレクトリへ実行し、検証後に `packages/pip-packages` をその内容で置き換える。`<ver>` は `packages.psd1` の Python `Version` フィールドから自動的に取得するため、Python バージョンを更新しても自動追従します。旧 ABI の wheel は置き換えにより残しません。`--no-cache-dir` を付けるのは、`PIP_CACHE_DIR` を devbin 同梱の pip と共有しており、バージョンの異なる pip が書いたキャッシュを読むと `Cache entry deserialization failed` の警告が出るためです
 
 ### python-setup.ps1
 
@@ -185,7 +186,7 @@ Python が利用可能な環境では、`Get-Packages.ps1` 実行時点で wheel
 ### 手動での wheel 取得
 
 ```bash
-pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml --dest packages/pip-packages
+pip download --only-binary=:all: --python-version <ver> --implementation cp --platform win_amd64 pip setuptools wheel packaging pytest yamllint pyyaml libclang==18.1.1 --dest packages/pip-packages
 ```
 
 `<ver>` には `packages.psd1` の Python バージョン (例: `3.14`) を指定してください。
@@ -207,7 +208,8 @@ packages/
 |   +-- colorama-*.whl
 |   +-- yamllint-*.whl
 |   +-- pathspec-*.whl
-|   \-- PyYAML-*.whl
+|   +-- PyYAML-*.whl
+|   \-- libclang-18.1.1-py2.py3-none-win_amd64.whl
 \-- pip-26.2.1.tar.gz
 ```
 

@@ -36,6 +36,7 @@
 - `Make-Dist.ps1` が `packages` とともに配布する devbin-win 固有ファイル
 
 実ファイル数は `packages` 直下の 40 件 (第三者成果物 36 件、devbin-win 固有スクリプト 4 件)、npm のトップレベル定義 10 件 (依存アーカイブ数は各 cache manifest により変動)、pip 9 件、VSBT 65 件の合計です。
+この件数は 2026-07-23 時点のものです。2026-10-25 に `libclang` 18.1.1 (`PipInstall`) を追加しています。wheel は `Get-Packages.ps1` 実行後に `packages/pip-packages` へ入ります。
 devbin-win 固有スクリプトと配布スクリプト群はリポジトリの MIT ライセンス対象であり、現行の配布 ZIP にはルートの `LICENSE` が収録されます。
 
 本調査の判定は、取得済みのベンダー アーカイブを含む ZIP を無償で不特定多数へ公開する場合を対象としています。
@@ -85,6 +86,7 @@ devbin-win 固有スクリプトと配布スクリプト群はリポジトリの
 | `cmake` 4.3.5 | BSD-3-Clauseおよび同梱第三者ライセンス | 再配布可 | ZIP内の `LICENSE.rst` と各 `COPYING`/`NOTICE` を保持する。[CMake](https://github.com/Kitware/CMake/tree/v4.3.5) |
 | `winflexbison` 2.5.25 | Flex は BSD、Bison とビルドスクリプトは GPL-3.0+、文書は FDL 1.3+ | 条件付きで可 | ZIP内の `COPYING`、`COPYING.flex`、`COPYING.bison`、`COPYING.DOC` を保持する。公開場所から [v2.5.25](https://github.com/lexxmark/winflexbison/tree/v2.5.25) の対応ソースへ同等にアクセスできる状態を配布者が維持する。[公式リポジトリ](https://github.com/lexxmark/winflexbison) / [リリース](https://github.com/lexxmark/winflexbison/releases/tag/v2.5.25) |
 | `clang-format` 23.1.1 | Apache-2.0 WITH LLVM-exceptionほか | 条件付きで可 | tar.xz内にLLVMライセンスがあるが深いパスにある。配布ルートのNOTICEから明示し、著作権・第三者表示を保持する。[LLVM licensing](https://llvm.org/docs/DeveloperPolicy.html#copyright-license-and-patents) |
+| `libclang` 18.1.1 | Apache-2.0 WITH LLVM-exception | 条件付きで可 | PyPI の未改変 wheel `libclang-18.1.1-py2.py3-none-win_amd64.whl` を保持する。公開前に wheel 内の LICENSE 本文を確認する。上流の許諾は [LICENSE.TXT](https://github.com/sighingnow/libclang/blob/llvm-18.1.1/LICENSE.TXT)。[PyPI](https://pypi.org/project/libclang/18.1.1/) |
 | `nuget` 7.9.0 | Apache-2.0 | 条件付きで可 | 単体exeにはライセンス文書がない。Apache-2.0本文、著作権、該当NOTICEを追加する。[NuGet.Client](https://github.com/NuGet/NuGet.Client/tree/release-7.9.x) |
 | `cloc` 2.10 | GPL-2.0 | 条件付きで可 | 単体exeにはライセンス・対応ソースを伴わない。GPL本文とv2.10の対応ソースを同等提供する。[cloc v2.10](https://github.com/AlDanial/cloc/tree/v2.10) |
 | `vswhere` 3.1.7 | MIT | 条件付きで可 | 単体exeにはMIT表示がない。著作権・許諾表示を配布物へ追加する。[vswhere](https://github.com/microsoft/vswhere/tree/3.1.7) |
@@ -134,6 +136,7 @@ wheel 内の `METADATA` と `*.dist-info/licenses` を確認しました。
 | `setuptools-83.0.0-py3-none-any.whl` | MIT + vendor licenses | 再配布可だが重複版。使用版を固定する |
 | `wheel-0.47.0-py3-none-any.whl` | MIT | 再配布可 |
 | `yamllint-1.38.0-py3-none-any.whl` | GPL-3.0-or-later | 再配布可。pure PythonソースとLICENSEをwheel内に収録 |
+| `libclang-18.1.1-py2.py3-none-win_amd64.whl` | Apache-2.0 WITH LLVM-exception | 条件付きで可。取得後に wheel 内のライセンス本文を確認する。依存 wheel はない |
 
 ## 5. Visual Studio Build Tools内部物の公開時評価
 

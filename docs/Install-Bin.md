@@ -172,6 +172,20 @@ clang-format はソースコードを自動整形する LLVM ツールです。`
 - **バージョン**: 23.1.1
 - **プロジェクト**: [llvm/llvm-project](https://github.com/llvm/llvm-project)
 
+### libclang について
+
+libclang は Clang の Python バインディング (`clang.cindex`) と、同梱の `libclang.dll` です。
+LLVM 一式を置かずに、共有 Python から Clang の構文木を扱います。
+
+- **用途**: Python から Clang のインデックス API (`clang.cindex`) を使う
+- **配置ファイル**: `bin\python3\Lib\site-packages\clang\native\libclang.dll`
+- **バージョン**: 18.1.1
+- **プロジェクト**: [sighingnow/libclang](https://github.com/sighingnow/libclang)
+- **配布元**: [PyPI libclang 18.1.1](https://pypi.org/project/libclang/18.1.1/)
+
+導入後は `python -c "import clang.cindex"` で読み込めます。
+検索先はパッケージ内の `native` ディレクトリです。別の `libclang.dll` を使う場合は、環境変数 `LIBCLANG_LIBRARY_PATH` で上書きできます。
+
 ### WinFlexBison について
 
 WinFlexBison は Flex と GNU Bison の Windows 移植版です。
