@@ -177,11 +177,11 @@
             Name = ".NET SDK"
             ShortName = "dotnet10sdk"
             MenuGroup = "基盤・ランタイム"
-            Version = "10.0.401"
+            Version = "10.0.403"
             ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
             ExtractStrategy = "TargetDirectory"
             TargetDirectory = "dotnet10sdk"
-            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.401/dotnet-sdk-10.0.401-win-x64.zip"
+            DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.403/dotnet-sdk-10.0.403-win-x64.zip"
             DependsOn = @()
             PathDirs = @("dotnet10sdk")
             EnvVars = @{ "DOTNET_HOME" = "dotnet10sdk"; "DOTNET_CLI_TELEMETRY_OPTOUT" = "1" }

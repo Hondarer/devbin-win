@@ -364,7 +364,7 @@ Portable Git の MinGW PATH スクリプトなど、リポジトリで管理す�
     ArchivePattern = "dotnet-sdk-.*-win-x64\.zip$"
     ExtractStrategy = "TargetDirectory"
     TargetDirectory = "dotnet10sdk"
-    DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.401/dotnet-sdk-10.0.401-win-x64.zip"
+    DownloadUrl = "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.403/dotnet-sdk-10.0.403-win-x64.zip"
 }
 ```
 

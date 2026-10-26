@@ -156,7 +156,7 @@ pip のソース tarball は Get-Packages.ps1 の実行により `packages` フ�
 from [.NET のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet)
 
 - [.NET 10.0 のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet/10.0)
-    - [dotnet-sdk-10.0.401-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.401/dotnet-sdk-10.0.401-win-x64.zip)
+    - [dotnet-sdk-10.0.403-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.403/dotnet-sdk-10.0.403-win-x64.zip)
 
 ### PowerShell 7
 
