@@ -25,12 +25,12 @@
             Name = "Git"
             ShortName = "git"
             MenuGroup = "基盤・ランタイム"
-            Version = "2.56.0.3"
+            Version = "2.56.0.4"
             ArchivePattern = "PortableGit-.*-64-bit\.7z\.exe$"
             ExtractStrategy = "SelfExtractingArchive"
             TargetDirectory = "git"
             ExtractArgs = @("-y", "-o{TargetPath}")
-            DownloadUrl = "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.3/PortableGit-2.56.0.3-64-bit.7z.exe"
+            DownloadUrl = "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.4/PortableGit-2.56.0.4-64-bit.7z.exe"
             PostExtract = @{
                 CopyFiles = @(
                     @{ Source = "subscripts\Add-MinGW-Path.cmd"; Destination = "Add-MinGW-Path.cmd" },

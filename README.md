@@ -173,7 +173,7 @@ Windows PowerShell 5.1 を置き換えずに共存します。
 from [Git](https://git-scm.com/)
 
 - [Install for Windows](https://git-scm.com/install/windows)
-    - [Portable 2.56.0.3](https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.3/PortableGit-2.56.0.3-64-bit.7z.exe)
+    - [Portable 2.56.0.4](https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.4/PortableGit-2.56.0.4-64-bit.7z.exe)
 
 ### Visual Studio Code
 
