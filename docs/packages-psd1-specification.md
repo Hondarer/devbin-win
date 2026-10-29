@@ -243,7 +243,10 @@ DisableIfFont = "UDEV Gothic HSRFJPDOCEM"
 
 #### ArchivePattern
 
-packages フォルダー内でアーカイブファイルを検索する際に使用する正規表現パターンです。バージョン番号を含む柔軟なマッチングが可能です。
+packages フォルダー内の旧バージョンのアーカイブを見つけるための正規表現パターンです。バージョン番号を含む柔軟なマッチングが可能です。
+`Get-Packages.ps1` の旧ファイル削除に使用します。
+インストール時は、`DownloadUrl` が定義されていれば、`packages.psd1` の版で保存したファイル名と完全に一致するファイルだけを使用し、`ArchivePattern` では探しません。
+`DownloadUrl` が無い場合だけ、`ArchivePattern` に一致するファイルを使用します。
 
 例:
 - `"node-v.*-win-x64\.zip$"` - Node.js の ZIP ファイル
@@ -290,7 +293,9 @@ DownloadHeaders = @{
 
 `ArchivePattern` は、配布元の元ファイル名ではなく、packages フォルダーへ保存される最終ファイル名に一致するように定義してください。
 現行版だけに固定せず、旧バージョンの保存名にも一致させてください。`Get-Packages.ps1` は同一パターンの旧ファイルを削除します。
-`Install-Component` には互換フォールバック機能があり、`ArchivePattern` に一致するファイルが存在しない場合に限り、URL 由来の元ファイル名が packages に存在すればそのファイルを使用します。
+`Install-Component` は、`ArchivePattern` に一致しても版の異なるアーカイブ、および版を含まない URL 由来の元ファイル名は使用しません。
+このようなファイルしか無い場合は、オンラインでは定義の版を取得してから導入し、オフラインでは資材の不足として扱います。
+`packages.psd1` の版を上げた後、`Get-Packages.ps1` の実行前にインストールしても、旧版の実体を導入しないようにするためです。
 
 #### DownloadVersion と VersionSource
 

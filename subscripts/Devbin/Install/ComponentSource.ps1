@@ -13,6 +13,16 @@ function Get-PackagesDirectory {
     return "packages"
 }
 
+# Get-Packages が packages.psd1 の版で保存するアーカイブのファイル名を返します (DownloadUrl が無い場合は "")。
+function Get-ComponentArchiveFileName {
+    param([hashtable]$PackageConfig)
+
+    if ([string]::IsNullOrWhiteSpace((Get-PackageBaseFileName -Package $PackageConfig))) {
+        return ""
+    }
+    return (Get-PackageDownloadFileName -Package $PackageConfig)
+}
+
 function Find-ComponentArchiveFile {
     param(
         [hashtable]$PackageConfig,
@@ -20,6 +30,17 @@ function Find-ComponentArchiveFile {
     )
 
     if ([string]::IsNullOrWhiteSpace($PackagesDir) -or -not (Test-Path -LiteralPath $PackagesDir -PathType Container)) {
+        return $null
+    }
+
+    # DownloadUrl がある場合は、Get-Packages が packages.psd1 の版で保存するファイル名だけを使います。
+    # ArchivePattern は旧版のアーカイブにも一致するため、定義と異なる版をインストールしないよう照合に使いません。
+    $downloadFileName = Get-ComponentArchiveFileName -PackageConfig $PackageConfig
+    if (-not [string]::IsNullOrWhiteSpace($downloadFileName)) {
+        $candidatePath = Join-Path $PackagesDir $downloadFileName
+        if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
+            return $candidatePath
+        }
         return $null
     }
 
@@ -32,20 +53,26 @@ function Find-ComponentArchiveFile {
         }
     }
 
-    $baseFileName = Get-PackageBaseFileName -Package $PackageConfig
-    $downloadFileName = ""
-    if (-not [string]::IsNullOrWhiteSpace($baseFileName)) {
-        $downloadFileName = Get-PackageDownloadFileName -Package $PackageConfig
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($baseFileName) -and $baseFileName -ne $downloadFileName) {
-        $candidatePath = Join-Path $PackagesDir $baseFileName
-        if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
-            return $candidatePath
-        }
-    }
-
     return $null
+}
+
+# packages.psd1 の版と異なるため使用しない、ArchivePattern に一致するアーカイブのファイル名を返します。
+function Get-MismatchedComponentArchiveNames {
+    param(
+        [hashtable]$PackageConfig,
+        [string]$PackagesDir
+    )
+
+    $archivePattern = if ($PackageConfig.ContainsKey("ArchivePattern")) { [string]$PackageConfig.ArchivePattern } else { "" }
+    $downloadFileName = Get-ComponentArchiveFileName -PackageConfig $PackageConfig
+    if ([string]::IsNullOrWhiteSpace($archivePattern) -or [string]::IsNullOrWhiteSpace($downloadFileName) -or
+        [string]::IsNullOrWhiteSpace($PackagesDir) -or -not (Test-Path -LiteralPath $PackagesDir -PathType Container)) {
+        return @()
+    }
+
+    return @(Get-ChildItem -Path $PackagesDir -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match $archivePattern -and $_.Name -ne $downloadFileName } |
+        ForEach-Object { $_.Name })
 }
 
 function Test-VsBuildToolsSourceAvailable {
@@ -289,15 +316,15 @@ function Resolve-ComponentSource {
     }
     else {
         $archiveFile = Find-ComponentArchiveFile -PackageConfig $PackageConfig -PackagesDir $PackagesDir
-        if (-not [string]::IsNullOrWhiteSpace($archiveFile)) {
-            $archivePattern = if ($PackageConfig.ContainsKey("ArchivePattern")) { [string]$PackageConfig.ArchivePattern } else { "" }
-            $leafName = Split-Path $archiveFile -Leaf
-            if (-not [string]::IsNullOrWhiteSpace($archivePattern) -and $leafName -notmatch $archivePattern) {
-                Write-Host "    Warning: ArchivePattern に一致しないため元ファイル名へフォールバックします: $leafName" -ForegroundColor Yellow
+        if ([string]::IsNullOrWhiteSpace($archiveFile)) {
+            $expectedFileName = Get-ComponentArchiveFileName -PackageConfig $PackageConfig
+            $missingDetail = if ($expectedFileName) { "Archive not found for '$ShortName' (file: $expectedFileName)" } else { "Archive not found for '$ShortName' (pattern: $($PackageConfig.ArchivePattern))" }
+            foreach ($mismatchedName in @(Get-MismatchedComponentArchiveNames -PackageConfig $PackageConfig -PackagesDir $PackagesDir)) {
+                Write-Host "    packages.psd1 の定義 ($expectedFileName) と版が異なるため使用しません: $mismatchedName" -ForegroundColor Yellow
             }
-        } else {
+
             if ($offline) {
-                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail "Archive not found for '$ShortName' (pattern: $($PackageConfig.ArchivePattern))"
+                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail $missingDetail
                 return $result
             }
 
@@ -318,7 +345,7 @@ function Resolve-ComponentSource {
 
             $archiveFile = Find-ComponentArchiveFile -PackageConfig $PackageConfig -PackagesDir $PackagesDir
             if ([string]::IsNullOrWhiteSpace($archiveFile)) {
-                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail "Archive not found for '$ShortName' (pattern: $($PackageConfig.ArchivePattern))"
+                Write-ComponentSourceMissing -ShortName $ShortName -PackagesDir $PackagesDir -Detail $missingDetail
                 return $result
             }
         }

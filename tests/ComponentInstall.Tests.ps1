@@ -280,27 +280,92 @@ Describe "Resolve-ComponentSource" {
         }
     }
 
-    It "版を含まない元のファイル名にもフォールバックする" {
-        $packagesDir = New-TestDirectory
-        try {
-            New-Item -ItemType File -Path (Join-Path $packagesDir "tool.zip") -Force | Out-Null
-            $pkg = New-TestPackage -ShortName "tool" -Extra @{
-                ArchivePattern = "^tool-[0-9].*\.zip$"
-                DownloadUrl    = "https://example.invalid/dist/tool.zip"
+    It "版を含まない元のファイル名は、版が分からないため使わない" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $packagesDir = New-TestDirectory
+            try {
+                New-Item -ItemType File -Path (Join-Path $packagesDir "tool.zip") -Force | Out-Null
+                $pkg = New-TestPackage -ShortName "tool" -Extra @{
+                    ArchivePattern = "^tool-[0-9].*\.zip$"
+                    DownloadUrl    = "https://example.invalid/dist/tool.zip"
+                }
+
+                (Find-ComponentArchiveFile -PackageConfig $pkg -PackagesDir $packagesDir) | Should BeNullOrEmpty
+            } finally {
+                Remove-TestDirectory -Path $packagesDir
             }
+        }
+    }
 
-            $source = Resolve-ComponentSource `
-                -ShortName "tool" `
-                -PackageConfig $pkg `
-                -Packages @($pkg) `
-                -InstallDir $packagesDir `
-                -ScriptDir "" `
-                -PackagesDir $packagesDir
+    Context "packages.psd1 と版が異なるアーカイブは使わず、定義の版を取得してから使う" {
+        It "packages.psd1 と版が異なるアーカイブは使わず、定義の版を取得してから使う" {
+            InModuleScope Devbin {
+                . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+                $packagesDir = New-TestDirectory
+                try {
+                    New-Item -ItemType File -Path (Join-Path $packagesDir "tool-1.0.0.zip") -Force | Out-Null
+                    $pkg = New-TestPackage -ShortName "tool" -Version "2.0.0" -Extra @{
+                        ArchivePattern = "^tool-.*\.zip$"
+                        DownloadUrl    = "https://example.invalid/dist/tool-2.0.0.zip"
+                    }
+                    (Find-ComponentArchiveFile -PackageConfig $pkg -PackagesDir $packagesDir) | Should BeNullOrEmpty
+                    @(Get-MismatchedComponentArchiveNames -PackageConfig $pkg -PackagesDir $packagesDir) | Should Be @("tool-1.0.0.zip")
 
-            $source.Success | Should Be $true
-            (Split-Path $source.ArchiveFile -Leaf) | Should Be "tool.zip"
-        } finally {
-            Remove-TestDirectory -Path $packagesDir
+                    Mock Test-DevbinOfflineMode { return $false }
+                    Mock Write-Host { }
+                    Mock Invoke-PackageAcquisitionForShortNames {
+                        New-Item -ItemType File -Path (Join-Path $packagesDir "tool-2.0.0.zip") -Force | Out-Null
+                    }
+
+                    $source = Resolve-ComponentSource `
+                        -ShortName "tool" `
+                        -PackageConfig $pkg `
+                        -Packages @($pkg) `
+                        -InstallDir $packagesDir `
+                        -ScriptDir "" `
+                        -PackagesDir $packagesDir
+
+                    $source.Success | Should Be $true
+                    (Split-Path $source.ArchiveFile -Leaf) | Should Be "tool-2.0.0.zip"
+                    Assert-MockCalled Invoke-PackageAcquisitionForShortNames -Scope It -Times 1 -Exactly
+                } finally {
+                    Remove-TestDirectory -Path $packagesDir
+                }
+            }
+        }
+    }
+
+    Context "オフラインでは、版が異なるアーカイブしか無ければ取得元不足として扱う" {
+        It "オフラインでは、版が異なるアーカイブしか無ければ取得元不足として扱う" {
+            InModuleScope Devbin {
+                . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+                $packagesDir = New-TestDirectory
+                try {
+                    New-Item -ItemType File -Path (Join-Path $packagesDir "tool-1.0.0.zip") -Force | Out-Null
+                    $pkg = New-TestPackage -ShortName "tool" -Version "2.0.0" -Extra @{
+                        ArchivePattern = "^tool-.*\.zip$"
+                        DownloadUrl    = "https://example.invalid/dist/tool-2.0.0.zip"
+                    }
+
+                    Mock Test-DevbinOfflineMode { return $true }
+                    Mock Write-Host { }
+                    Mock Write-ComponentSourceMissing { }
+
+                    $source = Resolve-ComponentSource `
+                        -ShortName "tool" `
+                        -PackageConfig $pkg `
+                        -Packages @($pkg) `
+                        -InstallDir $packagesDir `
+                        -ScriptDir "" `
+                        -PackagesDir $packagesDir
+
+                    $source.Success | Should Be $false
+                    Assert-MockCalled Write-ComponentSourceMissing -Scope It -Times 1 -Exactly
+                } finally {
+                    Remove-TestDirectory -Path $packagesDir
+                }
+            }
         }
     }
 
