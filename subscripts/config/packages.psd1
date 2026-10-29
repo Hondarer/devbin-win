@@ -17,6 +17,8 @@
             DetectFiles = @("pwsh\pwsh.exe")
             SkipIfCommand = "pwsh"
             DisableIfCommand = "pwsh"
+            # devbin-win 外部に導入済みの場合の版表示に使用します (ストア版の pwsh.exe には版情報がありません)。
+            VersionArgs = @("--version")
             DefaultChecked = $true
         },
 
@@ -71,6 +73,8 @@
             DetectFiles = @("git\bin\git.exe")
             SkipIfCommand = "git"
             DisableIfCommand = "git"
+            # 版情報の "2.56.0.windows.3" を、Version と同じ "2.56.0.3" の形式で表示します。
+            VersionOutputPattern = '(\d+(?:\.\d+)+)(?:\.windows\.(\d+))?'
             DefaultChecked = $true
         },
 
@@ -99,6 +103,8 @@
             DetectFiles = @("vscode\Code.exe")
             SkipIfCommand = "code"
             DisableIfCommand = "code"
+            # devbin-win 外部に導入済みの場合の版表示に使用します (code.cmd には版情報がありません)。
+            VersionArgs = @("--version")
             DefaultChecked = $false
         },
 
@@ -841,6 +847,9 @@ endlocal
             DetectFiles = @("ffmpeg\ffmpeg.exe", "ffmpeg\ffprobe.exe", "ffmpeg\ffplay.exe")
             SkipIfCommand = "ffmpeg"
             DisableIfCommand = "ffmpeg"
+            # 出力の 2 行目以降にあるコンパイラーの版を拾わないよう、先頭行の版 (リリース版の番号または開発版の日付) だけを抜き出します。
+            VersionArgs = @("-version")
+            VersionOutputPattern = 'ffmpeg version (\d+(?:\.\d+)+|\d{4}-\d{2}-\d{2})'
             DefaultChecked = $true
         },
 
@@ -1008,6 +1017,8 @@ endlocal
             DisableIfCommand = "copilot"
             # 導入後は copilot.exe 自身が自己更新するため、Version は初回導入および明示的な再インストールで使用する版を示します。
             SelfUpdating = $true
+            # 実行ファイルの版情報が無い場合に、メニューでの版表示のために実行する引数です。
+            VersionArgs = @("--version")
             # 自己更新時に旧版を copilot.exe.old-<数値>-<数値> へ退避するため、アンインストールおよび再インストール時に削除します。
             CleanupPatterns = @("copilot.exe.old-*")
             DefaultChecked = $false
@@ -1034,6 +1045,8 @@ endlocal
             DisableIfCommand = "agy"
             # 導入後は agy.exe 自身が自己更新するため、Version は初回導入および明示的な再インストールで使用する版を示します。
             SelfUpdating = $true
+            # agy.exe には版情報が無いため、メニューでの版表示のために実行する引数です。
+            VersionArgs = @("--version")
             # 自己更新時に旧版を agy.exe.<数値>.old へ退避するため、アンインストールおよび再インストール時に削除します。
             CleanupPatterns = @("agy.exe.*.old")
             DefaultChecked = $false

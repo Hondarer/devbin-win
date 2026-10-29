@@ -72,7 +72,9 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | MenuGroup | メニューの体系名。定義順で体系が変わる位置に選択できない区切りを表示 | string | なし (区切りなし) |
 | Hidden | `$true` なら CLI メニューに表示しない | bool | `$false` (表示) |
 | DefaultChecked | 初回導入時に、メニューで最初からチェック状態にするか | bool | `$false` (チェックしない) |
-| SelfUpdating | `$true` なら、導入後にツール自身が実行ファイルを更新するものとして扱い、`Updateable` 判定を行わない | bool | `$false` (更新判定あり) |
+| SelfUpdating | `$true` なら、導入後にツール自身が実行ファイルを更新するものとして扱い、`Updateable` 判定を行わない。メニューの版は実行ファイルから読み取る | bool | `$false` (更新判定あり) |
+| VersionArgs | メニューの版表示で、実行ファイルに版情報が無い場合に版を出力させる引数。`SelfUpdating = $true` の導入済みの実行ファイルと、`DisableIfCommand` で検出した外部の実行ファイルに使用する | string[] | `@()` (実行しない) |
+| VersionOutputPattern | 版情報またはコマンド出力から版を抜き出す正規表現。キャプチャ グループがある場合は、値のあるグループを `.` で連結する | string | `\d+(?:\.\d+)+` |
 | CleanupPatterns | ツールが実行時に生成し、マニフェストに記録されないファイルのパターン ($InstallDir からの相対パス)。アンインストール時と再インストール時に削除する | string[] | `@()` (追加削除なし) |
 
 ### DependsOn
@@ -168,6 +170,10 @@ DefaultChecked = $true    # 初回導入時に選択済みで表示する
 この場合の `Version` は、初回導入と明示的な再インストールで packages フォルダーから導入する版を示します。
 packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
 
+メニューの版の列には、マニフェストの記録値ではなく、メニューを開いた時点の実際の版を表示します。
+読み取り方は [VersionArgs と VersionOutputPattern](#versionargs-と-versionoutputpattern) を参照してください。
+読み取れなかった場合はマニフェストの記録値を表示します。
+
 `CleanupPatterns` には、ツールが実行時に生成するファイルをパターンで指定します。
 これらのファイルはマニフェストのファイル一覧に含まれないため、指定しないとアンインストール後に残ります。
 ワイルドカードはファイル名の部分にだけ使用できます。
@@ -177,7 +183,35 @@ packages フォルダーの版で入れ直したい場合は、メニューで�
 ```powershell
 # GitHub Copilot CLI の例: 自己更新時に旧版を copilot.exe.old-<数値>-<数値> へ退避する
 SelfUpdating = $true
+VersionArgs = @("--version")
 CleanupPatterns = @("copilot.exe.old-*")
+```
+
+### VersionArgs と VersionOutputPattern
+
+メニューの版の列で、実行ファイルから実際の版を読み取るために使用します。
+対象は、`SelfUpdating = $true` で導入済みの実行ファイルと、devbin-win 外部で検出したファイルです。
+外部のファイルは、`DisableIfCommand` では PATH 上のコマンド、`DisableIfFont` ではレジストリに登録されたフォント ファイルです。
+
+最初に実行ファイルの版情報 (ProductVersion / FileVersion) を読み取ります。
+版情報が無い場合だけ、`VersionArgs` を付けて実行ファイルを起動し、標準出力と標準エラー出力から版を抜き出します。
+起動が必要な項目はまとめて起動して並列に待ち、全体で 3 秒を過ぎたものは強制終了して版不明とします。
+`VersionArgs` には、更新の確認やネットワーク接続を伴わず、すぐに終わる引数を指定してください。
+起動に時間のかかるツール (Inkscape の `--version` は約 9 秒) は、版情報で読み取れるため `VersionArgs` を指定しません。
+
+フォント ファイル (.ttf / .otf / .ttc) は起動せず、name テーブルの版の文字列 (nameID 5) を読み取ります。
+エクスプローラーのプロパティに表示される「バージョン」と同じ値です。
+
+`VersionOutputPattern` は、版情報、コマンド出力、フォントの版の文字列に適用します。
+コンパイラーの版など、別の版が出力に含まれるツールで、対象の版だけを抜き出すために指定します。
+
+```powershell
+# FFmpeg の例: 先頭行の "ffmpeg version 9.0.1-essentials_build-..." から 9.0.1 を抜き出す
+VersionArgs = @("-version")
+VersionOutputPattern = 'ffmpeg version (\d+(?:\.\d+)+|\d{4}-\d{2}-\d{2})'
+
+# Git の例: 版情報の "2.56.0.windows.3" を "2.56.0.3" として表示する
+VersionOutputPattern = '(\d+(?:\.\d+)+)(?:\.windows\.(\d+))?'
 ```
 
 ### DisableIfFont

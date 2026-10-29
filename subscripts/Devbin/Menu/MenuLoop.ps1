@@ -20,6 +20,7 @@ function Invoke-MenuCursorToggle {
             -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `
             -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $item) `
             -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") `
+            -Version ([string](Get-MenuFlag -Map $State.Versions -ItemOrName $item -Default "")) `
             -IsCursor ($i -eq $State.CursorIndex) `
             -Packages $State.Packages
     }

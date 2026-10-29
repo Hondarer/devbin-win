@@ -56,6 +56,7 @@ function Render-MenuLine {
         [bool]$IsDisabled,
         [string]$DisableReason = "",
         [string]$Status,
+        [string]$Version = "",
         [bool]$IsCursor,
         [array]$Packages
     )
@@ -81,7 +82,7 @@ function Render-MenuLine {
     $depDisplay = Get-DependencyDisplay -PackageConfig $Item -Packages $Packages
 
     $componentField = "$checkbox $($Item.Name)"
-    $line = "$prefix{0,3}  {1,-36} {2,-15} {3}" -f $Number, $componentField, $statusDisp.Label, $depDisplay
+    $line = "$prefix{0,3}  {1,-36} {2,-22} {3,-15} {4}" -f $Number, $componentField, $Version, $statusDisp.Label, $depDisplay
 
     $width = [Console]::WindowWidth - 1
     if ($line.Length -lt $width) {
@@ -156,7 +157,7 @@ function Render-Menu {
 
     # 行 3: ヘッダー行
     [Console]::SetCursorPosition(0, 3)
-    [Console]::Write(("  {0,3}  {1,-36} {2,-15} {3}" -f "#", "コンポーネント", "状態", "依存").PadRight($width))
+    [Console]::Write(("  {0,3}  {1,-36} {2,-22} {3,-15} {4}" -f "#", "コンポーネント", "版", "状態", "依存").PadRight($width))
 
     # 行 4: 区切り線
     [Console]::SetCursorPosition(0, 4)
@@ -187,6 +188,7 @@ function Render-Menu {
             -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $item) `
             -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $item) `
             -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled") `
+            -Version ([string](Get-MenuFlag -Map $State.Versions -ItemOrName $item -Default "")) `
             -IsCursor ($i -eq $State.CursorIndex) `
             -Packages $State.Packages
     }

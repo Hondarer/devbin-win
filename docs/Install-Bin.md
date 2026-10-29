@@ -412,13 +412,19 @@ Space キーで選択状態を切り替えます。
 `cmd.exe` および `powershell.exe` の標準コンソールでは、一覧上にマウス カーソルを置いた状態でホイール スクロールも使用できます。行を左クリックするとカーソルが移動し、現在の選択行をもう一度クリックすると選択状態が切り替わります。
 
 ```text
-  #  コンポーネント          状態          依存
- --- ---------------------- ------------- ------------------
-  1  [X] Node.js            Installed     -
-  6  [X] Microsoft JDK      Installed     -
-  8  [ ] PlantUML           Not Installed -> jdk
- 13  [X] GNU Make           Installed     (auto: gcc-libs, libiconv, gettext)
+  #  コンポーネント          版                   状態          依存
+ --- ---------------------- -------------------- ------------- ------------------
+  1  [X] Node.js            26.12.1              Installed     -
+  2  [R] Git                2.56.0.3 -> 2.56.0.4 Updateable    -
+  6  [X] Microsoft JDK      25.0.4.1             Installed     -
+  8  [ ] PlantUML           1.2026.8             Not Installed -> jdk
+ 13  [X] GNU Make           4.4.1-5              Installed     (auto: gcc-libs, libiconv, gettext)
 ```
+
+版の列は、未インストールの項目では導入される版、インストール済みの項目では導入されている版を示します。
+更新可能な項目では「導入されている版 -> 導入される版」を示します。
+GitHub Copilot CLI のように自己更新するツールと、`External` (devbin-win 外部に導入済み) の項目は、メニューを開いた時点の実行ファイルまたはフォント ファイルから版を読み取って表示します。
+版を読み取れない場合、`External` の項目の版は空欄になります。
 
 キー操作:
 

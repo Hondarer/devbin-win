@@ -64,6 +64,7 @@ function Move-MenuCursor {
                 -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $old) `
                 -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $old) `
                 -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $old -Default "NotInstalled") `
+                -Version ([string](Get-MenuFlag -Map $State.Versions -ItemOrName $old -Default "")) `
                 -IsCursor $false -Packages $State.Packages
         }
 
@@ -75,6 +76,7 @@ function Move-MenuCursor {
                 -IsDisabled (Get-MenuFlag -Map $State.Disabled -ItemOrName $new) `
                 -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $new) `
                 -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $new -Default "NotInstalled") `
+                -Version ([string](Get-MenuFlag -Map $State.Versions -ItemOrName $new -Default "")) `
                 -IsCursor $true -Packages $State.Packages
         }
     }

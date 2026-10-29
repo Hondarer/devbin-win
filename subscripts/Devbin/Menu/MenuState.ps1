@@ -134,6 +134,92 @@ function Get-DependencyDisplay {
     return $parts -join " "
 }
 
+# 版の表示文字列を生成します。
+# 未導入は導入される版、導入済みは導入されている版、更新可能は「導入されている版 -> 導入される版」を示します。
+# FileVersion には、自己更新するツールまたは devbin-win 外部の導入について、ファイルから読み取った版を渡します。
+function Get-MenuVersionDisplay {
+    param(
+        [hashtable]$PackageConfig,
+        [string]$Status,
+        [string]$DisableReason = "",
+        [string]$FileVersion = "",
+        [hashtable]$Manifest,
+        [string]$InstallDir,
+        [string]$PackagesDir = ""
+    )
+
+    switch ($Status) {
+        "Updateable" {
+            $installed = Get-ComponentInstalledVersion -Manifest $Manifest -InstallDir $InstallDir -PackageConfig $PackageConfig -ExecutableVersion $FileVersion
+            $package = Resolve-PackageVersion -PackageConfig $PackageConfig -PackagesDir $PackagesDir
+            return "$installed -> $package"
+        }
+        { $_ -eq "Installed" -or $_ -eq "Broken" } {
+            return (Get-ComponentInstalledVersion -Manifest $Manifest -InstallDir $InstallDir -PackageConfig $PackageConfig -ExecutableVersion $FileVersion)
+        }
+        "Legacy" { return "" }
+    }
+
+    # devbin-win 外部に導入済みの場合は、外部のファイルから読み取った版を示します。
+    if ($DisableReason -eq "External") {
+        return $FileVersion
+    }
+
+    return (Resolve-PackageVersion -PackageConfig $PackageConfig -PackagesDir $PackagesDir)
+}
+
+# 版を読み取るファイルのパスを返します (読み取りが不要な場合は "")。
+function Get-MenuVersionFilePath {
+    param(
+        [hashtable]$State,
+        [hashtable]$Item,
+        [string]$Status
+    )
+
+    if ($Status -in @("Installed", "Broken", "Updateable")) {
+        return (Get-SelfUpdatingVersionPath -InstallDir $State.InstallDir -PackageConfig $Item)
+    }
+    if ($Status -eq "NotInstalled" -and (Get-MenuDisableReason -State $State -ItemOrName $Item) -eq "External") {
+        $externalPaths = if ($State.ContainsKey("ExternalPaths") -and $State.ExternalPaths) { $State.ExternalPaths } else { @{} }
+        return [string](Get-MenuFlag -Map $externalPaths -ItemOrName $Item -Default "")
+    }
+    return ""
+}
+
+# 全コンポーネントの版の表示文字列を再評価します。
+# ファイルから版を読み取る項目は、プロセスをまとめて起動してから共通の期限で終了を待ち、並列に読み取ります。
+function Update-MenuVersions {
+    param(
+        [hashtable]$State,
+        [int]$TimeoutMilliseconds = 3000
+    )
+
+    $items = @(Get-MenuItemList -State $State | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.ShortName) })
+    $probes = @{}
+    foreach ($item in $items) {
+        $status = [string](Get-MenuFlag -Map $State.Statuses -ItemOrName $item -Default "NotInstalled")
+        $path = Get-MenuVersionFilePath -State $State -Item $item -Status $status
+        if ($path) {
+            $probes[[string]$item.ShortName] = Start-PackageVersionProbe -PackageConfig $item -Path $path
+        }
+    }
+
+    $deadline = [datetime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    $State.Versions = @{}
+    foreach ($item in $items) {
+        $shortName = [string]$item.ShortName
+        $fileVersion = if ($probes.ContainsKey($shortName)) { Wait-VersionProbe -Probe $probes[$shortName] -DeadlineUtc $deadline } else { "" }
+        $State.Versions[$shortName] = Get-MenuVersionDisplay `
+            -PackageConfig $item `
+            -Status (Get-MenuFlag -Map $State.Statuses -ItemOrName $shortName -Default "NotInstalled") `
+            -DisableReason (Get-MenuDisableReason -State $State -ItemOrName $shortName) `
+            -FileVersion $fileVersion `
+            -Manifest $State.Manifest `
+            -InstallDir $State.InstallDir `
+            -PackagesDir $State.PackagesDir
+    }
+}
+
 # コンポーネントの状態に応じた初期選択状態を設定します。
 function Set-MenuSelectionState {
     param(
@@ -170,6 +256,8 @@ function Get-FontRegistryMatchState {
     $result = @{
         HasMatch = $false
         IsOwn    = $false
+        # devbin-win 外部の登録が指すフォント ファイルの絶対パス (版の表示に使用)
+        FilePath = ""
     }
 
     if ([string]::IsNullOrWhiteSpace($FontName) -or -not (Test-Path $RegistryPath)) {
@@ -197,8 +285,13 @@ function Get-FontRegistryMatchState {
     foreach ($match in $matches) {
         $result.HasMatch = $true
         $fontPath = if ($null -ne $match.Value) { [string]$match.Value } else { "" }
-        if (-not $normalizedInstallDir -or [string]::IsNullOrWhiteSpace($fontPath)) {
+        if ([string]::IsNullOrWhiteSpace($fontPath)) {
             continue
+        }
+
+        # HKLM の登録はファイル名だけの場合があり、その場合は Windows のフォント フォルダーを基準とします。
+        if (-not [System.IO.Path]::IsPathRooted($fontPath)) {
+            $fontPath = Join-Path (Join-Path $env:SystemRoot "Fonts") $fontPath
         }
 
         $normalizedFontPath = ""
@@ -208,9 +301,13 @@ function Get-FontRegistryMatchState {
             $normalizedFontPath = $fontPath
         }
 
-        if ($normalizedFontPath.StartsWith($normalizedInstallDir, [System.StringComparison]::OrdinalIgnoreCase)) {
+        if ($normalizedInstallDir -and $normalizedFontPath.StartsWith($normalizedInstallDir, [System.StringComparison]::OrdinalIgnoreCase)) {
             $result.IsOwn = $true
+            $result.FilePath = ""
             break
+        }
+        if (-not $result.FilePath) {
+            $result.FilePath = $normalizedFontPath
         }
     }
 
@@ -242,6 +339,7 @@ function Initialize-MenuState {
 
     # 無効化 (Disabled) 判定: DisableIfCommand 指定のコマンドが devbin-win 外部に存在する場合に非活性化します。
     $disabled = @{}
+    $externalPaths = @{}
     $resolvedInstall = Resolve-Path $InstallDir -ErrorAction SilentlyContinue
     $absInstallDir = if ($resolvedInstall) { $resolvedInstall.Path } else { $InstallDir }
 
@@ -253,6 +351,7 @@ function Initialize-MenuState {
                 $cmdPath = $found.Source
                 $isOwn = $absInstallDir -and $cmdPath.StartsWith($absInstallDir, [System.StringComparison]::OrdinalIgnoreCase)
                 $disabled[$item.ShortName] = -not $isOwn
+                if (-not $isOwn) { $externalPaths[$item.ShortName] = $cmdPath }
             } else {
                 $disabled[$item.ShortName] = $false
             }
@@ -274,6 +373,7 @@ function Initialize-MenuState {
             -InstallDir $absInstallDir
         if ($hkcuMatch.HasMatch -and -not $hkcuMatch.IsOwn) {
             $disabled[$item.ShortName] = $true
+            if ($hkcuMatch.FilePath) { $externalPaths[$item.ShortName] = $hkcuMatch.FilePath }
             continue
         }
 
@@ -282,6 +382,7 @@ function Initialize-MenuState {
             -RegistryPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
         if ($hklmMatch.HasMatch) {
             $disabled[$item.ShortName] = $true
+            if ($hklmMatch.FilePath) { $externalPaths[$item.ShortName] = $hklmMatch.FilePath }
         }
     }
 
@@ -328,12 +429,14 @@ function Initialize-MenuState {
             -IsDefaultChecked $isDefaultChecked
     }
 
-    return @{
+    $state = @{
         Items          = $items
         Checked        = $checked
         Reinstall      = $reinstall
         Disabled       = $disabled
         DisableReasons = $disableReasons
+        ExternalPaths  = $externalPaths
+        Versions       = @{}
         OfflineMode    = $offlineMode
         CursorIndex    = $(if ($items.Count -gt 0 -and $items[0].MenuGroup) { 1 } else { 0 })
         Statuses       = $statuses
@@ -346,6 +449,8 @@ function Initialize-MenuState {
         ViewportTop    = 0
         ViewportSize   = $items.Count  # Render-Menu 実行時に確定
     }
+    Update-MenuVersions -State $state
+    return $state
 }
 
 # コンポーネントの状態および選択状態を再評価して更新します。
@@ -377,6 +482,8 @@ function Update-MenuStatuses {
             -HasAnyInstalled $true `
             -IsDefaultChecked $false
     }
+
+    Update-MenuVersions -State $State
 
     # アンインストール対象として処理された項目は、操作結果にかかわらず選択を解除します。
     # (ファイル残存によりレガシー状態として検出された場合でも、アンインストール意図を優先)

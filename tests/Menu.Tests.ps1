@@ -612,3 +612,116 @@ Describe "区切りの表示幅" {
         }
     }
 }
+
+Describe "版の表示" {
+    It "状態に応じて、導入される版、導入されている版、更新の版を示す" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $package = New-TestPackage -ShortName "app" -Version "2.0.0"
+            $manifest = New-TestManifest -Components @{ app = (New-TestManifestEntry -Version "1.0.0") }
+            $common = @{ PackageConfig = $package; Manifest = $manifest; InstallDir = "C:\nonexistent-devbin-test"; PackagesDir = "C:\nonexistent-devbin-test" }
+
+            (Get-MenuVersionDisplay @common -Status "NotInstalled") | Should Be "2.0.0"
+            (Get-MenuVersionDisplay @common -Status "Installed") | Should Be "1.0.0"
+            (Get-MenuVersionDisplay @common -Status "Updateable") | Should Be "1.0.0 -> 2.0.0"
+            (Get-MenuVersionDisplay @common -Status "Legacy") | Should Be ""
+            (Get-MenuVersionDisplay @common -Status "NotInstalled" -DisableReason "External") | Should Be ""
+            (Get-MenuVersionDisplay @common -Status "NotInstalled" -DisableReason "External" -FileVersion "3.0.0") | Should Be "3.0.0"
+        }
+    }
+
+    It "自己更新するツールと External の項目は、ファイルから読み取った版を示す" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $installDir = New-TestDirectory
+            $externalDir = New-TestDirectory
+            try {
+                Set-Content -LiteralPath (Join-Path $installDir "app.cmd") -Value "@echo Test App 1.5.3." -Encoding ASCII
+                Set-Content -LiteralPath (Join-Path $installDir "silent.cmd") -Value "@echo no version" -Encoding ASCII
+                $tool = Join-Path $externalDir "tool.cmd"
+                Set-Content -LiteralPath $tool -Value "@echo tool version 9.0.1-essentials_build built with gcc 14.2.0" -Encoding ASCII
+                $packages = @(
+                    (New-TestPackage -ShortName "app" -Version "1.0.0" -DetectFiles @("app.cmd") -Extra @{ SelfUpdating = $true; VersionArgs = @("--version") }),
+                    (New-TestPackage -ShortName "silent" -Version "1.0.0" -DetectFiles @("silent.cmd") -Extra @{ SelfUpdating = $true; VersionArgs = @("--version") }),
+                    (New-TestPackage -ShortName "tool" -Version "9.0.1" -Extra @{ VersionArgs = @("-version"); VersionOutputPattern = 'tool version (\d+(?:\.\d+)+)' })
+                )
+                $state = @{
+                    Items          = $packages
+                    Statuses       = @{ app = "Installed"; silent = "Installed"; tool = "NotInstalled" }
+                    DisableReasons = @{ app = ""; silent = ""; tool = "External" }
+                    ExternalPaths  = @{ tool = $tool }
+                    Manifest       = New-TestManifest -Components @{ app = (New-TestManifestEntry -Version "1.0.0"); silent = (New-TestManifestEntry -Version "1.0.0") }
+                    InstallDir     = $installDir
+                    PackagesDir    = $installDir
+                }
+
+                Update-MenuVersions -State $state
+                $state.Versions["app"] | Should Be "1.5.3"
+                # 版を読み取れない場合はマニフェストの記録値を示します。
+                $state.Versions["silent"] | Should Be "1.0.0"
+                $state.Versions["tool"] | Should Be "9.0.1"
+            } finally {
+                Remove-TestDirectory -Path $installDir
+                Remove-TestDirectory -Path $externalDir
+            }
+        }
+    }
+
+    It "期限までに終了しないプロセスは強制終了し、版不明とする" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $dir = New-TestDirectory
+            try {
+                $slow = Join-Path $dir "slow.cmd"
+                Set-Content -LiteralPath $slow -Value "@ping -n 6 127.0.0.1 >nul`r`n@echo slow 1.0.0" -Encoding ASCII
+                $probe = Start-VersionProbe -Path $slow -Arguments @("--version")
+                $processId = $probe.Process.Id
+                (Wait-VersionProbe -Probe $probe -DeadlineUtc ([datetime]::UtcNow.AddMilliseconds(200))) | Should Be ""
+                ($null -eq (Get-Process -Id $processId -ErrorAction SilentlyContinue)) | Should Be $true
+            } finally {
+                Remove-TestDirectory -Path $dir
+            }
+        }
+    }
+
+    It "フォント ファイルは name テーブルの版を読み取る" {
+        InModuleScope Devbin {
+            . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+            $dir = New-TestDirectory
+            try {
+                # name テーブルだけを持つ最小のフォント ファイルを組み立てます。
+                $text = [System.Text.Encoding]::BigEndianUnicode.GetBytes("Version 2.2.0; ttfautohint (v1.8.4)")
+                $be16 = { param([int]$v) [byte[]]@((($v -shr 8) -band 0xFF), ($v -band 0xFF)) }
+                $be32 = { param([long]$v) [byte[]]@((($v -shr 24) -band 0xFF), (($v -shr 16) -band 0xFF), (($v -shr 8) -band 0xFF), ($v -band 0xFF)) }
+                $name = @() + (& $be16 0) + (& $be16 1) + (& $be16 18) +
+                    (& $be16 3) + (& $be16 1) + (& $be16 0x409) + (& $be16 5) + (& $be16 $text.Length) + (& $be16 0) + $text
+                $font = @() + (& $be32 0x00010000) + (& $be16 1) + (& $be16 16) + (& $be16 0) + (& $be16 0) +
+                    [System.Text.Encoding]::ASCII.GetBytes("name") + (& $be32 0) + (& $be32 28) + (& $be32 $name.Length) + $name
+                $path = Join-Path $dir "test.ttf"
+                [System.IO.File]::WriteAllBytes($path, [byte[]]$font)
+
+                (Get-FontFileVersionText -Path $path) | Should Be "Version 2.2.0; ttfautohint (v1.8.4)"
+                (Get-ExecutableVersion -Path $path) | Should Be "2.2.0"
+            } finally {
+                Remove-TestDirectory -Path $dir
+            }
+        }
+    }
+
+    It "抜き出し用の正規表現のキャプチャ グループを連結する" {
+        InModuleScope Devbin {
+            $gitPattern = '(\d+(?:\.\d+)+)(?:\.windows\.(\d+))?'
+            (Get-VersionFromText -Text "2.56.0.windows.3" -Pattern $gitPattern) | Should Be "2.56.0.3"
+            (Get-VersionFromText -Text "git version 2.56.0" -Pattern $gitPattern) | Should Be "2.56.0"
+            (Get-VersionFromText -Text "PowerShell 7.6.9") | Should Be "7.6.9"
+            (Get-VersionFromText -Text "no version") | Should Be ""
+        }
+    }
+
+    It "実行ファイルの版情報があれば、起動せずに読み取る" {
+        InModuleScope Devbin {
+            $path = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+            (Get-ExecutableVersion -Path $path) | Should Match '^\d+(\.\d+)+$'
+        }
+    }
+}
