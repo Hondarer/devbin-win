@@ -13,7 +13,8 @@
             DownloadUrl = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/PowerShell-7.6.6-win-x64.zip"
             DependsOn = @()
             PathDirs = @("pwsh")
-            EnvVars = @{}
+            EnvVars = @{ "POWERSHELL_TELEMETRY_OPTOUT" = "1" }
+            EnvVarIsLiteral = @("POWERSHELL_TELEMETRY_OPTOUT")
             DetectFiles = @("pwsh\pwsh.exe")
             SkipIfCommand = "pwsh"
             DisableIfCommand = "pwsh"
@@ -975,7 +976,8 @@ endlocal
             DownloadUrl = "https://github.com/cli/cli/releases/download/v2.102.1/gh_2.102.1_windows_amd64.zip"
             DependsOn = @()
             PathDirs = @()
-            EnvVars = @{}
+            EnvVars = @{ "GH_TELEMETRY" = "false" }
+            EnvVarIsLiteral = @("GH_TELEMETRY")
             DetectFiles = @("gh.exe")
             DefaultChecked = $true
         },
@@ -993,7 +995,8 @@ endlocal
             DownloadUrl = "https://gitlab.com/gitlab-org/cli/-/releases/v1.118.0/downloads/glab_1.118.0_windows_amd64.zip"
             DependsOn = @()
             PathDirs = @()
-            EnvVars = @{}
+            EnvVars = @{ "GLAB_SEND_TELEMETRY" = "false" }
+            EnvVarIsLiteral = @("GLAB_SEND_TELEMETRY")
             DetectFiles = @("glab.exe")
             DefaultChecked = $true
         },

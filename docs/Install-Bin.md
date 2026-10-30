@@ -328,6 +328,7 @@ MinGW 用 Windows Terminal プロファイルはパスを含まないため、�
 ### PowerShell 7
 
 - PowerShell 7.6.6 x64 ZIP を `bin\pwsh` に展開し、`pwsh` コマンドを提供します
+- ユーザー環境変数 `POWERSHELL_TELEMETRY_OPTOUT=1` を設定し、PowerShell のテレメトリを無効化します
 - Windows PowerShell 5.1 は置き換えず、並行して利用できます
 - システムに devbin-win 外の `pwsh.exe` が存在する場合、コンポーネント マネージャーでは `External` と表示して導入を無効化し、既存の PowerShell 7 を優先します
 
@@ -553,3 +554,9 @@ Remove-MinGW-Path.cmd
 
 - これらのスクリプトによる設定は、実行したセッション内でのみ有効です。新しいターミナルを開く際は、再度実行してください。
 - システムに既存の同名ツールが存在する場合、PATH の優先順位によって動作が変化します。
+
+### テレメトリ設定
+
+PowerShell、.NET SDK、GitHub CLI、GitLab CLI の導入時に、それぞれユーザー環境変数 `POWERSHELL_TELEMETRY_OPTOUT=1`、`DOTNET_CLI_TELEMETRY_OPTOUT=1`、`GH_TELEMETRY=false`、`GLAB_SEND_TELEMETRY=false` を設定します。環境変数は新しく起動するプロセスに反映され、同じユーザーの外部インストールにも影響します。既に導入済みのコンポーネントには、再インストール時に適用されます。個別アンインストール時は、値が導入時の値と一致する場合に削除します。
+
+VS Code については [ポータブル版の説明](vscode-portable.md) を参照してください。GitHub Copilot CLI は起動時に `copilot --disable-client-telemetry` を指定すると、その呼び出しのクライアント側テレメトリを無効化できます。このオプションは保存されず、サーバー側の収集には影響しません。

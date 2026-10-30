@@ -115,7 +115,7 @@ if ($Manage) {
         }
 
         # レジストリから環境変数を同期
-        Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "PLANTUML_HOME", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
+        Sync-EnvironmentVariables -VariableNames @("PATH", "DOTNET_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT", "POWERSHELL_TELEMETRY_OPTOUT", "GH_TELEMETRY", "GLAB_SEND_TELEMETRY", "PLANTUML_HOME", "BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH") -Silent | Out-Null
 
         Invoke-MenuLoop -Packages $Packages -InstallDir $absoluteInstallDir -ScriptDir $ScriptDir
     } finally {

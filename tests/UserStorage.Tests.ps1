@@ -52,6 +52,17 @@ InModuleScope Devbin {
             Test-Path (Join-Path (Get-DevbinDataDirectory) 'vscode') | Should Be $true
             Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 1 -Exactly -ParameterFilter { $Name -eq 'VSCODE_PORTABLE' -and $Value -eq (Join-Path (Get-DevbinDataDirectory) 'vscode') }
         }
+        It 'disables VS Code telemetry for a new settings file and preserves existing settings' {
+            Mock Get-DevbinUserStorageRoot { Join-Path $TestDrive 'vscode-telemetry-test' }
+            $settings = Join-Path (Get-DevbinDataDirectory) 'vscode\user-data\User\settings.json'
+            Initialize-DevbinVSCodeData
+            $config = Get-Content -LiteralPath $settings -Raw | ConvertFrom-Json
+            $config.'telemetry.telemetryLevel' | Should Be 'off'
+            $existing = '{ "editor.fontSize": 16, "telemetry.telemetryLevel": "all" }'
+            [IO.File]::WriteAllText($settings, $existing)
+            Initialize-DevbinVSCodeData
+            [IO.File]::ReadAllText($settings) | Should Be $existing
+        }
         It 'uses the new destination even when legacy settings exist' {
             $legacy = Join-Path $TestDrive 'vscode\data'
             New-Item -ItemType Directory -Path $legacy -Force | Out-Null

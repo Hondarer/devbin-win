@@ -58,6 +58,19 @@ Describe "packages.psd1" {
         @($result.Order).Count | Should Be $packages.Count
     }
 
+    It "テレメトリの無効化値をリテラル環境変数として設定する" {
+        foreach ($entry in @(
+            @{ ShortName = "pwsh"; Key = "POWERSHELL_TELEMETRY_OPTOUT"; Value = "1" },
+            @{ ShortName = "dotnet10sdk"; Key = "DOTNET_CLI_TELEMETRY_OPTOUT"; Value = "1" },
+            @{ ShortName = "gh"; Key = "GH_TELEMETRY"; Value = "false" },
+            @{ ShortName = "glab"; Key = "GLAB_SEND_TELEMETRY"; Value = "false" }
+        )) {
+            $package = $packages | Where-Object { $_.ShortName -eq $entry.ShortName }
+            $values = Get-ComponentEnvVarValues -InstallDir $TestDrive -PackageConfig $package
+            $values[$entry.Key] | Should Be $entry.Value
+        }
+    }
+
     It "git は初回導入で既定選択する" {
         $git = $packages | Where-Object { $_.ShortName -eq "git" }
         $git.DefaultChecked | Should Be $true
