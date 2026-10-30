@@ -38,6 +38,27 @@ function New-ComponentChangeResult {
     }
 }
 
+# パッケージの検出ファイルが、別のパッケージの TargetDirectory 配下にあるかを判定します。
+function Test-ComponentInsideTargetDirectory {
+    param(
+        [hashtable]$PackageConfig,
+        [hashtable]$ParentConfig
+    )
+
+    if (-not $ParentConfig.ContainsKey("TargetDirectory")) { return $false }
+    $targetDir = ([string]$ParentConfig.TargetDirectory).TrimEnd('\', '/')
+    if ([string]::IsNullOrWhiteSpace($targetDir)) { return $false }
+
+    $detectFiles = if ($PackageConfig.ContainsKey("DetectFiles")) { @($PackageConfig.DetectFiles) } else { @() }
+    foreach ($file in $detectFiles) {
+        $normalized = ([string]$file) -replace '/', '\'
+        if ($normalized.StartsWith("$targetDir\", [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+    return $false
+}
+
 # 選択状態およびコンポーネント状態から操作計画を生成します。
 # 戻り値: Success / Errors / Install / Reinstall / Uninstall / IsEmpty
 #   Install   : 依存先を優先する順序
@@ -73,6 +94,30 @@ function New-ComponentChangePlan {
             $toReinstall += $item
         } elseif (-not $isChecked -and ($installedStatuses -contains $status)) {
             $toUninstall += $item
+        }
+    }
+
+    # 再インストールは TargetDirectory を一括削除するため、その中に導入された依存元 (例: python3 配下の pip パッケージ) も消えます。
+    # 依存先の再インストール後に改めて入れ直さずに済むよう、該当する依存元を同じ計画で再インストールします。
+    $added = $true
+    while ($added) {
+        $added = $false
+        $reinstallShortNames = @($toReinstall | ForEach-Object { [string]$_.ShortName })
+        foreach ($item in $Items) {
+            $shortName = [string]$item.ShortName
+            if ($reinstallShortNames -contains $shortName) { continue }
+            if (-not [bool]$Checked[$shortName]) { continue }
+            if (@("Installed", "Updateable") -notcontains [string]$Statuses[$shortName]) { continue }
+
+            $deps = if ($item.ContainsKey("DependsOn")) { @($item.DependsOn) } else { @() }
+            $removedWith = $toReinstall | Where-Object {
+                ($deps -contains [string]$_.ShortName) -and
+                (Test-ComponentInsideTargetDirectory -PackageConfig $item -ParentConfig $_)
+            } | Select-Object -First 1
+            if ($removedWith) {
+                $toReinstall += $item
+                $added = $true
+            }
         }
     }
 

@@ -169,6 +169,38 @@ Describe "New-ComponentChangePlan" {
         $plan.Reinstall[0].ShortName | Should Be "base"
     }
 
+    It "依存先の再インストールで消える依存元を同じ計画で再インストールする" {
+        $nested = @(
+            (New-TestPackage -ShortName "runtime" -DetectFiles @("runtime\run.exe") -Extra @{ TargetDirectory = "runtime" }),
+            (New-TestPackage -ShortName "tool" -DependsOn @("runtime") -DetectFiles @("runtime\Scripts\tool.exe")),
+            (New-TestPackage -ShortName "plugin" -DependsOn @("runtime", "tool") -DetectFiles @("runtime\Lib\plugin\__init__.py")),
+            (New-TestPackage -ShortName "outside" -DependsOn @("runtime") -DetectFiles @("outside.exe"))
+        )
+        $state = New-TestPlanState -Packages $nested `
+            -Checked @{ runtime = $true; tool = $true; plugin = $true; outside = $true } `
+            -Reinstall @{ runtime = $true } `
+            -Statuses @{ runtime = "Updateable"; tool = "Installed"; plugin = "Installed"; outside = "Installed" }
+        $plan = Invoke-TestPlan -State $state
+
+        $plan.Success | Should Be $true
+        (@($plan.Reinstall | ForEach-Object { $_.ShortName }) -join ",") | Should Be "runtime,tool,plugin"
+        $plan.Install.Count | Should Be 0
+    }
+
+    It "選択を外した依存元は再インストールせず削除する" {
+        $nested = @(
+            (New-TestPackage -ShortName "runtime" -DetectFiles @("runtime\run.exe") -Extra @{ TargetDirectory = "runtime" }),
+            (New-TestPackage -ShortName "tool" -DependsOn @("runtime") -DetectFiles @("runtime\Scripts\tool.exe"))
+        )
+        $state = New-TestPlanState -Packages $nested `
+            -Checked @{ runtime = $true } -Reinstall @{ runtime = $true } `
+            -Statuses @{ runtime = "Installed"; tool = "Installed" }
+        $plan = Invoke-TestPlan -State $state
+
+        (@($plan.Reinstall | ForEach-Object { $_.ShortName }) -join ",") | Should Be "runtime"
+        (@($plan.Uninstall | ForEach-Object { $_.ShortName }) -join ",") | Should Be "tool"
+    }
+
     It "Legacy の削除対象には印を付ける" {
         $state = New-TestPlanState -Packages $packages `
             -Statuses @{ base = "Legacy"; mid = "NotInstalled"; leaf = "NotInstalled" }
