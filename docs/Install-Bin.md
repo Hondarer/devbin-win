@@ -213,7 +213,9 @@ CPAN モジュールを C からビルドするための gcc などのツール�
 `perl\bin` には Perl の DLL と gcc の実行時 DLL が同梱されているため、`c` が無くても起動します。
 ライセンス文書 (`licenses`) は残します。
 このため、C で書かれた CPAN モジュールの追加はできません。
-改名により、`perl` を呼び出す同梱のバッチ ファイル (`cpan.bat` など) は Strawberry Perl では動きません。
+`perl\bin` 内の補助スクリプト (`.bat` / `.cmd` / `.pl` / 拡張子なし) も削除します。
+改名前の `perl` や削除済みのモジュールを呼び出す `cpanm`・`mojo`・`pkg-config` などを PATH に残さないためです。
+実行ファイル (`.exe`) と DLL は保持します。
 
 - **用途**: Windows 向けの Perl を必要とするビルド スクリプトの実行
 - **配置場所**: `bin\strawberry-perl`

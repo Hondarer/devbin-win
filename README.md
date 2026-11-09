@@ -254,6 +254,7 @@ from [StrawberryPerl/Perl-Dist-Strawberry](https://github.com/StrawberryPerl/Per
 ポータブル版の ZIP を `bin\strawberry-perl` に展開し、`perl\bin\perl.exe` を `strawberry-perl.exe` に改名します。
 `perl\bin` を PATH の後段へ追加します。`perl` で起動するものは変わりません。
 gcc などのツール一式 (`c`) と標準以外の CPAN モジュール (`perl\vendor`) は削除し、標準モジュールだけの構成にします。
+`perl\bin` 内の補助スクリプト (`.bat` / `.cmd` / `.pl` / 拡張子なし) も削除し、実行ファイルと DLL は保持します。
 
 ### WinFlexBison
 

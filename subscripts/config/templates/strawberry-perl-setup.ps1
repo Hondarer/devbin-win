@@ -13,6 +13,8 @@
 #    - portable.perl と portableshell.bat: portable.perl があると、起動時に
 #      perl\vendor の Portable モジュールを読み込むため、perl\vendor と一緒に削除します。
 #    perl\bin の perl5xx.dll と gcc の実行時 DLL は残すため、c が無くても起動します。
+#    - perl\bin 内の補助スクリプト (.bat / .cmd / .pl / 拡張子なし)
+#      改名前の perl や削除済みのモジュールを呼ぶコマンドを PATH に残さないためです。
 #    licenses などのライセンス文書は残します。
 
 $binDir = Join-Path $TargetPath "perl\bin"
@@ -27,6 +29,14 @@ if (Test-Path -LiteralPath $sourcePath) {
 } else {
     Write-Host "Error: perl.exe not found at $sourcePath" -ForegroundColor Red
     exit 1
+}
+
+# 実行ファイルと DLL は保持し、補助スクリプトだけを削除します。
+Get-ChildItem -LiteralPath $binDir -File | Where-Object {
+    $_.Extension -in @("", ".bat", ".cmd", ".pl")
+} | ForEach-Object {
+    Remove-Item -LiteralPath $_.FullName -Force -ErrorAction Stop
+    Write-Host "Removed: perl\bin\$($_.Name)"
 }
 
 # 削除対象は $TargetPath からの相対パスです。

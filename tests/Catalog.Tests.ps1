@@ -145,6 +145,12 @@ Describe "packages.psd1" {
             New-Item -ItemType Directory -Path $bin -Force | Out-Null
             Set-Content -LiteralPath (Join-Path $bin "perl.exe") -Value "stub"
             Set-Content -LiteralPath (Join-Path $bin "perl542.dll") -Value "stub"
+            $helperScripts = @("cpanm.bat", "mojo.bat", "pkg-config.bat", "perldoc.bat", "helper.cmd", "exetype.pl", "cpanm", "pkg-config")
+            foreach ($name in $helperScripts) {
+                Set-Content -LiteralPath (Join-Path $bin $name) -Value "stub"
+            }
+            Set-Content -LiteralPath (Join-Path $bin "libgcc_s_seh-1.dll") -Value "stub"
+            Set-Content -LiteralPath (Join-Path $bin "perlglob.exe") -Value "stub"
             foreach ($dir in @("c\bin", "perl\vendor\lib", "perl\lib", "licenses")) {
                 New-Item -ItemType Directory -Path (Join-Path $target $dir) -Force | Out-Null
             }
@@ -160,6 +166,11 @@ Describe "packages.psd1" {
             (Test-Path -LiteralPath (Join-Path $bin "perl.exe")) | Should Be $false
             (Test-Path -LiteralPath (Join-Path $bin "strawberry-perl.exe")) | Should Be $true
             (Test-Path -LiteralPath (Join-Path $bin "perl542.dll")) | Should Be $true
+            foreach ($name in $helperScripts) {
+                (Test-Path -LiteralPath (Join-Path $bin $name)) | Should Be $false
+            }
+            (Test-Path -LiteralPath (Join-Path $bin "libgcc_s_seh-1.dll")) | Should Be $true
+            (Test-Path -LiteralPath (Join-Path $bin "perlglob.exe")) | Should Be $true
             (Test-Path -LiteralPath (Join-Path $target "perl\lib\Config.pm")) | Should Be $true
             (Test-Path -LiteralPath (Join-Path $target "licenses\perl.txt")) | Should Be $true
             (Test-Path -LiteralPath (Join-Path $target "c")) | Should Be $false
