@@ -36,7 +36,7 @@
 - `Make-Dist.ps1` が `packages` とともに配布する devbin-win 固有ファイル
 
 実ファイル数は `packages` 直下の 40 件 (第三者成果物 36 件、devbin-win 固有スクリプト 4 件)、npm のトップレベル定義 10 件 (依存アーカイブ数は各 cache manifest により変動)、pip 9 件、VSBT 65 件の合計です。
-この件数は 2026-07-23 時点のものです。2026-10-25 に `libclang` 18.1.1 (`PipInstall`) を追加しています。wheel は `Get-Packages.ps1` 実行後に `packages/pip-packages` へ入ります。
+この件数は 2026-07-23 時点のものです。2026-10-25 に `libclang` 18.1.1 (`PipInstall`) を追加しています。wheel は `Get-Packages.ps1` 実行後に `packages/pip-packages` へ入ります。2026-11-09 に `nasm` 3.02 (Windows x64 ZIP) を追加しています。ZIP は `Get-Packages.ps1` 実行後に `packages` へ入ります。
 devbin-win 固有スクリプトと配布スクリプト群はリポジトリの MIT ライセンス対象であり、現行の配布 ZIP にはルートの `LICENSE` が収録されます。
 
 本調査の判定は、取得済みのベンダー アーカイブを含む ZIP を無償で不特定多数へ公開する場合を対象としています。
@@ -83,6 +83,7 @@ devbin-win 固有スクリプトと配布スクリプト群はリポジトリの
 | `mingw64-gettext-runtime` 1.0-1 | GPL-3.0-or-later / LGPL-2.1-or-later | 条件付きで可 | pkg内のライセンスを保持し、該当DLLごとのライセンスと正確なsource packageを提供する。[MSYS2 package](https://packages.msys2.org/packages/mingw-w64-x86_64-gettext-runtime) |
 | `iconv` 1.19-1 | GPL-3.0-or-later | 条件付きで可 | `iconv.exe` の対応ソースを同等提供し、GPL本文を配布ページからも参照可能にする。[MSYS2 package](https://packages.msys2.org/packages/mingw-w64-x86_64-iconv) |
 | `make` 4.4.1-5 | GPL-3.0-or-later | 条件付きで可 | 対象版のMSYS2 source-only tarballをミラーする。最新版のsource packageで代用しない。[MSYS2 package](https://packages.msys2.org/packages/mingw-w64-x86_64-make) |
+| `nasm` 3.02 | 2-clause BSD | 再配布可 | ZIP内の `LICENSE` を未改変のまま保持する。[NASM](https://www.nasm.us/) / [nasm-3.02-win64.zip](https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/nasm-3.02-win64.zip) |
 | `cmake` 4.3.5 | BSD-3-Clauseおよび同梱第三者ライセンス | 再配布可 | ZIP内の `LICENSE.rst` と各 `COPYING`/`NOTICE` を保持する。[CMake](https://github.com/Kitware/CMake/tree/v4.3.5) |
 | `winflexbison` 2.5.25 | Flex は BSD、Bison とビルドスクリプトは GPL-3.0+、文書は FDL 1.3+ | 条件付きで可 | ZIP内の `COPYING`、`COPYING.flex`、`COPYING.bison`、`COPYING.DOC` を保持する。公開場所から [v2.5.25](https://github.com/lexxmark/winflexbison/tree/v2.5.25) の対応ソースへ同等にアクセスできる状態を配布者が維持する。[公式リポジトリ](https://github.com/lexxmark/winflexbison) / [リリース](https://github.com/lexxmark/winflexbison/releases/tag/v2.5.25) |
 | `clang-format` 23.1.1 | Apache-2.0 WITH LLVM-exceptionほか | 条件付きで可 | tar.xz内にLLVMライセンスがあるが深いパスにある。配布ルートのNOTICEから明示し、著作権・第三者表示を保持する。[LLVM licensing](https://llvm.org/docs/DeveloperPolicy.html#copyright-license-and-patents) |

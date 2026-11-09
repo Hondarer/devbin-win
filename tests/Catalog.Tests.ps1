@@ -107,6 +107,21 @@ Describe "packages.psd1" {
         $libclang.DefaultChecked | Should Be $true
     }
 
+    It "nasm は bin 直下へ 3.02 の実行ファイルを置く" {
+        $nasm = $packages | Where-Object { $_.ShortName -eq "nasm" }
+        $nasm.ExtractStrategy | Should Be "Subdirectory"
+        $nasm.Version | Should Be "3.02"
+        $nasm.MenuGroup | Should Be "C/C++・ビルド"
+        ("nasm.exe" -match $nasm.FilePattern) | Should Be $true
+        ("ndisasm.exe" -match $nasm.FilePattern) | Should Be $true
+        ("LICENSE" -match $nasm.FilePattern) | Should Be $false
+        ($nasm.DetectFiles -join ",") | Should Be "nasm.exe,ndisasm.exe"
+        $nasm.DefaultChecked | Should Be $true
+        @($nasm.PathDirs).Count | Should Be 0
+        ("nasm-3.02-win64.zip" -match $nasm.ArchivePattern) | Should Be $true
+        ("nasm-3.02-win32.zip" -match $nasm.ArchivePattern) | Should Be $false
+    }
+
     It "get-pip の ArchivePattern は旧 tarball も対象にする" {
         $getPip = $packages | Where-Object { $_.ShortName -eq "get-pip" }
         ("pip-26.2.1.tar.gz" -match $getPip.ArchivePattern) | Should Be $true

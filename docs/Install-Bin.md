@@ -186,6 +186,15 @@ LLVM 一式を置かずに、共有 Python から Clang の構文木を扱いま
 導入後は `python -c "import clang.cindex"` で読み込めます。
 検索先はパッケージ内の `native` ディレクトリです。別の `libclang.dll` を使う場合は、環境変数 `LIBCLANG_LIBRARY_PATH` で上書きできます。
 
+### NASM について
+
+NASM は x86 と x86-64 向けのアセンブラです。同じ ZIP に逆アセンブラ `ndisasm.exe` が含まれます。
+
+- **用途**: アセンブリソースのアセンブルと、バイナリの逆アセンブル
+- **配置ファイル**: `bin\nasm.exe`、`bin\ndisasm.exe`
+- **バージョン**: 3.02
+- **プロジェクト**: [NASM](https://www.nasm.us/)
+
 ### WinFlexBison について
 
 WinFlexBison は Flex と GNU Bison の Windows 移植版です。

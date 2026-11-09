@@ -235,6 +235,15 @@ from [CMake](https://cmake.org/)
             - Windows x64 ZIP
                 - [cmake-4.3.5-windows-x86_64.zip](https://github.com/Kitware/CMake/releases/download/v4.3.5/cmake-4.3.5-windows-x86_64.zip)
 
+### NASM
+
+from [NASM](https://www.nasm.us/)
+
+公式の Windows x64 ZIP から `nasm.exe` と `ndisasm.exe` を `bin` 直下へ配置します。
+
+- [releasebuilds/3.02/win64](https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/)
+    - [nasm-3.02-win64.zip](https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/nasm-3.02-win64.zip)
+
 ### WinFlexBison
 
 from [lexxmark/winflexbison](https://github.com/lexxmark/winflexbison)

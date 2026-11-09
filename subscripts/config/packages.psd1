@@ -381,6 +381,24 @@
             DefaultChecked = $true
         },
 
+        # NASM - Subdirectory extraction (公式 win64 ZIP から nasm.exe と ndisasm.exe)
+        @{
+            Name = "NASM"
+            ShortName = "nasm"
+            MenuGroup = "C/C++・ビルド"
+            Version = "3.02"
+            ArchivePattern = "^nasm-.*-win64\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = ""
+            FilePattern = "^(nasm|ndisasm)\.exe$"
+            DownloadUrl = "https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/nasm-3.02-win64.zip"
+            DependsOn = @()
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("nasm.exe", "ndisasm.exe")
+            DefaultChecked = $true
+        },
+
         # WinFlexBison - TargetDirectory extraction with flex/bison aliases
         @{
             Name = "WinFlexBison"

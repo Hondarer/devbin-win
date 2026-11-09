@@ -81,7 +81,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | `udev-gothic-hsrf-jpdoc-em` | フォント実体は製品内、登録は HKCU。製品のアンインストール処理で登録を解除する |
 | `doxygen`, `doxybook2`, `graphviz`, `ffmpeg` | 対象なし。プロジェクトの入力設定と出力は対象外 |
 | `mingw64-gcc-libs`, `mingw64-libiconv`, `mingw64-gettext-runtime` | 対象なし。DLL を配置するだけ |
-| `iconv`, `make`, `cmake`, `winflexbison`, `clang-format` | 対象なし。CMake のユーザー パッケージ登録など OS 側の機能は集約しない |
+| `iconv`, `make`, `cmake`, `nasm`, `winflexbison`, `clang-format` | 対象なし。CMake のユーザー パッケージ登録など OS 側の機能は集約しない |
 | `libclang` | 対象なし。共有 Python の site-packages に配置する。解析対象のソースは対象外 |
 | `cloc`, `nkf`, `innoextract`, `opencppcoverage`, `reportgenerator`, `editorconfig-checker` | 対象なし。引数とプロジェクト設定で動作する |
 
