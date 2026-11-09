@@ -195,6 +195,32 @@ NASM は x86 と x86-64 向けのアセンブラです。同じ ZIP に逆アセ
 - **バージョン**: 3.02
 - **プロジェクト**: [NASM](https://www.nasm.us/)
 
+### Strawberry Perl について
+
+Strawberry Perl は Windows 向けの Perl です。
+PowerShell で `strawberry-perl -MConfig -e 'print $Config{osname}'` を実行した結果は `MSWin32` です。
+PowerShell の二重引用符では `$Config` が PowerShell の変数として展開されるため、単一引用符で囲みます。
+Git 付属の Perl (`msys`) では動かない Windows 向けのビルド スクリプトに使用します。
+OpenSSL の Configure が例です。
+
+`perl\bin\perl.exe` を `strawberry-perl.exe` に改名し、`perl\bin` を PATH の後段へ追加します。
+`perl` で起動するものは変わりません。
+Git 付属の Perl を前提とするシェル スクリプトが、改行コードやパスの扱いの異なる Strawberry Perl を起動しないようにするためです。
+`perl.exe` は同じディレクトリの `perl5xx.dll` を読み込むため、実行ファイルだけを別の場所へ移せません。
+導入後に、標準モジュールだけで動く構成へ絞ります (約 986 MB から約 72 MB)。
+CPAN モジュールを C からビルドするための gcc などのツール一式 (`c`)、標準以外の CPAN モジュール (`perl\vendor`)、`portable.perl`、`portableshell.bat` を削除します。
+`portable.perl` があると起動時に `perl\vendor` のモジュールを読み込むため、一緒に削除します。
+`perl\bin` には Perl の DLL と gcc の実行時 DLL が同梱されているため、`c` が無くても起動します。
+ライセンス文書 (`licenses`) は残します。
+このため、C で書かれた CPAN モジュールの追加はできません。
+改名により、`perl` を呼び出す同梱のバッチ ファイル (`cpan.bat` など) は Strawberry Perl では動きません。
+
+- **用途**: Windows 向けの Perl を必要とするビルド スクリプトの実行
+- **配置場所**: `bin\strawberry-perl`
+- **コマンド**: `strawberry-perl` (`bin\strawberry-perl\perl\bin\strawberry-perl.exe`)
+- **バージョン**: 5.42.3.1
+- **プロジェクト**: [Strawberry Perl](https://strawberryperl.com/)
+
 ### WinFlexBison について
 
 WinFlexBison は Flex と GNU Bison の Windows 移植版です。

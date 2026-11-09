@@ -122,6 +122,57 @@ Describe "packages.psd1" {
         ("nasm-3.02-win32.zip" -match $nasm.ArchivePattern) | Should Be $false
     }
 
+    It "strawberry-perl は perl を改名し、perl\bin だけを PATH の後段へ置く" {
+        $perl = $packages | Where-Object { $_.ShortName -eq "strawberry-perl" }
+        $perl.ExtractStrategy | Should Be "TargetDirectory"
+        $perl.TargetDirectory | Should Be "strawberry-perl"
+        $perl.PostSetupScript | Should Be "strawberry-perl-setup.ps1"
+        $perl.Version | Should Be "5.42.3.1"
+        $perl.MenuGroup | Should Be "C/C++・ビルド"
+        ($perl.PathDirs -join ",") | Should Be "strawberry-perl\perl\bin"
+        $perl.PathPosition | Should Be "Append"
+        @($perl.EnvVars.Keys).Count | Should Be 0
+        ($perl.DetectFiles -join ",") | Should Be "strawberry-perl\perl\bin\strawberry-perl.exe"
+        ("strawberry-perl-5.42.3.1-64bit-portable.zip" -match $perl.ArchivePattern) | Should Be $true
+        ("strawberry-perl-5.42.3.1-64bit.msi" -match $perl.ArchivePattern) | Should Be $false
+        ("strawberry-perl-5.42.3.1-64bit-PDL.zip" -match $perl.ArchivePattern) | Should Be $false
+    }
+
+    It "strawberry-perl の後処理は perl.exe を改名し、ビルドに不要なものを削除する" {
+        $target = Join-Path ([System.IO.Path]::GetTempPath()) ("devbin-perl-" + [guid]::NewGuid().ToString("N"))
+        try {
+            $bin = Join-Path $target "perl\bin"
+            New-Item -ItemType Directory -Path $bin -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $bin "perl.exe") -Value "stub"
+            Set-Content -LiteralPath (Join-Path $bin "perl542.dll") -Value "stub"
+            foreach ($dir in @("c\bin", "perl\vendor\lib", "perl\lib", "licenses")) {
+                New-Item -ItemType Directory -Path (Join-Path $target $dir) -Force | Out-Null
+            }
+            Set-Content -LiteralPath (Join-Path $target "c\bin\gcc.exe") -Value "stub"
+            Set-Content -LiteralPath (Join-Path $target "perl\vendor\lib\Portable.pm") -Value "stub"
+            Set-Content -LiteralPath (Join-Path $target "perl\lib\Config.pm") -Value "stub"
+            Set-Content -LiteralPath (Join-Path $target "licenses\perl.txt") -Value "stub"
+            Set-Content -LiteralPath (Join-Path $target "portable.perl") -Value "stub"
+            Set-Content -LiteralPath (Join-Path $target "portableshell.bat") -Value "stub"
+            $script = Join-Path (Get-DevbinSubscriptsDir) "config\templates\strawberry-perl-setup.ps1"
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -TargetPath $target | Out-Null
+            $LASTEXITCODE | Should Be 0
+            (Test-Path -LiteralPath (Join-Path $bin "perl.exe")) | Should Be $false
+            (Test-Path -LiteralPath (Join-Path $bin "strawberry-perl.exe")) | Should Be $true
+            (Test-Path -LiteralPath (Join-Path $bin "perl542.dll")) | Should Be $true
+            (Test-Path -LiteralPath (Join-Path $target "perl\lib\Config.pm")) | Should Be $true
+            (Test-Path -LiteralPath (Join-Path $target "licenses\perl.txt")) | Should Be $true
+            (Test-Path -LiteralPath (Join-Path $target "c")) | Should Be $false
+            (Test-Path -LiteralPath (Join-Path $target "perl\vendor")) | Should Be $false
+            (Test-Path -LiteralPath (Join-Path $target "portable.perl")) | Should Be $false
+            (Test-Path -LiteralPath (Join-Path $target "portableshell.bat")) | Should Be $false
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -TargetPath $target | Out-Null
+            $LASTEXITCODE | Should Be 0
+        } finally {
+            Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It "get-pip の ArchivePattern は旧 tarball も対象にする" {
         $getPip = $packages | Where-Object { $_.ShortName -eq "get-pip" }
         ("pip-26.2.1.tar.gz" -match $getPip.ArchivePattern) | Should Be $true

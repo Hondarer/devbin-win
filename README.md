@@ -244,6 +244,17 @@ from [NASM](https://www.nasm.us/)
 - [releasebuilds/3.02/win64](https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/)
     - [nasm-3.02-win64.zip](https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/nasm-3.02-win64.zip)
 
+### Strawberry Perl
+
+from [StrawberryPerl/Perl-Dist-Strawberry](https://github.com/StrawberryPerl/Perl-Dist-Strawberry)
+
+- [/releases/tag/SP_54231_64bit](https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/tag/SP_54231_64bit)
+    - [strawberry-perl-5.42.3.1-64bit-portable.zip](https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54231_64bit/strawberry-perl-5.42.3.1-64bit-portable.zip)
+
+ポータブル版の ZIP を `bin\strawberry-perl` に展開し、`perl\bin\perl.exe` を `strawberry-perl.exe` に改名します。
+`perl\bin` を PATH の後段へ追加します。`perl` で起動するものは変わりません。
+gcc などのツール一式 (`c`) と標準以外の CPAN モジュール (`perl\vendor`) は削除し、標準モジュールだけの構成にします。
+
 ### WinFlexBison
 
 from [lexxmark/winflexbison](https://github.com/lexxmark/winflexbison)

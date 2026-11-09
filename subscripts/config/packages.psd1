@@ -399,6 +399,28 @@
             DefaultChecked = $true
         },
 
+        # Strawberry Perl - TargetDirectory extraction (portable ZIP)
+        # perl.exe を strawberry-perl.exe に改名し、perl\bin を PATH の後段へ追加します。
+        # Git 付属の Perl (msys) を前提とするシェル スクリプトが perl で起動するものを変えないためです。
+        # 同梱の gcc や make がある c\bin は、PATH に追加しません。
+        @{
+            Name = "Strawberry Perl"
+            ShortName = "strawberry-perl"
+            MenuGroup = "C/C++・ビルド"
+            Version = "5.42.3.1"
+            ArchivePattern = "^strawberry-perl-.*-64bit-portable\.zip$"
+            ExtractStrategy = "TargetDirectory"
+            TargetDirectory = "strawberry-perl"
+            PostSetupScript = "strawberry-perl-setup.ps1"
+            DownloadUrl = "https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54231_64bit/strawberry-perl-5.42.3.1-64bit-portable.zip"
+            DependsOn = @()
+            PathDirs = @("strawberry-perl\perl\bin")
+            PathPosition = "Append"
+            EnvVars = @{}
+            DetectFiles = @("strawberry-perl\perl\bin\strawberry-perl.exe")
+            DefaultChecked = $true
+        },
+
         # WinFlexBison - TargetDirectory extraction with flex/bison aliases
         @{
             Name = "WinFlexBison"
