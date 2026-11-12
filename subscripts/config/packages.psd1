@@ -636,14 +636,16 @@
         },
 
         # Doxygen - Standard extraction
+        # 1.18.0 は C 関数を自己参照と誤判定する回帰があるため使用しない (doxygen/doxygen#12385)。
+        # 1.19.0 以降がリリースされるまで 1.17.0 に固定する。
         @{
             Name = "Doxygen"
             ShortName = "doxygen"
             MenuGroup = "ドキュメント変換・生成"
-            Version = "1.18.0"
+            Version = "1.17.0"
             ArchivePattern = "doxygen-.*\.windows\.x64\.bin\.zip$"
             ExtractStrategy = "Standard"
-            DownloadUrl = "https://www.doxygen.nl/files/doxygen-1.18.0.windows.x64.bin.zip"
+            DownloadUrl = "https://www.doxygen.nl/files/doxygen-1.17.0.windows.x64.bin.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}

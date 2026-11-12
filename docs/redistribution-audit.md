@@ -64,7 +64,7 @@ devbin-win 固有スクリプトと配布スクリプト群はリポジトリの
 | `antfu-ni` 30.5.0 | MIT | 再配布可 | tgz内の `LICENSE` を保持する。[npm](https://www.npmjs.com/package/@antfu/ni/v/30.5.0) |
 | `pandoc` 3.11 | GPL-2.0-or-later、BSD/MIT等 | 条件付きで可 | ZIP内にGPL本文、帰属、対象ソースURLがある。公開場所から対応ソースへ同等にアクセスできる状態を配布者が維持し、URLを配布ページにも明記する。[リリース](https://github.com/jgm/pandoc/releases/tag/3.11) |
 | `pandoc-crossref` 0.3.25a | GPL-2.0-or-later | 条件付きで可 | 現行7zはexeだけで、ライセンス本文を含まない。GPL本文、著作権表示、対応ソースを追加する。[プロジェクト](https://lierdakil.github.io/pandoc-crossref/) / [リリース](https://github.com/lierdakil/pandoc-crossref/releases/tag/v0.3.25a) |
-| `doxygen` 1.18.0 | GPL-2.0 | 条件付きで可 | 現行Windows ZIPは実行ファイルのみ。GPL本文と、1.18.0に対応する完全なソースへの同等アクセスを追加する。[公式リポジトリ](https://github.com/doxygen/doxygen) |
+| `doxygen` 1.17.0 | GPL-2.0 | 条件付きで可 | 現行Windows ZIPは実行ファイルのみ。GPL本文と、1.17.0に対応する完全なソースへの同等アクセスを追加する。[公式リポジトリ](https://github.com/doxygen/doxygen) |
 | `doxybook2` 1.6.1 | MIT | 条件付きで可 | リリースZIPにLICENSEがない。MITの著作権・許諾表示を配布物へ追加し、静的リンク依存物の通知も確認する。[公式リポジトリ](https://github.com/Antonz0/doxybook2/tree/v1.6.1) |
 | `jdk` 25.0.4.1 | GPL-2.0-with-Classpath-exception | 条件付きで可 | ZIP内の `legal` 一式を保持し、Microsoftの対象ソースを同等に提供する。商標上、Microsoft/Javaからの承認を示唆しない。[Microsoft FAQ](https://learn.microsoft.com/en-us/java/openjdk/faq) / [サポート情報](https://learn.microsoft.com/en-us/java/openjdk/support) |
 | `graphviz` 16.1.0 | EPL-2.0および多数の同梱DLL | 要確認 | 取得ZIPは `bin` のみでLICENSE/NOTICEを含まない。EPL本文、ソース取得方法、全同梱DLLのライセンスと通知を確定するまで除外する。16.0.0 で `diffimg` は削除されている。[Graphviz License](https://graphviz.org/license/) |

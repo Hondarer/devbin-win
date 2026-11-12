@@ -104,7 +104,14 @@ from [lierdakil/pandoc-crossref](https://github.com/lierdakil/pandoc-crossref)
 
 from [https://doxygen.nl/](https://doxygen.nl/)
 
-- [doxygen-1.18.0.windows.x64.bin.zip](https://www.doxygen.nl/files/doxygen-1.18.0.windows.x64.bin.zip)
+- [doxygen-1.17.0.windows.x64.bin.zip](https://www.doxygen.nl/files/doxygen-1.17.0.windows.x64.bin.zip)
+
+> [!WARNING]
+> Doxygen は 1.17.0 に固定しています。最新版へ更新するときも 1.18.0 にしないでください。
+>
+> Doxygen 1.18.0 には、再帰呼び出しのない C 関数が自身の `References` と `Referenced by` に表示され、コールグラフにも自己ループが描かれる回帰があります ([doxygen/doxygen#12385](https://github.com/doxygen/doxygen/issues/12385))。
+> この不具合は [doxygen/doxygen#12304](https://github.com/doxygen/doxygen/pull/12304) で修正済みです。ただし、修正は 1.19.0 開発版の `master` に入っているだけで、リリース版にはまだ含まれていません (Issue には `fixed but not released` ラベルが付いています)。
+> 1.19.0 以降がリリースされたら、この制約は解消されます。その時点で最新版へ更新してください。
 
 ### doxybook2
 
