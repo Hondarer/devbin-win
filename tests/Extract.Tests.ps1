@@ -106,6 +106,39 @@ Describe "Resolve-PostExtractSourcePath" {
     }
 }
 
+Describe "Get-WindowsPowerShellModulePath" {
+
+    It "PowerShell 7 用のモジュール検索パスだけを取り除く" {
+        $value = @(
+            'D:\Users\u\Documents\PowerShell\Modules',
+            'C:\Program Files\PowerShell\Modules',
+            'C:\Program Files\PowerShell\7\Modules',
+            'c:\program files\windowsapps\microsoft.powershell_7.7.0.0_x64__8wekyb3d8bbwe\Modules',
+            'D:\Users\u\Documents\WindowsPowerShell\Modules',
+            'C:\Program Files\WindowsPowerShell\Modules',
+            'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules'
+        ) -join ';'
+
+        $expected = @(
+            'D:\Users\u\Documents\WindowsPowerShell\Modules',
+            'C:\Program Files\WindowsPowerShell\Modules',
+            'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules'
+        ) -join ';'
+
+        (Get-WindowsPowerShellModulePath -ModulePath $value) | Should Be $expected
+    }
+
+    It "Windows PowerShell 用のパスだけなら変更しない" {
+        $value = 'C:\Program Files\WindowsPowerShell\Modules;C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules'
+
+        (Get-WindowsPowerShellModulePath -ModulePath $value) | Should Be $value
+    }
+
+    It "空の値は空文字列を返す" {
+        (Get-WindowsPowerShellModulePath -ModulePath "") | Should Be ""
+    }
+}
+
 Describe "Expand-ArchiveToTemp" {
 
     It "ZIP を展開先に取り出す" {
@@ -119,6 +152,38 @@ Describe "Expand-ArchiveToTemp" {
 
             (Test-Path (Join-Path $tempDir "tool-1.0.0\bin\tool.exe")) | Should Be $true
         } finally {
+            Remove-TestDirectory -Path $workDir
+        }
+    }
+
+    It "Expand-Archive に依存せずに ZIP を展開する" {
+        $workDir = New-TestDirectory
+        try {
+            $archive = Join-Path $workDir "tool.zip"
+            New-TestArchive -Path $archive -Entries @("tool-1.0.0\bin\tool.exe")
+            $tempDir = Join-Path $workDir "extract"
+            Mock Expand-Archive { throw "Expand-Archive must not be used" } -ModuleName Devbin
+
+            Expand-ArchiveToTemp -ArchiveFile $archive -TempDir $tempDir
+
+            (Test-Path (Join-Path $tempDir "tool-1.0.0\bin\tool.exe")) | Should Be $true
+        } finally {
+            Remove-TestDirectory -Path $workDir
+        }
+    }
+
+    It "相対パスの ZIP も PowerShell の現在位置を基準に展開する" {
+        $workDir = New-TestDirectory
+        $originalLocation = Get-Location
+        try {
+            New-TestArchive -Path (Join-Path $workDir "tool.zip") -Entries @("tool.exe")
+            Set-Location $workDir
+
+            Expand-ArchiveToTemp -ArchiveFile ".\tool.zip" -TempDir ".\extract"
+
+            (Test-Path (Join-Path $workDir "extract\tool.exe")) | Should Be $true
+        } finally {
+            Set-Location $originalLocation
             Remove-TestDirectory -Path $workDir
         }
     }

@@ -12,7 +12,7 @@ function Unblock-ArchiveFile {
     }
 }
 
-# アーカイブを一時ディレクトリに展開 (拡張子に応じて Expand-Archive または tar.exe を使用)
+# アーカイブを一時ディレクトリに展開 (拡張子に応じて .NET の ZipFile または tar.exe を使用)
 function Expand-ArchiveToTemp {
     param(
         [string]$ArchiveFile,
@@ -27,7 +27,14 @@ function Expand-ArchiveToTemp {
     $fileExtension = [System.IO.Path]::GetExtension($ArchiveFile).ToLower()
 
     if ($fileExtension -eq ".zip") {
-        Expand-Archive -Path $ArchiveFile -DestinationPath $TempDir -Force
+        # Expand-Archive は PSModulePath の状態によって PowerShell 7 用の Microsoft.PowerShell.Archive (1.2.x) が
+        # Windows PowerShell 5.1 に読み込まれ、ExtractToDirectory の引数不一致で失敗するため、.NET の API を直接使用
+        # (展開先は直前に作成した空のディレクトリのため、上書き指定は不要)
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $sessionPath = $ExecutionContext.SessionState.Path
+        $zipPath = $sessionPath.GetUnresolvedProviderPathFromPSPath($ArchiveFile)
+        $destinationPath = $sessionPath.GetUnresolvedProviderPathFromPSPath($TempDir)
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $destinationPath)
     }
     elseif ($fileExtension -in @(".7z", ".zst", ".xz")) {
         $tarPath = "$env:WINDIR\System32\tar.exe"

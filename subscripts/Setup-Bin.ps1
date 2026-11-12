@@ -34,6 +34,10 @@ try {
     exit 1
 }
 
+# PowerShell 7 のターミナルから起動された場合に引き継がれる PowerShell 7 用モジュールの検索パスを除去
+# (5.1 に PowerShell 7 用のモジュールが読み込まれて失敗することを防止)
+Reset-WindowsPowerShellModulePath | Out-Null
+
 # パッケージ定義の読み込み (完全アンインストール時は定義ファイルに依存しない)
 $DevbinContext = New-DevbinContext -InstallDir $InstallDir -SubscriptsDir $ScriptDir
 $Packages = @()

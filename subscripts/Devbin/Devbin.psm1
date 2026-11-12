@@ -20,6 +20,7 @@ $script:DevbinSourceFiles = @(
     "Platform\CommandLookup.ps1"
     "Platform\TempDirectory.ps1"
     "Platform\FileSystem.ps1"
+    "Platform\ModulePath.ps1"
     "Platform\EnvironmentVariable.ps1"
     "Platform\UserPath.ps1"
     "Platform\VSCodeData.ps1"
@@ -92,6 +93,8 @@ Export-ModuleMember -Function @(
     'New-LongPathDirectory',
     'Copy-LongPathFile',
     'Remove-DirectoryTree',
+    'Get-WindowsPowerShellModulePath',
+    'Reset-WindowsPowerShellModulePath',
     'Sync-EnvironmentVariable',
     'Sync-EnvironmentVariables',
     'Add-ToUserPath',
