@@ -84,6 +84,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | `iconv`, `make`, `cmake`, `nasm`, `strawberry-perl`, `winflexbison`, `clang-format` | 対象なし。CMake のユーザー パッケージ登録など OS 側の機能は集約しない |
 | `libclang` | 対象なし。共有 Python の site-packages に配置する。解析対象のソースは対象外 |
 | `cloc`, `nkf`, `innoextract`, `opencppcoverage`, `reportgenerator`, `editorconfig-checker` | 対象なし。引数とプロジェクト設定で動作する |
+| `rg` | 対象なし。`RIPGREP_CONFIG_PATH` は設定しない。未設定なら設定ファイルを読まずに起動する。存在しないパスを指すとエラーになる。プロジェクトの `.gitignore` は対象外 |
 
 Windows Terminal の `settings.json` は AppData/LocalAppData のままです。Git Bash/MinGW の Terminal プロファイルにある `%USERPROFILE%` は開始ディレクトリの指定であり、設定の保存先ではありません。
 
@@ -111,4 +112,5 @@ log の削除では、記録中のトランスクリプトと `log` フォルダ
 - [GitHub CLI 環境変数](https://cli.github.com/manual/gh_help_environment)、[GitLab CLI 設定](https://docs.gitlab.com/cli/configuration/)
 - [Copilot CLI 設定ディレクトリ](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference)、[Inkscape 環境変数](https://wiki.inkscape.org/wiki/Environment_variables)
 - [Puppeteer 設定](https://pptr.dev/guides/configuration)、[Pandoc マニュアル](https://pandoc.org/MANUAL.html)
+- [ripgrep の設定ファイル](https://github.com/BurntSushi/ripgrep/blob/15.2.0/GUIDE.md#configuration-file)
 - [Antigravity CLI](https://www.antigravity.google/docs/cli/features) と [設定 (CLI)](https://antigravity.google/docs/settings?tab=cli)

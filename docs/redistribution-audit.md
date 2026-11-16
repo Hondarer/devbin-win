@@ -36,7 +36,7 @@
 - `Make-Dist.ps1` が `packages` とともに配布する devbin-win 固有ファイル
 
 実ファイル数は `packages` 直下の 40 件 (第三者成果物 36 件、devbin-win 固有スクリプト 4 件)、npm のトップレベル定義 10 件 (依存アーカイブ数は各 cache manifest により変動)、pip 9 件、VSBT 65 件の合計です。
-この件数は 2026-07-23 時点のものです。2026-10-25 に `libclang` 18.1.1 (`PipInstall`) を追加しています。wheel は `Get-Packages.ps1` 実行後に `packages/pip-packages` へ入ります。2026-11-09 に `nasm` 3.02 (Windows x64 ZIP) と `strawberry-perl` 5.42.3.1 (ポータブル版 ZIP) を追加しています。ZIP は `Get-Packages.ps1` 実行後に `packages` へ入ります。
+この件数は 2026-07-23 時点のものです。2026-10-25 に `libclang` 18.1.1 (`PipInstall`) を追加しています。wheel は `Get-Packages.ps1` 実行後に `packages/pip-packages` へ入ります。2026-11-09 に `nasm` 3.02 (Windows x64 ZIP) と `strawberry-perl` 5.42.3.1 (ポータブル版 ZIP) を追加しています。2026-11-16 に `rg` 15.2.0 (Windows x64 MSVC ZIP) を追加しています。ZIP は `Get-Packages.ps1` 実行後に `packages` へ入ります。
 devbin-win 固有スクリプトと配布スクリプト群はリポジトリの MIT ライセンス対象であり、現行の配布 ZIP にはルートの `LICENSE` が収録されます。
 
 本調査の判定は、取得済みのベンダー アーカイブを含む ZIP を無償で不特定多数へ公開する場合を対象としています。
@@ -91,6 +91,7 @@ devbin-win 固有スクリプトと配布スクリプト群はリポジトリの
 | `libclang` 18.1.1 | Apache-2.0 WITH LLVM-exception | 条件付きで可 | PyPI の未改変 wheel `libclang-18.1.1-py2.py3-none-win_amd64.whl` を保持する。公開前に wheel 内の LICENSE 本文を確認する。上流の許諾は [LICENSE.TXT](https://github.com/sighingnow/libclang/blob/llvm-18.1.1/LICENSE.TXT)。[PyPI](https://pypi.org/project/libclang/18.1.1/) |
 | `nuget` 7.9.0 | Apache-2.0 | 条件付きで可 | 単体exeにはライセンス文書がない。Apache-2.0本文、著作権、該当NOTICEを追加する。[NuGet.Client](https://github.com/NuGet/NuGet.Client/tree/release-7.9.x) |
 | `cloc` 2.10 | GPL-2.0 | 条件付きで可 | 単体exeにはライセンス・対応ソースを伴わない。GPL本文とv2.10の対応ソースを同等提供する。[cloc v2.10](https://github.com/AlDanial/cloc/tree/v2.10) |
+| `rg` 15.2.0 | Unlicense または MIT。静的リンクした PCRE2 は BSD-3-Clause。Rust 依存物は個別ライセンス | 条件付きで可 | ZIP 内の `COPYING`、`UNLICENSE`、`LICENSE-MIT` を未改変のまま保持する。公開時はタグ 15.2.0 の `Cargo.lock` から PCRE2 と Rust 依存物の第三者通知を生成して追加する。[ripgrep 15.2.0](https://github.com/BurntSushi/ripgrep/tree/15.2.0) / [ZIP](https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-pc-windows-msvc.zip) |
 | `vswhere` 3.1.7 | MIT | 条件付きで可 | 単体exeにはMIT表示がない。著作権・許諾表示を配布物へ追加する。[vswhere](https://github.com/microsoft/vswhere/tree/3.1.7) |
 | `nkf` 2.1.5 | zlib系の独自許諾 | 再配布可 | ZIP内の `LICENSE` を保持し、由来を偽らず、改変する場合は明示する。[nkf-bin](https://github.com/Hondarer/nkf-bin/tree/v2_1_5) |
 | `innoextract` 1.9 | zlib | 条件付きで可 | ZIPのREADMEはLICENSEを参照するが、そのLICENSEがZIPにない。zlibライセンス全文を追加する。[innoextract](https://github.com/dscharrer/innoextract/tree/1.9) |

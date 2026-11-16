@@ -532,6 +532,24 @@
             DefaultChecked = $true
         },
 
+        # ripgrep - Subdirectory extraction (rg.exe only)
+        @{
+            Name = "ripgrep"
+            ShortName = "rg"
+            MenuGroup = "品質・計測"
+            Version = "15.2.0"
+            ArchivePattern = "^ripgrep-.*-x86_64-pc-windows-msvc\.zip$"
+            ExtractStrategy = "Subdirectory"
+            ExtractPath = ""
+            FilePattern = "^rg\.exe$"
+            DownloadUrl = "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-pc-windows-msvc.zip"
+            DependsOn = @()
+            PathDirs = @()
+            EnvVars = @{}
+            DetectFiles = @("rg.exe")
+            DefaultChecked = $true
+        },
+
         # cloc - SingleExecutable extraction
         @{
             Name = "cloc"

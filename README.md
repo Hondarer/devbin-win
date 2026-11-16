@@ -298,6 +298,16 @@ from [NuGet](https://www.nuget.org/)
 - [Available NuGet Distribution Versions](https://www.nuget.org/downloads)
     - [nuget.exe v7.9.0](https://dist.nuget.org/win-x86-commandline/v7.9.0/nuget.exe)
 
+### ripgrep
+
+from [BurntSushi/ripgrep](https://github.com/BurntSushi/ripgrep)
+
+公式の Windows x64 MSVC ZIP から `rg.exe` を `bin` 直下へ配置します。
+補完スクリプト、マニュアル、ライセンス文書は ZIP に残し、`bin` へはコピーしません。
+
+- [/releases/tag/15.2.0](https://github.com/BurntSushi/ripgrep/releases/tag/15.2.0)
+    - [ripgrep-15.2.0-x86_64-pc-windows-msvc.zip](https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-pc-windows-msvc.zip)
+
 ### cloc
 
 from [AlDanial/cloc](https://github.com/AlDanial/cloc)

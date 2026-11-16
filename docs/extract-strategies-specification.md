@@ -26,7 +26,7 @@ subscripts/Devbin/Extract/
 | 戦略名 | 説明 | 主な用途 |
 |--------|------|---------|
 | Standard | ZIP を展開し、すべてを bin に配置 | Node.js, Pandoc, Doxygen |
-| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, iconv, clang-format |
+| Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, iconv, clang-format, ripgrep |
 | SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz, FFmpeg |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison, Strawberry Perl |
@@ -222,7 +222,7 @@ tar.xz アーカイブと PostSetupScript を使用した例:
 
 #### 適用パッケージ
 
-nkf, CMake, GNU Make, NASM, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, mingw-w64-x86_64-libiconv, mingw-w64-x86_64-gettext-runtime, clang-format, GitHub CLI, GitLab CLI, GitHub Copilot CLI, Antigravity CLI
+nkf, CMake, GNU Make, NASM, doxybook2, innoextract, iconv, mingw-w64-x86_64-gcc-libs, mingw-w64-x86_64-libiconv, mingw-w64-x86_64-gettext-runtime, clang-format, ripgrep, GitHub CLI, GitLab CLI, GitHub Copilot CLI, Antigravity CLI
 
 ### SubdirectoryToTarget 戦略
 

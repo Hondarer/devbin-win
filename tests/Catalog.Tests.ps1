@@ -107,6 +107,29 @@ Describe "packages.psd1" {
         $libclang.DefaultChecked | Should Be $true
     }
 
+    It "rg は bin 直下へ 15.2.0 の実行ファイルを置く" {
+        $rg = $packages | Where-Object { $_.ShortName -eq "rg" }
+        $rg.Name | Should Be "ripgrep"
+        $rg.ExtractStrategy | Should Be "Subdirectory"
+        $rg.ExtractPath | Should Be ""
+        $rg.Version | Should Be "15.2.0"
+        $rg.MenuGroup | Should Be "品質・計測"
+        ("rg.exe" -match $rg.FilePattern) | Should Be $true
+        ("_rg.ps1" -match $rg.FilePattern) | Should Be $false
+        ("COPYING" -match $rg.FilePattern) | Should Be $false
+        ($rg.DetectFiles -join ",") | Should Be "rg.exe"
+        $rg.DefaultChecked | Should Be $true
+        @($rg.PathDirs).Count | Should Be 0
+        @($rg.DependsOn).Count | Should Be 0
+        @($rg.EnvVars.Keys).Count | Should Be 0
+        ("ripgrep-15.2.0-x86_64-pc-windows-msvc.zip" -match $rg.ArchivePattern) | Should Be $true
+        ("ripgrep-15.2.0-x86_64-pc-windows-msvc.zip.sha256" -match $rg.ArchivePattern) | Should Be $false
+        ("ripgrep-15.2.0-aarch64-pc-windows-msvc.zip" -match $rg.ArchivePattern) | Should Be $false
+        ("ripgrep-15.2.0-i686-pc-windows-msvc.zip" -match $rg.ArchivePattern) | Should Be $false
+        ("ripgrep-15.2.0-x86_64-pc-windows-gnu.zip" -match $rg.ArchivePattern) | Should Be $false
+        $rg.DownloadUrl | Should Be "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-pc-windows-msvc.zip"
+    }
+
     It "nasm は bin 直下へ 3.02 の実行ファイルを置く" {
         $nasm = $packages | Where-Object { $_.ShortName -eq "nasm" }
         $nasm.ExtractStrategy | Should Be "Subdirectory"

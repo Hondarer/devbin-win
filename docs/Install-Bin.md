@@ -65,6 +65,7 @@ pwsh -NoLogo -Command "$PSVersionTable.PSVersion"
 git --version
 code --version
 cloc --version
+rg --version
 vswhere -?
 clang-format --version
 win_flex --version
@@ -144,6 +145,23 @@ Microsoft Edge が検出されない場合は、ブラウザーを必要とす�
 5. 新しいターミナルでコマンドを確認
 
 ## パッケージの補足
+
+### ripgrep について
+
+ripgrep は、ディレクトリを再帰的に正規表現で検索するツールです。コマンド名は `rg` です。
+既定では `.gitignore` に従い、隠しファイルとバイナリを検索しません。すべてを対象にする場合は `rg -uuu` を使います。
+公式の Windows x64 MSVC ビルドは PCRE2 を静的リンクしているため、`-P` が使えます。
+
+ZIP のルートには `rg.exe` のほか、補完スクリプト (`complete`)、マニュアル (`doc`)、`COPYING`、`UNLICENSE`、`LICENSE-MIT` があります。
+配置するのは `bin\rg.exe` だけです。`bin` 自体が PATH に入るため、追加の PATH は作りません。
+
+設定ファイルは自動では読みません。`RIPGREP_CONFIG_PATH` が未設定なら、設定ファイルを参照せずに起動します。
+この変数は設定しません。存在しないファイルを指すと `rg` はエラーで終了するためです。
+
+- **用途**: ソースツリーの文字列検索
+- **配置ファイル**: `bin\rg.exe`
+- **バージョン**: 15.2.0
+- **プロジェクト**: [BurntSushi/ripgrep](https://github.com/BurntSushi/ripgrep)
 
 ### cloc について
 
@@ -394,7 +412,7 @@ MinGW 用 Windows Terminal プロファイルはパスを含まないため、�
 
 ### その他のツール
 
-- Node.js、Pandoc、Doxygen、PlantUML、cloc、vswhere などは常に PATH に追加されます
+- Node.js、Pandoc、Doxygen、PlantUML、cloc、ripgrep、vswhere などは常に PATH に追加されます
 
 ## オフライン環境での pip インストール
 
