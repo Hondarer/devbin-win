@@ -32,6 +32,8 @@ function Get-DevbinHomeLayout {
         [PSCustomObject]@{ EnvName = "PIP_CACHE_DIR"; Path = (Join-Path $HomePath 'pip\cache'); Label = 'pip cache'; ShortNames = @('python') }
         [PSCustomObject]@{ EnvName = "PIP_CONFIG_FILE"; Path = (Join-Path $HomePath 'pip\pip.ini'); Label = 'pip config'; IsFile = $true; ShortNames = @('python') }
         [PSCustomObject]@{ EnvName = "PYTHONUSERBASE"; Path = (Join-Path $HomePath 'python'); Label = 'Python user base'; ShortNames = @('python') }
+        [PSCustomObject]@{ EnvName = "GOPATH"; Path = (Join-Path $HomePath 'go'); Label = 'Go workspace'; ShortNames = @('go') }
+        [PSCustomObject]@{ EnvName = "GOCACHE"; Path = (Join-Path $HomePath 'go-build'); Label = 'Go build cache'; ShortNames = @('go') }
     )
 }
 

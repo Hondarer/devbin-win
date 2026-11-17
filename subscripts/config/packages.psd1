@@ -198,6 +198,31 @@
             DefaultChecked = $true
         },
 
+        # Go - SubdirectoryToTarget extraction (公式 ZIP の go フォルダーを bin\go へ配置)
+        # go.exe は自身の場所から GOROOT を判定するため、GOROOT は設定しません。
+        @{
+            Name = "Go"
+            ShortName = "go"
+            MenuGroup = "基盤・ランタイム"
+            Version = "1.27.4"
+            ArchivePattern = "^go\d+(?:\.\d+)+\.windows-amd64\.zip$"
+            ExtractStrategy = "SubdirectoryToTarget"
+            ExtractPath = ""
+            TargetDirectory = "go"
+            DownloadUrl = "https://go.dev/dl/go1.27.4.windows-amd64.zip"
+            DependsOn = @()
+            PathDirs = @("go\bin")
+            # go.mod が導入済みの版より新しい版を要求しても、ツールチェーンを自動でダウンロードせず、エラーで停止します。
+            EnvVars = @{ "GOTOOLCHAIN" = "local" }
+            EnvVarIsLiteral = @("GOTOOLCHAIN")
+            DetectFiles = @("go\bin\go.exe")
+            SkipIfCommand = "go"
+            DisableIfCommand = "go"
+            # devbin-win 外部に導入済みの場合の版表示に使用します (go.exe には版情報がありません)。
+            VersionArgs = @("version")
+            DefaultChecked = $true
+        },
+
         # pnpm - npm global install
         @{
             Name = "pnpm"

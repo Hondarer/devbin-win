@@ -94,7 +94,7 @@ Devbin/Extract に実装された抽出パターンです。
 |--------|------|---------------|
 | Standard | ZIP を展開し、すべてを bin に配置 | Node.js, Pandoc, Doxygen |
 | Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, NASM, innoextract, clang-format, ripgrep, gh, copilot, agy, glab |
-| SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz |
+| SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz, FFmpeg, Inkscape, Go |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison, Strawberry Perl |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |

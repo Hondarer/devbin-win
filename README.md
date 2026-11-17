@@ -165,6 +165,18 @@ from [.NET のダウンロード](https://dotnet.microsoft.com/ja-jp/download/do
 - [.NET 10.0 のダウンロード](https://dotnet.microsoft.com/ja-jp/download/dotnet/10.0)
     - [dotnet-sdk-10.0.403-win-x64.zip](https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.403/dotnet-sdk-10.0.403-win-x64.zip)
 
+### Go
+
+from [All releases - The Go Programming Language](https://go.dev/dl/)
+
+- [go1.27.4](https://go.dev/doc/devel/release#go1.27.0)
+    - [go1.27.4.windows-amd64.zip](https://go.dev/dl/go1.27.4.windows-amd64.zip)
+
+ZIP アーカイブを `bin\go` に展開して `go` コマンドと `gofmt` コマンドを提供します。
+ユーザー環境変数 `GOTOOLCHAIN=local` を設定するため、`go.mod` が新しい版を要求しても、ツールチェーンを自動でダウンロードしません。
+C コンパイラー (gcc) は含まないため、cgo と `go test -race` は使用できません。
+外部モジュールを使うプロジェクトをオフラインでビルドする手順は、[Install-Bin.md](./docs/Install-Bin.md) を参照してください。
+
 ### PowerShell 7
 
 from [PowerShell 7 installation on Windows](https://learn.microsoft.com/ja-jp/powershell/scripting/install/install-powershell-on-windows)

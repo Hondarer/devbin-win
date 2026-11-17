@@ -27,7 +27,7 @@ subscripts/Devbin/Extract/
 |--------|------|---------|
 | Standard | ZIP を展開し、すべてを bin に配置 | Node.js, Pandoc, Doxygen |
 | Subdirectory | 特定のサブディレクトリのみ抽出 | nkf, CMake, GNU Make, innoextract, iconv, clang-format, ripgrep |
-| SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz, FFmpeg |
+| SubdirectoryToTarget | サブディレクトリをターゲットディレクトリに抽出 | Graphviz, FFmpeg, Inkscape, Go |
 | VersionNormalized | バージョン番号を正規化 | JDK, Python |
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison, Strawberry Perl |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
@@ -261,10 +261,12 @@ Subdirectory 戦略との違いは、抽出先が bin 直下ではなく、bin �
 
 この例では、アーカイブ内の `bin` フォルダーが `bin/graphviz` に配置されます。
 FFmpeg も同一の戦略により、アーカイブ内の `bin` フォルダーを `bin/ffmpeg` に配置します。
+`ExtractPath` に空文字列を指定すると、アーカイブのルート フォルダーの内容全体を配置します。
+Go は、アーカイブ内の `go` フォルダーの内容全体を `bin/go` に配置します。
 
 #### 適用パッケージ
 
-Graphviz, FFmpeg
+Graphviz, FFmpeg, Inkscape, Go
 
 ### VersionNormalized 戦略
 

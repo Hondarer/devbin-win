@@ -107,6 +107,35 @@ Describe "packages.psd1" {
         $libclang.DefaultChecked | Should Be $true
     }
 
+    It "go は bin\go へ 1.27.4 を配置し、ツールチェーンの自動取得を止める" {
+        $go = $packages | Where-Object { $_.ShortName -eq "go" }
+        $go.Name | Should Be "Go"
+        $go.ExtractStrategy | Should Be "SubdirectoryToTarget"
+        $go.ExtractPath | Should Be ""
+        $go.TargetDirectory | Should Be "go"
+        $go.Version | Should Be "1.27.4"
+        $go.MenuGroup | Should Be "基盤・ランタイム"
+        ($go.PathDirs -join ",") | Should Be "go\bin"
+        ($go.DetectFiles -join ",") | Should Be "go\bin\go.exe"
+        $go.SkipIfCommand | Should Be "go"
+        $go.DisableIfCommand | Should Be "go"
+        ($go.VersionArgs -join ",") | Should Be "version"
+        $go.DefaultChecked | Should Be $true
+        @($go.DependsOn).Count | Should Be 0
+        ("go1.27.4.windows-amd64.zip" -match $go.ArchivePattern) | Should Be $true
+        ("go1.26.windows-amd64.zip" -match $go.ArchivePattern) | Should Be $true
+        ("go1.27.4.windows-amd64.msi" -match $go.ArchivePattern) | Should Be $false
+        ("go1.27.4.windows-arm64.zip" -match $go.ArchivePattern) | Should Be $false
+        ("go1.27.4.windows-386.zip" -match $go.ArchivePattern) | Should Be $false
+        ("go1.27.4.linux-amd64.tar.gz" -match $go.ArchivePattern) | Should Be $false
+        $go.DownloadUrl | Should Be "https://go.dev/dl/go1.27.4.windows-amd64.zip"
+
+        # GOTOOLCHAIN はパスへ展開せず、値のまま設定します。
+        $values = Get-ComponentEnvVarValues -InstallDir $TestDrive -PackageConfig $go
+        $values["GOTOOLCHAIN"] | Should Be "local"
+        @($values.Keys).Count | Should Be 1
+    }
+
     It "rg は bin 直下へ 15.2.0 の実行ファイルを置く" {
         $rg = $packages | Where-Object { $_.ShortName -eq "rg" }
         $rg.Name | Should Be "ripgrep"

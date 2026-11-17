@@ -46,6 +46,8 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | PIP_CACHE_DIR | `pip\cache` | `python` |
 | PIP_CONFIG_FILE | `pip\pip.ini` (ファイル) | `python` |
 | PYTHONUSERBASE | `python` | `python` |
+| GOPATH | `go` | `go` |
+| GOCACHE | `go-build` | `go` |
 | VSCODE_PORTABLE | `vscode` | `vscode` |
 
 `npmrc` や `pip.ini` のようにファイルを指す項目は、親ディレクトリだけを作成します。ファイルの内容は生成しません。`VSCODE_PORTABLE` だけは他と異なり、VS Code のインストールのたびに値を設定します。設定の反映には新しいターミナルを開いてください。
@@ -66,6 +68,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | `python`, `get-pip` | `PIP_CONFIG_FILE=data\pip\pip.ini`、`PIP_CACHE_DIR=data\pip\cache`、`PYTHONUSERBASE=data\python`。pip の他階層の設定の読み込みは残る |
 | `yamllint` | XDG/HOME に従う範囲のみ。プロジェクトの `.yamllint` は対象外 |
 | `dotnet10sdk` | `DOTNET_CLI_HOME=data\dotnet`、NuGet のパッケージ/HTTP/プラグイン キャッシュを集約。全設定が移るわけではない |
+| `go` | `GOPATH=data\go`、`GOCACHE=data\go-build`。モジュール キャッシュ (`GOMODCACHE`) は既定で `GOPATH\pkg\mod` に置かれるため、一緒に移る。`go env -w` の設定ファイルとテレメトリのデータは `%AppData%\go` のまま。`GOTOOLCHAIN=local` は保存先ではなく、ツールチェーンの自動ダウンロードを止める設定 |
 | `nuget` | `NUGET_PACKAGES=data\nuget\packages`、`NUGET_HTTP_CACHE_PATH=data\nuget\http-cache`、`NUGET_PLUGINS_CACHE_PATH=data\nuget\plugins-cache`。一時領域 (`NUGET_SCRATCH`) は TEMP のまま。AppData の `NuGet.Config` と資格情報の設定は対象外 |
 | `gh` | `GH_CONFIG_DIR=data\gh`。認証が OS 資格情報ストアにある場合は対象外 |
 | `glab` | `GLAB_CONFIG_DIR=data\glab`。リポジトリ内の `.git\glab-cli` は対象外 |
@@ -109,6 +112,7 @@ log の削除では、記録中のトランスクリプトと `log` フォルダ
 - [VS Code ポータブルモード](https://code.visualstudio.com/docs/setup/portable) と [VSCODE_PORTABLE の解決実装](https://github.com/microsoft/vscode/blob/main/src/bootstrap-node.ts)
 - [npm 設定](https://docs.npmjs.com/using-npm/config/)、[pip 設定](https://pip.pypa.io/en/stable/topics/configuration/)
 - [.NET 環境変数](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables)、[NuGet キャッシュ](https://learn.microsoft.com/en-us/nuget/consume-packages/managing-the-global-packages-and-cache-folders)
+- [Go の環境変数](https://pkg.go.dev/cmd/go#hdr-Environment_variables) と [Go ツールチェーンの選択](https://go.dev/doc/toolchain)
 - [GitHub CLI 環境変数](https://cli.github.com/manual/gh_help_environment)、[GitLab CLI 設定](https://docs.gitlab.com/cli/configuration/)
 - [Copilot CLI 設定ディレクトリ](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference)、[Inkscape 環境変数](https://wiki.inkscape.org/wiki/Environment_variables)
 - [Puppeteer 設定](https://pptr.dev/guides/configuration)、[Pandoc マニュアル](https://pandoc.org/MANUAL.html)

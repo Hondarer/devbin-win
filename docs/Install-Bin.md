@@ -380,6 +380,17 @@ MinGW 用 Windows Terminal プロファイルはパスを含まないため、�
 - システムに `dotnet.exe` が存在する場合、.NET SDK への PATH は追加されません
 - 既存の .NET SDK インストールが優先されます
 
+### Go
+
+- システムに devbin-win 外の `go.exe` が存在する場合、コンポーネント マネージャーでは `External` と表示して導入を無効化し、既存の Go を優先します
+- ユーザー環境変数 `GOTOOLCHAIN=local` を設定します。`go.mod` が導入済みの版より新しい版を要求した場合、ツールチェーンを自動でダウンロードせず、エラーで停止します
+- `GOPATH` と `GOCACHE` が未設定の場合、`data\go` と `data\go-build` に設定します。詳細については、[ユーザー設定・データの保存先](./user-storage.md) を参照してください
+- C コンパイラー (gcc) は含みません。Go は C コンパイラーが見つからない場合に cgo を無効にするため、cgo を使うパッケージのビルドと `go test -race` は使用できません
+- Go 本体と標準ライブラリだけを使うビルドは、オフラインで動作します。外部モジュールを使うプロジェクトは、次のいずれかの方法でモジュールを用意してください
+    - プロジェクトで `go mod vendor` を実行し、依存モジュールをリポジトリに含める
+    - オンライン環境で `go mod download all` を実行し、`GOPATH\pkg\mod\cache\download` をオフライン環境へコピーして、`GOPROXY=file:///<コピー先>` を設定する
+- `go build` が取得するモジュールは、ビルド対象のプラットフォームに必要なものだけです。`GOOS` を変えてクロスビルドする場合は、オンラインのうちに `go mod download all` を実行し、すべてのプラットフォームのモジュールを取得してください
+
 ### PowerShell 7
 
 - PowerShell 7.6.6 x64 ZIP を `bin\pwsh` に展開し、`pwsh` コマンドを提供します

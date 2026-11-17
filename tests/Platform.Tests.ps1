@@ -119,6 +119,17 @@ Describe "Get-DevbinHomeLayout" {
         ($layout | Where-Object { $_.EnvName -eq "CONTINUE_GLOBAL_DIR" }).Path | Should Be "C:\home\user\continue"
         ($names -contains "JETSKI_APP_DATA_DIR") | Should Be $false
     }
+
+    It "Go の作業領域とビルド キャッシュを go コンポーネントの保存先として返す" {
+        $layout = @(Get-DevbinHomeLayout -HomePath "C:\home\user")
+        $gopath = $layout | Where-Object { $_.EnvName -eq "GOPATH" }
+        $gocache = $layout | Where-Object { $_.EnvName -eq "GOCACHE" }
+
+        $gopath.Path | Should Be "C:\home\user\go"
+        $gocache.Path | Should Be "C:\home\user\go-build"
+        ($gopath.ShortNames -join ",") | Should Be "go"
+        ($gocache.ShortNames -join ",") | Should Be "go"
+    }
 }
 
 Describe "Get-DevbinHomePlan" {

@@ -67,6 +67,7 @@ devbin-win 固有スクリプトと配布スクリプト群はリポジトリの
 | `doxygen` 1.17.0 | GPL-2.0 | 条件付きで可 | 現行Windows ZIPは実行ファイルのみ。GPL本文と、1.17.0に対応する完全なソースへの同等アクセスを追加する。[公式リポジトリ](https://github.com/doxygen/doxygen) |
 | `doxybook2` 1.6.1 | MIT | 条件付きで可 | リリースZIPにLICENSEがない。MITの著作権・許諾表示を配布物へ追加し、静的リンク依存物の通知も確認する。[公式リポジトリ](https://github.com/Antonz0/doxybook2/tree/v1.6.1) |
 | `jdk` 25.0.4.1 | GPL-2.0-with-Classpath-exception | 条件付きで可 | ZIP内の `legal` 一式を保持し、Microsoftの対象ソースを同等に提供する。商標上、Microsoft/Javaからの承認を示唆しない。[Microsoft FAQ](https://learn.microsoft.com/en-us/java/openjdk/faq) / [サポート情報](https://learn.microsoft.com/en-us/java/openjdk/support) |
+| `go` 1.27.4 | BSD-3-Clause および追加の特許許諾 (PATENTS)。同梱する `golang.org/x` などの第三者コードは個別ライセンス | 再配布可 | ZIP 内の `LICENSE`、`PATENTS`、`src` および `src/cmd` 配下の `vendor` にある各ライセンスを未改変のまま保持する。[Go LICENSE](https://github.com/golang/go/blob/go1.27.4/LICENSE) |
 | `graphviz` 16.1.0 | EPL-2.0および多数の同梱DLL | 要確認 | 取得ZIPは `bin` のみでLICENSE/NOTICEを含まない。EPL本文、ソース取得方法、全同梱DLLのライセンスと通知を確定するまで除外する。16.0.0 で `diffimg` は削除されている。[Graphviz License](https://graphviz.org/license/) |
 | `ffmpeg` 9.0.1 essentials | GPL-3.0、静的リンクされた多数の外部ライブラリ | 要確認 | ZIPはGPL本文とFFmpegコミットを示すが、全静的リンク依存物を含む完全な対応ソース・ビルドスクリプトの提供を確認できない。完全なソースセットをミラーできるまで除外する。[Gyan builds](https://www.gyan.dev/ffmpeg/builds/) |
 | `plantuml` 1.2026.8 | 標準jarはGPL系。jar内にGPL-2.0の本文と個別依存ライセンスあり | 条件付きで可 | 配布しているjarのライセンス種別をリリース資産名と照合し、対応ソースを同等提供する。LGPL版へ切り替える場合も別資産として再監査する。[PlantUML FAQ](https://plantuml.com/faq) |
