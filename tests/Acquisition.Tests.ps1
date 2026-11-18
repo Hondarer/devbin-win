@@ -557,6 +557,34 @@ $global:DevbinTestVsbtExtractDownloadsPath = [string]$DownloadsPath
         ($extractSource -match '\$params\["OfflineMode"\]\s*=\s*\$true') | Should Be $true
     }
 
+    It "SDK の payload は区切り文字が \ でも / でも見つかる" {
+        $vsbtPath = Join-Path (Get-DevbinSubscriptsDir) "Setup-VSBT.ps1"
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($vsbtPath, [ref]$null, [ref]$null)
+        $functionAst = @($ast.FindAll({
+            param($node)
+            $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Find-VsbtSdkPayload'
+        }, $true)) | Select-Object -First 1
+        . ([scriptblock]::Create($functionAst.Extent.Text))
+
+        # 22621 は "Installers\"、26100 は "Installers/" 形式で配布されている
+        $payloads = @(
+            [PSCustomObject]@{ fileName = "Installers\Windows SDK Desktop Libs x64-x86_en-us.msi"; url = "backslash" },
+            [PSCustomObject]@{ fileName = "Installers/0123456789abcdef0123456789abcdef.cab"; url = "slash" }
+        )
+
+        (Find-VsbtSdkPayload -Payloads $payloads -FileName "Windows SDK Desktop Libs x64-x86_en-us.msi").url | Should Be "backslash"
+        (Find-VsbtSdkPayload -Payloads $payloads -FileName "0123456789abcdef0123456789abcdef.cab").url | Should Be "slash"
+        (Find-VsbtSdkPayload -Payloads $payloads -FileName "missing.msi") | Should BeNullOrEmpty
+    }
+
+    It "SDK の MSI を 1 つも取得できないときは処理を中断する" {
+        $vsbtPath = Join-Path (Get-DevbinSubscriptsDir) "Setup-VSBT.ps1"
+        $source = Get-Content -LiteralPath $vsbtPath -Raw
+
+        ($source -match 'if \(\$foundMsiCount -eq 0\)\s*\{\s*throw') | Should Be $true
+        ($source -match '\$_\.fileName -eq "Installers\\') | Should Be $false
+    }
+
     It "単独実行では従来どおり Devbin を Force インポートする" {
         $vsbtPath = Join-Path (Get-DevbinSubscriptsDir) "Setup-VSBT.ps1"
         $source = Get-Content -LiteralPath $vsbtPath -Raw

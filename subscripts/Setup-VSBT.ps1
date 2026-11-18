@@ -244,6 +244,20 @@ function Invoke-Download {
     }
 }
 
+# SDK の payloads から Installers 配下のファイルを探す
+# マニフェストの fileName は SDK のバージョンによって区切り文字が異なる (例: 22621 は "Installers\"、26100 は "Installers/") ため、"\" にそろえて比較する
+function Find-VsbtSdkPayload {
+    param(
+        [object[]]$Payloads,
+        [string]$FileName
+    )
+
+    $expected = "Installers\$FileName"
+    return $Payloads | Where-Object {
+        ([string]$_.fileName).Replace('/', '\') -eq $expected
+    } | Select-Object -First 1
+}
+
 function Get-MSICabs {
     param([byte[]]$MsiData)
     
@@ -612,13 +626,14 @@ try {
     foreach ($t in $targets) {
         $targetSdkSubFolder = Join-Path $t (Join-Path "SDK" $selectedSdkVer)
         $cabFiles = @()
+        $foundMsiCount = 0
 
         foreach ($pkg in $sdkPackages[$t] | Sort-Object) {
-            $payload = $sdkPkgData.payloads | Where-Object {
-                $_.fileName -eq "Installers\$pkg"
-            } | Select-Object -First 1
+            $payload = Find-VsbtSdkPayload -Payloads $sdkPkgData.payloads -FileName $pkg
 
+            # SDK のバージョンによっては存在しない MSI がある (例: 26100 は arm 向けを含まない) ため、個別には読み飛ばす
             if (-not $payload) { continue }
+            $foundMsiCount++
 
             $msiPath = Join-Path (Join-Path $DownloadsPath $targetSdkSubFolder) $pkg
             $msiFiles += $msiPath
@@ -634,11 +649,14 @@ try {
             $cabFiles += $cabs
         }
 
+        # SDK を 1 つも取得できないまま正常終了すると不具合に気付けないため、処理を中断する
+        if ($foundMsiCount -eq 0) {
+            throw "No Windows SDK installers found in manifest: $sdkDepId (target: $t)"
+        }
+
         # Download CAB files (save to target subfolder)
         foreach ($cab in ($cabFiles | Select-Object -Unique)) {
-            $payload = $sdkPkgData.payloads | Where-Object {
-                $_.fileName -eq "Installers\$cab"
-            } | Select-Object -First 1
+            $payload = Find-VsbtSdkPayload -Payloads $sdkPkgData.payloads -FileName $cab
 
             if ($payload) {
                 # Track required file
