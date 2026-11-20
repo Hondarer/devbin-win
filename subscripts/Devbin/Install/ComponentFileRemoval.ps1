@@ -84,6 +84,25 @@ function Remove-ComponentInstalledFiles {
         [string[]]$Files = @()
     )
 
+    # HOME 配下へ導入したコンポーネントは、公式のアンインストール手順と同じく、DetectFiles と CleanupPatterns に一致するファイルだけを削除します。
+    # HOME 配下のディレクトリ (.local など) は他のツールと共有するため、ディレクトリ単位の削除は行いません。
+    if (Test-ComponentHomeRooted -PackageConfig $PackageConfig) {
+        $rootDir = Get-ComponentRootDirectory -InstallDir $InstallDir -PackageConfig $PackageConfig
+        Remove-ComponentCleanupFiles -ShortName $ShortName -PackageConfig $PackageConfig -InstallDir $rootDir -Manifest $Manifest
+        $detectFiles = if ($PackageConfig.ContainsKey("DetectFiles")) { @($PackageConfig.DetectFiles) } else { @() }
+        foreach ($df in $detectFiles) {
+            $fullPath = Join-Path $rootDir $df
+            if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) { continue }
+            try {
+                Remove-Item -LiteralPath $fullPath -Force -ErrorAction Stop
+                Write-Host "    Removed: $fullPath"
+            } catch {
+                Write-Host "    Warning: Failed to remove '$fullPath': $($_.Exception.Message)" -ForegroundColor Yellow
+            }
+        }
+        return
+    }
+
     $targetDir = if ($PackageConfig.ContainsKey("TargetDirectory")) { $PackageConfig.TargetDirectory } else { $null }
 
     # マニフェストに記録されない実行時の生成ファイルを先に削除します。

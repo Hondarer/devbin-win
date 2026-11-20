@@ -73,7 +73,8 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | `gh` | `GH_CONFIG_DIR=data\gh`。認証が OS 資格情報ストアにある場合は対象外 |
 | `glab` | `GLAB_CONFIG_DIR=data\glab`。リポジトリ内の `.git\glab-cli` は対象外 |
 | `copilot` | `COPILOT_HOME=data\copilot`、`COPILOT_CACHE_HOME=data\copilot\cache`。資格情報ストアまで移るとは限らない |
-| `agy` | 個別の保存先指定はなし。公式の既定は `~/.gemini/antigravity-cli`。資格情報ストアは対象外 |
+| `agy` | 個別の保存先指定はなし。公式の既定は `~/.gemini/antigravity-cli`。保存先を変える環境変数や引数は公式ドキュメントに記載がない (2026-11 時点)。資格情報ストアは対象外 |
+| `claude` | 個別の保存先指定はなし (`CLAUDE_CONFIG_DIR` は設定しない)。公式の導入手順を支援するため、本体は HOME 配下 (`.local\bin`、`.local\share\claude`) に置かれる。設定の保存先は Claude Code の既定に従う。Claude Console へ API キーなしでサインインした情報は `%APPDATA%\Anthropic` |
 | `inkscape` | `INKSCAPE_PROFILE_DIR=data\inkscape` |
 | `pwsh` | 指定なし。Documents の PowerShell プロファイルと AppData の PSReadLine 履歴は HOME の変更では移らない |
 | `pandoc` | 指定なし。Windows の既定は `%APPDATA%\pandoc`。環境変数での変更手段がなく、`--data-dir` の一律付与も行わない |
@@ -118,3 +119,4 @@ log の削除では、記録中のトランスクリプトと `log` フォルダ
 - [Puppeteer 設定](https://pptr.dev/guides/configuration)、[Pandoc マニュアル](https://pandoc.org/MANUAL.html)
 - [ripgrep の設定ファイル](https://github.com/BurntSushi/ripgrep/blob/15.2.0/GUIDE.md#configuration-file)
 - [Antigravity CLI](https://www.antigravity.google/docs/cli/features) と [設定 (CLI)](https://antigravity.google/docs/settings?tab=cli)
+- [Claude Code 環境変数](https://code.claude.com/docs/en/env-vars) と [資格情報の保存先](https://code.claude.com/docs/en/authentication)

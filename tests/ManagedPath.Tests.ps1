@@ -79,6 +79,33 @@ Describe "Get-ManagedUserPathValue" {
         }
     }
 
+    It "HOME 配下のディレクトリは HOME を基準に追加し、devbin-win 外の導入なら既存の PATH を残す" {
+        $installDir = New-TestDirectory
+        $homeDir = New-TestDirectory
+        try {
+            $global:DevbinTestHomeDir = $homeDir
+            Mock Get-DevbinHomeDirectory -ModuleName Devbin { $global:DevbinTestHomeDir }
+            $homeBin = Join-Path $homeDir ".local\bin"
+            New-Item -ItemType Directory -Path $homeBin -Force | Out-Null
+            $packages = @( (New-TestPackage -ShortName "app" -PathDirs @(".local\bin") -DetectFiles @(".local\bin\app.exe") -Extra @{ InstallRoot = "Home" }) )
+
+            $installed = Get-ManagedUserPathValue -CurrentPath "" -InstallDir $installDir -Packages $packages -InstalledShortNames @("app")
+            $installed | Should Be $homeBin
+
+            # devbin-win が解除した後で実体も無い場合は、管理下として PATH から外します。
+            $removed = Get-ManagedUserPathValue -CurrentPath $homeBin -InstallDir $installDir -Packages $packages -InstalledShortNames @()
+            $removed | Should Be ""
+
+            # 公式インストーラーで導入済み (実体あり、devbin-win 未登録) の場合は、利用者の PATH を変更しません。
+            New-Item -ItemType File -Path (Join-Path $homeBin "app.exe") -Force | Out-Null
+            $kept = Get-ManagedUserPathValue -CurrentPath $homeBin -InstallDir $installDir -Packages $packages -InstalledShortNames @()
+            $kept | Should Be $homeBin
+        } finally {
+            Remove-TestDirectory -Path $installDir
+            Remove-TestDirectory -Path $homeDir
+        }
+    }
+
     It "既存 PATH に残っている管理下エントリを重複させない" {
         $installDir = New-TestDirectory
         try {

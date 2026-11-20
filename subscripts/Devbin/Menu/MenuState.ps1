@@ -350,6 +350,18 @@ function Initialize-MenuState {
             if ($found -and $found.Source) {
                 $cmdPath = $found.Source
                 $isOwn = $absInstallDir -and $cmdPath.StartsWith($absInstallDir, [System.StringComparison]::OrdinalIgnoreCase)
+                # HOME 配下へ導入するコンポーネントは、PathDirs が指す導入先のコマンドを自身のものとして扱います。
+                if (-not $isOwn -and (Test-ComponentHomeRooted -PackageConfig $item)) {
+                    $rootDir = Get-ComponentRootDirectory -InstallDir $InstallDir -PackageConfig $item
+                    $commandDir = Split-Path -Parent $cmdPath
+                    foreach ($relativeDir in @($item.PathDirs)) {
+                        $ownDir = (Join-Path $rootDir $relativeDir).TrimEnd('\')
+                        if ([string]::Equals($commandDir.TrimEnd('\'), $ownDir, [System.StringComparison]::OrdinalIgnoreCase)) {
+                            $isOwn = $true
+                            break
+                        }
+                    }
+                }
                 $disabled[$item.ShortName] = -not $isOwn
                 if (-not $isOwn) { $externalPaths[$item.ShortName] = $cmdPath }
             } else {

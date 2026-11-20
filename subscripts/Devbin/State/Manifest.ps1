@@ -233,7 +233,7 @@ function Initialize-LegacyManifest {
             continue
         }
 
-        $filesExist = Test-ComponentFiles -InstallDir $InstallDir -DetectFiles $detectFiles
+        $filesExist = Test-ComponentFiles -InstallDir (Get-ComponentRootDirectory -InstallDir $InstallDir -PackageConfig $pkg) -DetectFiles $detectFiles
         if ($filesExist) {
             $pathDirs = if ($pkg.ContainsKey("PathDirs")) { @($pkg.PathDirs) } else { @() }
             $envVars = if ($pkg.ContainsKey("EnvVars")) { $pkg.EnvVars } else { @{} }

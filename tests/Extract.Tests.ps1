@@ -172,6 +172,61 @@ Describe "Expand-ArchiveToTemp" {
         }
     }
 
+    It "NativeInstaller は複製した実行ファイルを HOME 指定で InstallArguments 付きで実行する" {
+        $workDir = New-TestDirectory
+        $homeDir = New-TestDirectory
+        $originalHome = $env:HOME
+        try {
+            $global:DevbinTestHomeDir = $homeDir
+            Mock Get-DevbinHomeDirectory -ModuleName Devbin { $global:DevbinTestHomeDir }
+            $logFile = Join-Path $workDir "log.txt"
+            $installer = Join-Path $workDir "tool-1.0.0.cmd"
+            Set-Content -LiteralPath $installer -Encoding ASCII -Value @(
+                "@echo off",
+                "echo %~nx0^|%*^|%HOME%>""$logFile"""
+            )
+            $global:DevbinNativeInstallerParams = @{
+                ArchiveFile = $installer
+                TempDir     = (Join-Path $workDir "temp")
+                Config      = @{ Name = "Tool"; Version = "1.0.0"; TargetName = "tool.cmd"; InstallArguments = @("install", "<Version>") }
+            }
+
+            InModuleScope Devbin {
+                Invoke-NativeInstallerExtract @global:DevbinNativeInstallerParams | Out-Null
+            }
+
+            (Get-Content -LiteralPath $logFile -Raw).Trim() | Should Be "tool.cmd|install 1.0.0|$homeDir"
+            $env:HOME | Should Be $originalHome
+        } finally {
+            $env:HOME = $originalHome
+            Remove-Variable -Name DevbinNativeInstallerParams -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $workDir
+            Remove-TestDirectory -Path $homeDir
+        }
+    }
+
+    It "NativeInstaller は終了コードが 0 以外なら失敗にする" {
+        $workDir = New-TestDirectory
+        try {
+            $global:DevbinTestHomeDir = $workDir
+            Mock Get-DevbinHomeDirectory -ModuleName Devbin { $global:DevbinTestHomeDir }
+            $installer = Join-Path $workDir "tool.cmd"
+            Set-Content -LiteralPath $installer -Encoding ASCII -Value @("@echo off", "exit /b 3")
+            $global:DevbinNativeInstallerParams = @{
+                ArchiveFile = $installer
+                TempDir     = (Join-Path $workDir "temp")
+                Config      = @{ Name = "Tool"; Version = "1.0.0"; InstallArguments = @("install") }
+            }
+
+            InModuleScope Devbin {
+                { Invoke-NativeInstallerExtract @global:DevbinNativeInstallerParams } | Should Throw "exit code: 3"
+            }
+        } finally {
+            Remove-Variable -Name DevbinNativeInstallerParams -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $workDir
+        }
+    }
+
     It "相対パスの ZIP も PowerShell の現在位置を基準に展開する" {
         $workDir = New-TestDirectory
         $originalLocation = Get-Location

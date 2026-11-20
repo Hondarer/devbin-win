@@ -143,6 +143,60 @@ Describe "Remove-ComponentCleanupFiles" {
     }
 }
 
+Describe "HOME 配下へ導入するコンポーネント (InstallRoot = Home)" {
+
+    It "状態は HOME を基準に DetectFiles で判定する" {
+        $installDir = New-TestDirectory
+        $homeDir = New-TestDirectory
+        try {
+            $global:DevbinTestHomeDir = $homeDir
+            Mock Get-DevbinHomeDirectory -ModuleName Devbin { $global:DevbinTestHomeDir }
+            $pkg = New-TestPackage -ShortName "app" -DetectFiles @(".local\bin\app.exe") -Extra @{ InstallRoot = "Home"; SelfUpdating = $true }
+            $manifest = New-TestManifest -Components @{ app = (New-TestManifestEntry -Files @()) }
+
+            Get-ComponentStatus -Manifest $manifest -InstallDir $installDir -PackageConfig $pkg | Should Be "Broken"
+
+            New-Item -ItemType File -Path (Join-Path $homeDir ".local\bin\app.exe") -Force | Out-Null
+            Get-ComponentStatus -Manifest $manifest -InstallDir $installDir -PackageConfig $pkg | Should Be "Installed"
+            Get-ComponentStatus -Manifest (New-TestManifest) -InstallDir $installDir -PackageConfig $pkg | Should Be "Legacy"
+            $global:DevbinTestVersionPathParams = @{ InstallDir = $installDir; PackageConfig = $pkg }
+            $versionPath = InModuleScope Devbin { Get-SelfUpdatingVersionPath @global:DevbinTestVersionPathParams }
+            $versionPath | Should Be (Join-Path $homeDir ".local\bin\app.exe")
+        } finally {
+            Remove-Variable -Name DevbinTestVersionPathParams, DevbinTestHomeDir -Scope Global -ErrorAction SilentlyContinue
+            Remove-TestDirectory -Path $installDir
+            Remove-TestDirectory -Path $homeDir
+        }
+    }
+
+    It "削除は DetectFiles と CleanupPatterns のファイルだけで、共有ディレクトリは残す" {
+        $installDir = New-TestDirectory
+        $homeDir = New-TestDirectory
+        try {
+            $global:DevbinTestHomeDir = $homeDir
+            Mock Get-DevbinHomeDirectory -ModuleName Devbin { $global:DevbinTestHomeDir }
+            foreach ($relative in @(".local\bin\app.exe", ".local\bin\other.exe", ".local\share\app\versions\1.0.0", ".local\share\other\data.txt")) {
+                New-Item -ItemType File -Path (Join-Path $homeDir $relative) -Force | Out-Null
+            }
+            $pkg = New-TestPackage -ShortName "app" -DetectFiles @(".local\bin\app.exe") -Extra @{
+                InstallRoot     = "Home"
+                CleanupPatterns = @(".local\share\app\versions\*")
+            }
+            $manifest = New-TestManifest -Components @{ app = (New-TestManifestEntry -Files @()) }
+
+            Remove-ComponentInstalledFiles -ShortName "app" -PackageConfig $pkg -InstallDir $installDir -Manifest $manifest -Files @() | Out-Null
+
+            Test-Path (Join-Path $homeDir ".local\bin\app.exe") | Should Be $false
+            Test-Path (Join-Path $homeDir ".local\share\app\versions\1.0.0") | Should Be $false
+            Test-Path (Join-Path $homeDir ".local\bin\other.exe") | Should Be $true
+            Test-Path (Join-Path $homeDir ".local\share\other\data.txt") | Should Be $true
+        } finally {
+            Remove-TestDirectory -Path $installDir
+            Remove-TestDirectory -Path $homeDir
+        }
+    }
+}
+
 Describe "Remove-ComponentInstalledFiles のルート ディレクトリの片付け" {
 
     It "記録にないファイルが残るルート ディレクトリは削除しない" {

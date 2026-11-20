@@ -14,7 +14,7 @@
 Manage-Bin.cmd
 ```
 
-VS Code、Visual Studio Build Tools、GitHub Copilot CLI、Antigravity CLI は既定値では選択されません。
+VS Code、Visual Studio Build Tools、GitHub Copilot CLI、Antigravity CLI、Claude Code は既定値では選択されません。
 必要な場合は Space キーで選択してから Enter キーを押してください。
 すべて導入する場合は A キーで全選択します。
 
@@ -76,6 +76,7 @@ editorconfig-checker --version
 gh --version
 copilot --version
 agy --version
+claude --version
 glab --version
 ```
 
@@ -276,7 +277,7 @@ GitHub Copilot CLI は、ターミナルから GitHub Copilot を利用するた
 
 - **用途**: ターミナル上でのコード調査、編集、デバッグ、GitHub 操作
 - **配置ファイル**: `bin\copilot.exe`
-- **バージョン**: 1.0.86 (初回導入時。導入後は自己更新する)
+- **バージョン**: 1.0.114 (初回導入時。導入後は自己更新する)
 - **プロジェクト**: [github/copilot-cli](https://github.com/github/copilot-cli)
 - **前提条件**: PowerShell 6 以上、GitHub Copilot の有効な契約
 
@@ -295,7 +296,7 @@ agy は、ターミナルから Google Antigravity のエージェントを利�
 
 - **用途**: ターミナル上でのコード調査、編集、コマンド実行
 - **配置ファイル**: `bin\agy.exe`
-- **バージョン**: 1.2.7 (初回導入時。導入後は自己更新する)
+- **バージョン**: 1.5.12 (初回導入時。導入後は自己更新する)
 - **プロジェクト**: [google-antigravity/antigravity-cli](https://github.com/google-antigravity/antigravity-cli)
 - **前提条件**: Google アカウント、または Gemini API キー
 
@@ -309,6 +310,33 @@ API キーで利用する場合は、`~/.gemini/antigravity-cli/settings.json` �
 このため、packages フォルダーの版が新しくなっても、コンポーネント マネージャーは `Updateable` と表示しません。
 packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
 自己更新時に作られる `agy.exe.<数値>.old` は、アンインストール時と再インストール時に削除します。
+
+### claude について
+
+claude は、ターミナルから Claude を利用するための Anthropic 公式 CLI (Claude Code) です。
+
+- **用途**: ターミナル上でのコード調査、編集、コマンド実行
+- **配置ファイル**: `%HOME%\.local\bin\claude.exe` (既定では `%ProgramData%\%USERNAME%\devbin-win\data\.local\bin\claude.exe`)
+- **バージョン**: 2.1.311 (stable チャネル。初回導入時。導入後は自己更新する)
+- **ドキュメント**: [Set up Claude Code](https://code.claude.com/docs/en/setup)
+- **前提条件**: Claude の契約 (Pro / Max / Team / Enterprise) または Claude Console のアカウント
+
+Claude Code は既定値では選択されていません。
+コンポーネント マネージャーで選択して導入し、初回起動時にブラウザーでサインインしてください。
+
+devbin-win は、公式インストーラー (`install.ps1`) と同じ手順を支援します。
+packages フォルダーの `claude.exe` を一時フォルダーへ複製し、`claude install <版>` を実行して、公式の既定の導入先へ導入します。
+Claude Code は導入先を HOME 基準で決めるため、devbin-win が HOME を `data` に設定している場合は `data\.local\bin` に起動用の `claude.exe`、`data\.local\share\claude\versions` に本体の各版が置かれます。
+devbin-win はこの `.local\bin` をユーザー PATH に追加するだけで、`bin` への配置と設定の保存先の変更は行いません。
+`claude install` が版をネットワークから取得するかは確認できていないため、オフライン環境では導入に失敗する可能性があります。
+
+導入後は Claude Code 自身が `.local\bin\claude.exe` を新しい版に入れ替えます。`claude update` で手動更新もできます。
+このため、packages フォルダーの版が新しくなっても、コンポーネント マネージャーは `Updateable` と表示しません。
+packages フォルダーの版で入れ直したい場合は、メニューで再インストールを選択してください。
+アンインストール時は、公式のアンインストール手順と同じく `.local\bin\claude.exe` と `.local\share\claude\versions` 内の各版を削除します。設定 (`.claude`、`.claude.json`) は残します。
+
+公式インストーラーで同じ導入先へ導入済みの場合は、コンポーネント マネージャーで `Legacy` と表示し、その PATH は変更しません。
+HOME 以外の場所 (`%USERPROFILE%\.local\bin` など) にある `claude.exe` や npm で導入した `claude` が PATH 上に見つかった場合は、`External` と表示して導入を無効化し、既存の Claude Code を優先します。
 
 ### glab について
 

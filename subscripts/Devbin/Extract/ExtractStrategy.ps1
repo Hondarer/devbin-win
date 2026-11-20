@@ -61,6 +61,9 @@ function Invoke-ExtractStrategy {
             "SingleExecutable" {
                 Invoke-SingleExecutableExtract -ArchiveFile $ArchiveFile -BinDir $BinDir -Config $PackageConfig
             }
+            "NativeInstaller" {
+                Invoke-NativeInstallerExtract -ArchiveFile $ArchiveFile -TempDir $TempDir -Config $PackageConfig
+            }
             "SelfExtractingArchive" {
                 $targetPath = Invoke-SelfExtractingArchiveExtract `
                     -ArchiveFile $ArchiveFile `

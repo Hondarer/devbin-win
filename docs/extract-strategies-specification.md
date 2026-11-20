@@ -32,6 +32,7 @@ subscripts/Devbin/Extract/
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison, Strawberry Perl |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
+| NativeInstaller | 実行ファイル自身の導入コマンドで公式の手順どおりに導入 | Claude Code |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Git (ポータブル版) |
 | InnoSetup | innoextract で Inno Setup インストーラーを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
@@ -479,6 +480,44 @@ PlantUML
 #### 適用パッケージ
 
 NuGet, cloc, vswhere
+
+### NativeInstaller 戦略
+
+配布された実行ファイル自身が持つ導入コマンドを実行し、公式インストーラーと同じ導入先へ導入します。bin には何も配置しません。導入先は実行ファイルが HOME を基準に決めるため、`InstallRoot = "Home"` と組み合わせて使用します。
+
+#### パラメーター
+
+| パラメーター | 説明 | 型 | 必須 |
+|-----------|------|-----|------|
+| InstallArguments | 導入コマンドの引数。`<Version>` は `Version` に置き換える | string[] | ✅ |
+| TargetName | 一時フォルダーへ複製するときのファイル名 | string | ❌ |
+
+#### 処理フロー
+
+1. 実行ファイルをブロック解除
+2. 一時ディレクトリへ `TargetName` (未指定時は元のファイル名) で複製
+3. プロセスの HOME を devbin-win が検出する HOME に合わせ、`InstallArguments` を付けて実行
+4. 終了コードが 0 以外なら失敗とする
+
+#### 使用例
+
+```powershell
+@{
+    Name = "Claude Code"
+    ShortName = "claude"
+    ArchivePattern = "^claude-.*-win32-x64\.exe$"
+    ExtractStrategy = "NativeInstaller"
+    TargetName = "claude.exe"
+    InstallArguments = @("install", "<Version>")
+    InstallRoot = "Home"
+    PathDirs = @(".local\bin")
+    DetectFiles = @(".local\bin\claude.exe")
+}
+```
+
+#### 適用パッケージ
+
+Claude Code
 
 ### SelfExtractingArchive 戦略
 

@@ -85,7 +85,7 @@ Describe "Import-PackageCatalog" {
 
         ($catalog.Errors -join ", ") | Should Be ""
         $catalog.Success | Should Be $true
-        $catalog.Packages.Count | Should Be 61
+        $catalog.Packages.Count | Should Be 62
     }
 
     It "ShortName の重複を変更開始前に検出する" {

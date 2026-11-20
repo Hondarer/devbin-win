@@ -232,21 +232,36 @@ function Get-ManagedUserPathValue {
         $null = $managedEntries.Add($normalizedBaseDir)
     }
 
-    foreach ($package in $Packages) {
-        $pathDirs = if ($package.ContainsKey("PathDirs")) { @($package.PathDirs) } else { @() }
-        foreach ($relativeDir in $pathDirs) {
-            $fullPath = Join-Path $InstallDir $relativeDir
-            $normalizedPath = Get-NormalizedPathString -PathValue $fullPath
-            if (-not [string]::IsNullOrWhiteSpace($normalizedPath)) {
-                $null = $managedEntries.Add($normalizedPath)
-            }
-        }
-    }
-
     $installedLookup = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($shortName in $InstalledShortNames) {
         if (-not [string]::IsNullOrWhiteSpace($shortName)) {
             $null = $installedLookup.Add($shortName)
+        }
+    }
+
+    foreach ($package in $Packages) {
+        $pathDirs = if ($package.ContainsKey("PathDirs")) { @($package.PathDirs) } else { @() }
+        if ($pathDirs.Count -eq 0) {
+            continue
+        }
+
+        $rootDir = Get-ComponentRootDirectory -InstallDir $InstallDir -PackageConfig $package
+        # HOME 配下の導入先は公式インストーラーと共有するため、devbin-win が導入したもの、
+        # または実体が無くなったものだけを管理対象とし、公式インストーラーが追加した PATH は残します。
+        if (Test-ComponentHomeRooted -PackageConfig $package) {
+            $packageShortName = if ($package.ContainsKey("ShortName")) { [string]$package.ShortName } else { "" }
+            $detectFiles = if ($package.ContainsKey("DetectFiles")) { @($package.DetectFiles) } else { @() }
+            if (-not $installedLookup.Contains($packageShortName) -and (Test-ComponentFiles -InstallDir $rootDir -DetectFiles $detectFiles)) {
+                continue
+            }
+        }
+
+        foreach ($relativeDir in $pathDirs) {
+            $fullPath = Join-Path $rootDir $relativeDir
+            $normalizedPath = Get-NormalizedPathString -PathValue $fullPath
+            if (-not [string]::IsNullOrWhiteSpace($normalizedPath)) {
+                $null = $managedEntries.Add($normalizedPath)
+            }
         }
     }
 
@@ -290,8 +305,9 @@ function Get-ManagedUserPathValue {
         }
 
         $pathPosition = Get-PackagePathPosition -PackageConfig $package
+        $rootDir = Get-ComponentRootDirectory -InstallDir $InstallDir -PackageConfig $package
         foreach ($relativeDir in $pathDirs) {
-            $fullPath = Join-Path $InstallDir $relativeDir
+            $fullPath = Join-Path $rootDir $relativeDir
             if (-not (Test-Path $fullPath)) {
                 Write-Host "    Directory not found: $relativeDir"
                 continue

@@ -76,6 +76,8 @@ packages.psd1 は PowerShell データファイル (.psd1) 形式で記述され
 | VersionArgs | メニューの版表示で、実行ファイルに版情報が無い場合に版を出力させる引数。`SelfUpdating = $true` の導入済みの実行ファイルと、`DisableIfCommand` で検出した外部の実行ファイルに使用する | string[] | `@()` (実行しない) |
 | VersionOutputPattern | 版情報またはコマンド出力から版を抜き出す正規表現。キャプチャ グループがある場合は、値のあるグループを `.` で連結する | string | `\d+(?:\.\d+)+` |
 | CleanupPatterns | ツールが実行時に生成し、マニフェストに記録されないファイルのパターン ($InstallDir からの相対パス)。アンインストール時と再インストール時に削除する | string[] | `@()` (追加削除なし) |
+| InstallRoot | `"Home"` なら、公式インストーラーの導入先 (HOME 配下) へ導入するパッケージとして扱い、`PathDirs`、`DetectFiles`、`CleanupPatterns` を HOME からの相対パスで解決する | string | なし ($InstallDir 基準) |
+| InstallArguments | `NativeInstaller` 戦略で実行ファイルに渡す引数。`<Version>` は `Version` に置き換える | string[] | なし |
 
 ### DependsOn
 
@@ -187,6 +189,28 @@ VersionArgs = @("--version")
 CleanupPatterns = @("copilot.exe.old-*")
 ```
 
+### InstallRoot
+
+公式インストーラーが決める導入先 (HOME 配下) へ導入するパッケージに `InstallRoot = "Home"` を指定します。
+HOME はユーザー環境変数 `HOME` の値で、未設定の場合は devbin-win が HOME として設定する `data` です。
+`PathDirs`、`DetectFiles`、`CleanupPatterns` は HOME からの相対パスで解決し、bin には何も配置しません。
+
+HOME 配下は他のツールと共有するため、次のように扱います。
+
+- 削除: `DetectFiles` と `CleanupPatterns` に一致するファイルだけを削除し、ディレクトリ単位の削除は行いません。
+- PATH: devbin-win が導入したとき、または実体が無くなったときだけ管理対象にします。公式インストーラーで導入済み (実体あり、devbin-win 未登録) の場合は、利用者の PATH を変更しません。
+- `DisableIfCommand`: `PathDirs` が指す HOME 配下のコマンドは、devbin-win 自身のものとして扱います。
+
+```powershell
+# Claude Code の例: claude install で HOME\.local\bin と HOME\.local\share\claude へ導入する
+ExtractStrategy = "NativeInstaller"
+InstallArguments = @("install", "<Version>")
+InstallRoot = "Home"
+PathDirs = @(".local\bin")
+DetectFiles = @(".local\bin\claude.exe")
+CleanupPatterns = @(".local\share\claude\versions\*")
+```
+
 ### VersionArgs と VersionOutputPattern
 
 メニューの版の列で、実行ファイルから実際の版を読み取るために使用します。
@@ -265,6 +289,7 @@ packages フォルダー内の旧バージョンのアーカイブを見つけ�
 - `TargetDirectory` - 指定ディレクトリに展開
 - `JarWithWrapper` - JAR + cmd ラッパー生成
 - `SingleExecutable` - 単一実行ファイルをコピー
+- `NativeInstaller` - 実行ファイル自身の導入コマンドで公式の手順どおりに導入
 - `SelfExtractingArchive` - 自己解凍実行ファイルを実行
 - `InnoSetup` - innoextract で Inno Setup インストーラを解凍
 - `VSBuildTools` - Visual Studio Build Tools のセットアップ

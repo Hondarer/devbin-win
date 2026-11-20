@@ -296,6 +296,17 @@ InModuleScope Devbin {
             Test-Path (Join-Path (Get-DevbinDataDirectory) 'gh') | Should Be $true
             Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 1 -Exactly -ParameterFilter { $Name -eq 'GH_CONFIG_DIR' -and $Value -eq (Join-Path (Get-DevbinDataDirectory) 'gh') }
         }
+        It 'leaves the Claude Code configuration at its official location' {
+            Initialize-DevbinComponentStorage -ShortName 'claude' | Should BeNullOrEmpty
+            Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 0 -Exactly
+        }
+        It 'resolves HOME from the user environment and falls back to data' {
+            Get-DevbinHomeDirectory | Should Be (Get-DevbinDataDirectory)
+            Mock Get-DevbinUserEnvironmentValue { 'D:\home\me' } -ParameterFilter { $Name -eq 'HOME' }
+            Get-DevbinHomeDirectory | Should Be 'D:\home\me'
+            Get-ComponentRootDirectory -InstallDir 'C:\bin' -PackageConfig @{ ShortName = 'claude'; InstallRoot = 'Home' } | Should Be 'D:\home\me'
+            Get-ComponentRootDirectory -InstallDir 'C:\bin' -PackageConfig @{ ShortName = 'gh' } | Should Be 'C:\bin'
+        }
         It 'creates the parent directory for a variable that points at a file' {
             @(Initialize-DevbinComponentStorage -ShortName 'nodejs') -contains 'NPM_CONFIG_USERCONFIG' | Should Be $true
             Test-Path (Join-Path (Get-DevbinDataDirectory) 'npm') | Should Be $true

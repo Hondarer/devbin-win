@@ -1091,13 +1091,13 @@ endlocal
             Name = "GitHub Copilot CLI"
             ShortName = "copilot"
             MenuGroup = "Git ホスティング・AI"
-            Version = "1.0.86"
+            Version = "1.0.114"
             ArchivePattern = "^copilot-win32-x64-.*\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = ""
             FilePattern = "^copilot\.exe$"
-            DownloadUrl = "https://github.com/github/copilot-cli/releases/download/v1.0.86/copilot-win32-x64.zip"
-            DownloadFileName = "copilot-win32-x64-1.0.86.zip"
+            DownloadUrl = "https://github.com/github/copilot-cli/releases/download/v1.0.114/copilot-win32-x64.zip"
+            DownloadFileName = "copilot-win32-x64-1.0.114.zip"
             DependsOn = @("pwsh")
             PathDirs = @()
             EnvVars = @{}
@@ -1117,15 +1117,15 @@ endlocal
             Name = "Antigravity CLI"
             ShortName = "agy"
             MenuGroup = "Git ホスティング・AI"
-            Version = "1.2.7"
+            Version = "1.5.12"
             ArchivePattern = "^agy_cli_windows_x64-.*\.zip$"
             ExtractStrategy = "Subdirectory"
             ExtractPath = ""
             FilePattern = "^antigravity\.exe$"
             # 公式インストーラーと同じく agy.exe の名前で配置します。
             RenameFiles = @{ "antigravity.exe" = "agy.exe" }
-            DownloadUrl = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.7/agy_cli_windows_x64.zip"
-            DownloadFileName = "agy_cli_windows_x64-1.2.7.zip"
+            DownloadUrl = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.12/agy_cli_windows_x64.zip"
+            DownloadFileName = "agy_cli_windows_x64-1.5.12.zip"
             DependsOn = @()
             PathDirs = @()
             EnvVars = @{}
@@ -1137,6 +1137,37 @@ endlocal
             VersionArgs = @("--version")
             # 自己更新時に旧版を agy.exe.<数値>.old へ退避するため、アンインストールおよび再インストール時に削除します。
             CleanupPatterns = @("agy.exe.*.old")
+            DefaultChecked = $false
+        },
+
+        # Claude Code - NativeInstaller extraction
+        @{
+            Name = "Claude Code"
+            ShortName = "claude"
+            MenuGroup = "Git ホスティング・AI"
+            Version = "2.1.311"
+            ArchivePattern = "^claude-.*-win32-x64\.exe$"
+            # 公式インストーラー (install.ps1) と同じく、取得した claude.exe の install コマンドで導入します。
+            # 導入先は公式の既定どおり HOME 配下 (.local\bin と .local\share\claude) で、bin には配置しません。
+            ExtractStrategy = "NativeInstaller"
+            TargetName = "claude.exe"
+            InstallArguments = @("install", "<Version>")
+            InstallRoot = "Home"
+            # 公式インストーラーと同じ配布元です。版は stable チャネルの値を使用します。
+            DownloadUrl = "https://downloads.claude.ai/claude-code-releases/2.1.311/win32-x64/claude.exe"
+            DownloadFileName = "claude-2.1.311-win32-x64.exe"
+            DependsOn = @()
+            # InstallRoot = "Home" のため、PathDirs、DetectFiles、CleanupPatterns は HOME からの相対パスです。
+            PathDirs = @(".local\bin")
+            EnvVars = @{}
+            DetectFiles = @(".local\bin\claude.exe")
+            DisableIfCommand = "claude"
+            # 導入後は claude.exe 自身が .local\bin\claude.exe を更新するため、Version は初回導入および明示的な再インストールで使用する版を示します。
+            SelfUpdating = $true
+            # claude.exe の版情報を読み取れない場合に、メニューでの版表示のために実行する引数です。
+            VersionArgs = @("--version")
+            # 公式のアンインストール手順と同じく、本体の各版 (.local\share\claude\versions) も削除します。設定 (.claude、.claude.json) は残します。
+            CleanupPatterns = @(".local\share\claude\versions\*")
             DefaultChecked = $false
         },
 

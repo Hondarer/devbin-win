@@ -324,9 +324,10 @@ function Get-SelfUpdatingVersionPath {
         return ""
     }
 
+    $rootDir = Get-ComponentRootDirectory -InstallDir $InstallDir -PackageConfig $PackageConfig
     $detectFiles = if ($PackageConfig.ContainsKey("DetectFiles")) { @($PackageConfig.DetectFiles) } else { @() }
     foreach ($file in $detectFiles) {
-        $path = Join-Path $InstallDir $file
+        $path = Join-Path $rootDir $file
         if (Test-Path -LiteralPath $path -PathType Leaf) {
             return $path
         }
@@ -396,6 +397,7 @@ function Get-ComponentStatus {
 
     # DetectFiles が未指定の場合はマニフェストの登録情報のみで判定
     $detectFiles = if ($PackageConfig.ContainsKey("DetectFiles")) { @($PackageConfig.DetectFiles) } else { @() }
+    $rootDir = Get-ComponentRootDirectory -InstallDir $InstallDir -PackageConfig $PackageConfig
 
     if ($inManifest) {
         if ($detectFiles.Count -eq 0) {
@@ -404,7 +406,7 @@ function Get-ComponentStatus {
             }
             return "Installed"
         }
-        $filesExist = Test-ComponentFiles -InstallDir $InstallDir -DetectFiles $detectFiles
+        $filesExist = Test-ComponentFiles -InstallDir $rootDir -DetectFiles $detectFiles
         if ($filesExist) {
             if (Test-ComponentUpdateable -Manifest $Manifest -PackageConfig $PackageConfig -PackagesDir $PackagesDir) {
                 return "Updateable"
@@ -416,7 +418,7 @@ function Get-ComponentStatus {
     } else {
         # マニフェスト未登録かつファイルが存在する場合はレガシー導入状態と判定
         if ($detectFiles.Count -gt 0) {
-            $filesExist = Test-ComponentFiles -InstallDir $InstallDir -DetectFiles $detectFiles
+            $filesExist = Test-ComponentFiles -InstallDir $rootDir -DetectFiles $detectFiles
             if ($filesExist) {
                 return "Legacy"
             }

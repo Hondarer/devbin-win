@@ -389,8 +389,8 @@ from [cli/cli](https://github.com/cli/cli)
 
 from [github/copilot-cli](https://github.com/github/copilot-cli)
 
-- [/releases/tag/v1.0.86](https://github.com/github/copilot-cli/releases/tag/v1.0.86)
-    - [copilot-win32-x64.zip](https://github.com/github/copilot-cli/releases/download/v1.0.86/copilot-win32-x64.zip)
+- [/releases/tag/v1.0.114](https://github.com/github/copilot-cli/releases/tag/v1.0.114)
+    - [copilot-win32-x64.zip](https://github.com/github/copilot-cli/releases/download/v1.0.114/copilot-win32-x64.zip)
 
 Windows 版は PowerShell 6 以降が必要です。
 devbin-win では PowerShell 7 を依存コンポーネントとして導入します。
@@ -402,13 +402,26 @@ Copilot CLI は既定値では選択されていないため、コンポーネ�
 
 from [google-antigravity/antigravity-cli](https://github.com/google-antigravity/antigravity-cli)
 
-- [/releases/tag/1.2.7](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.2.7)
-    - [agy_cli_windows_x64.zip](https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.7/agy_cli_windows_x64.zip)
+- [/releases/tag/1.5.12](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.5.12)
+    - [agy_cli_windows_x64.zip](https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.12/agy_cli_windows_x64.zip)
 
 devbin-win は公式インストーラーを使わずに `bin\agy.exe` へ直接配置するため、`agy install` によるユーザー PATH とシェル設定の変更は行いません。
 Antigravity CLI は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
 利用には Google アカウントでのサインイン、または環境変数 `GEMINI_API_KEY` が必要です。
 導入後は Antigravity CLI 自身が更新するため、上記の版は初回導入と明示的な再インストールで使用する版です。
+
+### Claude Code
+
+from [anthropics/claude-code](https://github.com/anthropics/claude-code)
+
+- [Set up Claude Code](https://code.claude.com/docs/en/setup)
+    - [claude.exe (2.1.311, win32-x64)](https://downloads.claude.ai/claude-code-releases/2.1.311/win32-x64/claude.exe)
+
+devbin-win は公式インストーラーと同じく、取得した `claude.exe` で `claude install` を実行し、公式の既定の導入先 (HOME 配下の `.local\bin` と `.local\share\claude`) へ導入します。
+`bin` には配置せず、設定の保存先も変更しません。
+Claude Code は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
+利用には Claude の契約 (Pro / Max / Team / Enterprise) または Claude Console のアカウントが必要です。
+導入後は Claude Code 自身が更新するため、上記の版は初回導入と明示的な再インストールで使用する版です。
 
 ### GitLab CLI
 

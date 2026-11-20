@@ -1,5 +1,42 @@
 ﻿# InstallerStrategy.ps1
-# インストーラー形式 (自己解凍アーカイブ、Inno Setup、Visual Studio Build Tools) の抽出戦略
+# インストーラー形式 (公式インストーラー、自己解凍アーカイブ、Inno Setup、Visual Studio Build Tools) の抽出戦略
+
+# NativeInstaller 戦略: 配布された実行ファイルを一時ディレクトリへ複製し、InstallArguments で公式の導入処理を実行
+# 導入先は実行ファイル自身が HOME を基準に決めるため、bin には何も配置しません。
+# 引数の <Version> はパッケージ定義の Version に置き換えます。
+function Invoke-NativeInstallerExtract {
+    param(
+        [string]$ArchiveFile,
+        [string]$TempDir,
+        [hashtable]$Config
+    )
+
+    Unblock-ArchiveFile $ArchiveFile
+
+    $installerName = if ($Config.TargetName) { [string]$Config.TargetName } else { Split-Path $ArchiveFile -Leaf }
+    if (-not (Test-Path -LiteralPath $TempDir)) {
+        New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+    }
+    $installerPath = Join-Path $TempDir $installerName
+    Copy-Item -LiteralPath $ArchiveFile -Destination $installerPath -Force
+
+    $version = if ($Config.ContainsKey("Version")) { [string]$Config.Version } else { "" }
+    $installArgs = @(@($Config.InstallArguments) | Where-Object { $null -ne $_ } | ForEach-Object { ([string]$_).Replace("<Version>", $version) })
+
+    # Manage の開始時に設定した HOME が現在のプロセスへ反映されていない場合でも、devbin-win が検出する導入先へ導入させます。
+    $homeDir = Get-DevbinHomeDirectory
+    $previousHome = $env:HOME
+    try {
+        $env:HOME = $homeDir
+        Write-Host "    Running: $installerName $($installArgs -join ' ') (HOME=$homeDir)"
+        $process = Start-Process -FilePath $installerPath -ArgumentList $installArgs -Wait -PassThru -NoNewWindow
+        if ($process.ExitCode -ne 0) {
+            throw "Installer failed with exit code: $($process.ExitCode)"
+        }
+    } finally {
+        $env:HOME = $previousHome
+    }
+}
 
 # SelfExtractingArchive 戦略: 自己解凍実行ファイルを実行してターゲットディレクトリへ展開
 function Invoke-SelfExtractingArchiveExtract {

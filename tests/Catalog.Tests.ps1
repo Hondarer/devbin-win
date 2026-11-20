@@ -96,6 +96,24 @@ Describe "packages.psd1" {
         $agy.DisableIfCommand | Should Be "agy"
     }
 
+    It "claude は公式の claude install で HOME 配下へ導入し、自己更新に任せる" {
+        $claude = $packages | Where-Object { $_.ShortName -eq "claude" }
+        $claude.Name | Should Be "Claude Code"
+        $claude.ExtractStrategy | Should Be "NativeInstaller"
+        $claude.InstallRoot | Should Be "Home"
+        ($claude.InstallArguments -join ",") | Should Be "install,<Version>"
+        $claude.MenuGroup | Should Be "Git ホスティング・AI"
+        ($claude.PathDirs -join ",") | Should Be ".local\bin"
+        ($claude.DetectFiles -join ",") | Should Be ".local\bin\claude.exe"
+        ($claude.CleanupPatterns -join ",") | Should Be ".local\share\claude\versions\*"
+        $claude.DisableIfCommand | Should Be "claude"
+        $claude.SelfUpdating | Should Be $true
+        $claude.DefaultChecked | Should Be $false
+        $claude.EnvVars.Count | Should Be 0
+        ($claude.DownloadFileName -match $claude.ArchivePattern) | Should Be $true
+        ("claude-2.1.311-win32-arm64.exe" -match $claude.ArchivePattern) | Should Be $false
+    }
+
     It "libclang は共有 Python へ 18.1.1 を導入する" {
         $libclang = $packages | Where-Object { $_.ShortName -eq "libclang" }
         $libclang.ExtractStrategy | Should Be "PipInstall"

@@ -37,6 +37,37 @@ function Get-DevbinHomeLayout {
     )
 }
 
+# ツールが HOME として扱うディレクトリを取得
+# ユーザー環境変数 HOME を優先し、未設定の場合は Manage の開始時に HOME として設定する data を返します。
+function Get-DevbinHomeDirectory {
+    $homePath = Get-DevbinUserEnvironmentValue -Name "HOME"
+    if ([string]::IsNullOrWhiteSpace($homePath)) {
+        return (Get-DevbinDataDirectory)
+    }
+    return $homePath
+}
+
+# パッケージが公式インストーラーの導入先 (HOME 配下) に導入されるかを判定
+function Test-ComponentHomeRooted {
+    param([hashtable]$PackageConfig)
+
+    return ($null -ne $PackageConfig -and $PackageConfig.ContainsKey("InstallRoot") -and [string]$PackageConfig.InstallRoot -eq "Home")
+}
+
+# DetectFiles、PathDirs、CleanupPatterns の相対パスの基準ディレクトリを取得
+# InstallRoot = "Home" のパッケージは HOME、それ以外は InstallDir (bin) を基準にします。
+function Get-ComponentRootDirectory {
+    param(
+        [string]$InstallDir,
+        [hashtable]$PackageConfig
+    )
+
+    if (Test-ComponentHomeRooted -PackageConfig $PackageConfig) {
+        return (Get-DevbinHomeDirectory)
+    }
+    return $InstallDir
+}
+
 # 指定コンポーネントが使用するユーザー保存先の定義を取得
 function Get-DevbinComponentStorageLayout {
     param([string]$ShortName)
