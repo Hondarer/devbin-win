@@ -32,7 +32,7 @@ subscripts/Devbin/Extract/
 | TargetDirectory | 指定ディレクトリに展開 | .NET SDK, VS Code, WinFlexBison, Strawberry Perl |
 | JarWithWrapper | JAR + cmd ラッパー生成 | PlantUML |
 | SingleExecutable | 単一実行ファイルをコピー | NuGet, cloc, vswhere |
-| NativeInstaller | 実行ファイル自身の導入コマンドで公式の手順どおりに導入 | Claude Code |
+| NativeInstaller | 実行ファイル自身の導入コマンドで公式の手順どおりに導入 | Claude Code CLI |
 | SelfExtractingArchive | 自己解凍実行ファイルを実行 | Git (ポータブル版) |
 | InnoSetup | innoextract で Inno Setup インストーラーを解凍 | OpenCppCoverage |
 | VSBuildTools | Visual Studio Build Tools のセットアップ | VSBT |
@@ -503,7 +503,7 @@ NuGet, cloc, vswhere
 
 ```powershell
 @{
-    Name = "Claude Code"
+    Name = "Claude Code CLI"
     ShortName = "claude"
     ArchivePattern = "^claude-.*-win32-x64\.exe$"
     ExtractStrategy = "NativeInstaller"
@@ -517,7 +517,7 @@ NuGet, cloc, vswhere
 
 #### 適用パッケージ
 
-Claude Code
+Claude Code CLI
 
 ### SelfExtractingArchive 戦略
 

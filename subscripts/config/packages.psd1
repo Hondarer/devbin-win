@@ -1140,9 +1140,9 @@ endlocal
             DefaultChecked = $false
         },
 
-        # Claude Code - NativeInstaller extraction
+        # Claude Code CLI - NativeInstaller extraction
         @{
-            Name = "Claude Code"
+            Name = "Claude Code CLI"
             ShortName = "claude"
             MenuGroup = "Git ホスティング・AI"
             Version = "2.1.311"

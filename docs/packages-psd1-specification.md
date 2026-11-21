@@ -202,7 +202,7 @@ HOME 配下は他のツールと共有するため、次のように扱います
 - `DisableIfCommand`: `PathDirs` が指す HOME 配下のコマンドは、devbin-win 自身のものとして扱います。
 
 ```powershell
-# Claude Code の例: claude install で HOME\.local\bin と HOME\.local\share\claude へ導入する
+# Claude Code CLI の例: claude install で HOME\.local\bin と HOME\.local\share\claude へ導入する
 ExtractStrategy = "NativeInstaller"
 InstallArguments = @("install", "<Version>")
 InstallRoot = "Home"

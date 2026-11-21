@@ -8,27 +8,30 @@
 # HOME 配下に配置するディレクトリのレイアウト定義を取得
 # 戻り値: EnvName (環境変数名)、Path (対象パス)、Label (表示名)、ShortNames (この保存先を使うコンポーネント) を持つオブジェクト配列
 # ShortNames が空の項目は特定のコンポーネントに属さないため、Manage の開始時にまとめて設定します。
+# 公式の既定がホーム ディレクトリ配下 (~/.名前、~/.cache/名前) のツールは、data を HOME とみなして同じ名前 (.copilot など) にします。
+# 既定が %APPDATA% や %LOCALAPPDATA% のツールは、点を付けない名前 (gh など) にします。
 function Get-DevbinHomeLayout {
     param([string]$HomePath)
 
     return @(
-        [PSCustomObject]@{ EnvName = "CONTINUE_GLOBAL_DIR"; Path = (Join-Path $HomePath "continue");      Label = "continue";   ShortNames = @() }
+        [PSCustomObject]@{ EnvName = "CONTINUE_GLOBAL_DIR"; Path = (Join-Path $HomePath ".continue");     Label = "continue";   ShortNames = @() }
         [PSCustomObject]@{ EnvName = "XDG_CONFIG_HOME";     Path = (Join-Path $HomePath ".config");       Label = "XDG config"; ShortNames = @() }
         [PSCustomObject]@{ EnvName = "XDG_CACHE_HOME";      Path = (Join-Path $HomePath ".cache");        Label = "XDG cache";  ShortNames = @() }
         [PSCustomObject]@{ EnvName = "XDG_DATA_HOME";       Path = (Join-Path $HomePath ".local\share");  Label = "XDG data";   ShortNames = @() }
         [PSCustomObject]@{ EnvName = "XDG_STATE_HOME";      Path = (Join-Path $HomePath ".local\state");  Label = "XDG state";  ShortNames = @() }
         [PSCustomObject]@{ EnvName = "GH_CONFIG_DIR"; Path = (Join-Path $HomePath 'gh'); Label = 'GitHub CLI'; ShortNames = @('gh') }
         [PSCustomObject]@{ EnvName = "GLAB_CONFIG_DIR"; Path = (Join-Path $HomePath 'glab'); Label = 'GitLab CLI'; ShortNames = @('glab') }
-        [PSCustomObject]@{ EnvName = "COPILOT_HOME"; Path = (Join-Path $HomePath 'copilot'); Label = 'Copilot CLI'; ShortNames = @('copilot') }
-        [PSCustomObject]@{ EnvName = "COPILOT_CACHE_HOME"; Path = (Join-Path $HomePath 'copilot\cache'); Label = 'Copilot CLI cache'; ShortNames = @('copilot') }
+        [PSCustomObject]@{ EnvName = "COPILOT_HOME"; Path = (Join-Path $HomePath '.copilot'); Label = 'Copilot CLI'; ShortNames = @('copilot') }
+        [PSCustomObject]@{ EnvName = "COPILOT_CACHE_HOME"; Path = (Join-Path $HomePath '.cache\copilot'); Label = 'Copilot CLI cache'; ShortNames = @('copilot') }
+        [PSCustomObject]@{ EnvName = "CLAUDE_CONFIG_DIR"; Path = (Join-Path $HomePath '.claude'); Label = 'Claude Code CLI'; ShortNames = @('claude') }
         [PSCustomObject]@{ EnvName = "INKSCAPE_PROFILE_DIR"; Path = (Join-Path $HomePath 'inkscape'); Label = 'Inkscape'; ShortNames = @('inkscape') }
         [PSCustomObject]@{ EnvName = "DOTNET_CLI_HOME"; Path = (Join-Path $HomePath 'dotnet'); Label = '.NET CLI'; ShortNames = @('dotnet10sdk') }
-        [PSCustomObject]@{ EnvName = "NUGET_PACKAGES"; Path = (Join-Path $HomePath 'nuget\packages'); Label = 'NuGet packages'; ShortNames = @('nuget', 'dotnet10sdk') }
+        [PSCustomObject]@{ EnvName = "NUGET_PACKAGES"; Path = (Join-Path $HomePath '.nuget\packages'); Label = 'NuGet packages'; ShortNames = @('nuget', 'dotnet10sdk') }
         [PSCustomObject]@{ EnvName = "NUGET_HTTP_CACHE_PATH"; Path = (Join-Path $HomePath 'nuget\http-cache'); Label = 'NuGet HTTP cache'; ShortNames = @('nuget', 'dotnet10sdk') }
         [PSCustomObject]@{ EnvName = "NUGET_PLUGINS_CACHE_PATH"; Path = (Join-Path $HomePath 'nuget\plugins-cache'); Label = 'NuGet plugins cache'; ShortNames = @('nuget', 'dotnet10sdk') }
         [PSCustomObject]@{ EnvName = "NPM_CONFIG_CACHE"; Path = (Join-Path $HomePath 'npm\cache'); Label = 'npm cache'; ShortNames = @('nodejs') }
-        [PSCustomObject]@{ EnvName = "NPM_CONFIG_USERCONFIG"; Path = (Join-Path $HomePath 'npm\npmrc'); Label = 'npm config'; IsFile = $true; ShortNames = @('nodejs') }
-        [PSCustomObject]@{ EnvName = "PUPPETEER_CACHE_DIR"; Path = (Join-Path $HomePath 'puppeteer\cache'); Label = 'Puppeteer cache'; ShortNames = @('puppeteer', 'marp-cli', 'mermaid-cli') }
+        [PSCustomObject]@{ EnvName = "NPM_CONFIG_USERCONFIG"; Path = (Join-Path $HomePath '.npmrc'); Label = 'npm config'; IsFile = $true; ShortNames = @('nodejs') }
+        [PSCustomObject]@{ EnvName = "PUPPETEER_CACHE_DIR"; Path = (Join-Path $HomePath '.cache\puppeteer'); Label = 'Puppeteer cache'; ShortNames = @('puppeteer', 'marp-cli', 'mermaid-cli') }
         [PSCustomObject]@{ EnvName = "PIP_CACHE_DIR"; Path = (Join-Path $HomePath 'pip\cache'); Label = 'pip cache'; ShortNames = @('python') }
         [PSCustomObject]@{ EnvName = "PIP_CONFIG_FILE"; Path = (Join-Path $HomePath 'pip\pip.ini'); Label = 'pip config'; IsFile = $true; ShortNames = @('python') }
         [PSCustomObject]@{ EnvName = "PYTHONUSERBASE"; Path = (Join-Path $HomePath 'python'); Label = 'Python user base'; ShortNames = @('python') }

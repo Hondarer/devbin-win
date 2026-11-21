@@ -15,34 +15,36 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | バイナリ・導入状態 | `bin` | インストール時 |
 | 配布用パッケージ・オフラインキャッシュ | 配布元の `packages` | パッケージ取得時。実行時のユーザーデータとは別 |
 
-`Manage-Bin.cmd` は起動時に `data` と `log` を作成し、HOME と XDG のうち未設定のものを設定します。コンポーネントを導入すると、そのコンポーネントが使う保存先を作成し、未設定の環境変数を設定します。個別アンインストールでは、devbin-win が設定した値と一致する環境変数だけを解除します。利用者が別の値へ変更した項目と、導入済みの他コンポーネントと共有する項目は残します。
+`Manage-Bin.cmd` は起動時に `data` と `log` を作成し、HOME と XDG のうち未設定のものを設定します。コンポーネントを導入すると、ファイルの配置より前に、そのコンポーネントが使う保存先を作成し、未設定の環境変数を設定します。配置に失敗した場合は、そのとき設定した環境変数を解除します。個別アンインストールでは、devbin-win が設定した値と一致する環境変数だけを解除します。利用者が別の値へ変更した項目と、導入済みの他コンポーネントと共有する項目は残します。
 
 既存のユーザー環境変数は上書きしません。設定ファイルの移動・統合も行いません。HOME は未設定の場合だけ `data` 自体に設定し、Windows の USERPROFILE、AppData、Documents は変更しません。
 
 ## 設定する環境変数
 
 相対パスの基準は `%ProgramData%\%USERNAME%\devbin-win\data` です。
+公式の既定がホーム ディレクトリ配下 (`~/.名前`、`~/.cache/名前`) のツールは、data を HOME とみなして同じ名前 (`.copilot` など) にします。既定が `%APPDATA%` や `%LOCALAPPDATA%` のツールは、点を付けない名前 (`gh` など) にします。
 
 | 環境変数 | 保存先 | 設定するコンポーネント |
 | --- | --- | --- |
 | HOME | data 自体 | (共通) |
-| CONTINUE_GLOBAL_DIR | `continue` | (共通) |
+| CONTINUE_GLOBAL_DIR | `.continue` | (共通) |
 | XDG_CONFIG_HOME | `.config` | (共通) |
 | XDG_CACHE_HOME | `.cache` | (共通) |
 | XDG_DATA_HOME | `.local\share` | (共通) |
 | XDG_STATE_HOME | `.local\state` | (共通) |
 | GH_CONFIG_DIR | `gh` | `gh` |
 | GLAB_CONFIG_DIR | `glab` | `glab` |
-| COPILOT_HOME | `copilot` | `copilot` |
-| COPILOT_CACHE_HOME | `copilot\cache` | `copilot` |
+| COPILOT_HOME | `.copilot` | `copilot` |
+| COPILOT_CACHE_HOME | `.cache\copilot` | `copilot` |
+| CLAUDE_CONFIG_DIR | `.claude` | `claude` |
 | INKSCAPE_PROFILE_DIR | `inkscape` | `inkscape` |
 | DOTNET_CLI_HOME | `dotnet` | `dotnet10sdk` |
-| NUGET_PACKAGES | `nuget\packages` | `nuget`、`dotnet10sdk` |
+| NUGET_PACKAGES | `.nuget\packages` | `nuget`、`dotnet10sdk` |
 | NUGET_HTTP_CACHE_PATH | `nuget\http-cache` | `nuget`、`dotnet10sdk` |
 | NUGET_PLUGINS_CACHE_PATH | `nuget\plugins-cache` | `nuget`、`dotnet10sdk` |
 | NPM_CONFIG_CACHE | `npm\cache` | `nodejs` |
-| NPM_CONFIG_USERCONFIG | `npm\npmrc` (ファイル) | `nodejs` |
-| PUPPETEER_CACHE_DIR | `puppeteer\cache` | `puppeteer`、`marp-cli`、`mermaid-cli` |
+| NPM_CONFIG_USERCONFIG | `.npmrc` (ファイル) | `nodejs` |
+| PUPPETEER_CACHE_DIR | `.cache\puppeteer` | `puppeteer`、`marp-cli`、`mermaid-cli` |
 | PIP_CACHE_DIR | `pip\cache` | `python` |
 | PIP_CONFIG_FILE | `pip\pip.ini` (ファイル) | `python` |
 | PYTHONUSERBASE | `python` | `python` |
@@ -50,7 +52,7 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | GOCACHE | `go-build` | `go` |
 | VSCODE_PORTABLE | `vscode` | `vscode` |
 
-`npmrc` や `pip.ini` のようにファイルを指す項目は、親ディレクトリだけを作成します。ファイルの内容は生成しません。`VSCODE_PORTABLE` だけは他と異なり、VS Code のインストールのたびに値を設定します。設定の反映には新しいターミナルを開いてください。
+`.npmrc` や `pip.ini` のようにファイルを指す項目は、親ディレクトリだけを作成します。ファイルの内容は生成しません。`VSCODE_PORTABLE` だけは他と異なり、VS Code のインストールのたびに値を設定します。設定の反映には新しいターミナルを開いてください。
 
 ## コンポーネント別の扱い
 
@@ -60,21 +62,21 @@ devbin-win が導入するコンポーネントの設定・キャッシュ・状
 | --- | --- |
 | `git` | HOME=`data` に従う。`.gitconfig`、`.ssh` の内容は生成しない。Git Credential Manager と Windows 資格情報は別管理 |
 | `vscode` | `VSCODE_PORTABLE=data\vscode`。個別アンインストールでこの変数を解除する。拡張機能が独自に外部へ保存するデータは保証しない |
-| `nodejs` | `NPM_CONFIG_USERCONFIG=data\npm\npmrc`、`NPM_CONFIG_CACHE=data\npm\cache`。プロジェクトの `.npmrc` とマシン共通設定は別 |
+| `nodejs` | `NPM_CONFIG_USERCONFIG=data\.npmrc`、`NPM_CONFIG_CACHE=data\npm\cache`。プロジェクトの `.npmrc` とマシン共通設定は別 |
 | `pnpm` | XDG に従う範囲のみ。ストアとグローバル設定は実機の `pnpm store path` / `pnpm config list` で確認が必要 |
 | `antfu-ni` | HOME/XDG に従う範囲のみ。個別の保存先指定はなし |
-| `marp-cli`, `mermaid-cli`, `puppeteer` | npm キャッシュを集約し、`PUPPETEER_CACHE_DIR=data\puppeteer\cache`。Puppeteer の既定は `os.homedir()` 基準で HOME では移らないため個別に指定する。ブラウザーの一時プロファイルと OS 側の Edge データは別 |
+| `marp-cli`, `mermaid-cli`, `puppeteer` | npm キャッシュを集約し、`PUPPETEER_CACHE_DIR=data\.cache\puppeteer`。Puppeteer の既定は `os.homedir()` 基準で HOME では移らないため個別に指定する。ブラウザーの一時プロファイルと OS 側の Edge データは別 |
 | `widdershins`, `minisearch`, `plantuml-core`, `sharp`, `minimist`, `textlint` | npm キャッシュを集約。ライブラリ利用側とプロジェクト設定は対象外 |
 | `python`, `get-pip` | `PIP_CONFIG_FILE=data\pip\pip.ini`、`PIP_CACHE_DIR=data\pip\cache`、`PYTHONUSERBASE=data\python`。pip の他階層の設定の読み込みは残る |
 | `yamllint` | XDG/HOME に従う範囲のみ。プロジェクトの `.yamllint` は対象外 |
 | `dotnet10sdk` | `DOTNET_CLI_HOME=data\dotnet`、NuGet のパッケージ/HTTP/プラグイン キャッシュを集約。全設定が移るわけではない |
 | `go` | `GOPATH=data\go`、`GOCACHE=data\go-build`。モジュール キャッシュ (`GOMODCACHE`) は既定で `GOPATH\pkg\mod` に置かれるため、一緒に移る。`go env -w` の設定ファイルとテレメトリのデータは `%AppData%\go` のまま。`GOTOOLCHAIN=local` は保存先ではなく、ツールチェーンの自動ダウンロードを止める設定 |
-| `nuget` | `NUGET_PACKAGES=data\nuget\packages`、`NUGET_HTTP_CACHE_PATH=data\nuget\http-cache`、`NUGET_PLUGINS_CACHE_PATH=data\nuget\plugins-cache`。一時領域 (`NUGET_SCRATCH`) は TEMP のまま。AppData の `NuGet.Config` と資格情報の設定は対象外 |
+| `nuget` | `NUGET_PACKAGES=data\.nuget\packages`、`NUGET_HTTP_CACHE_PATH=data\nuget\http-cache`、`NUGET_PLUGINS_CACHE_PATH=data\nuget\plugins-cache`。一時領域 (`NUGET_SCRATCH`) は TEMP のまま。AppData の `NuGet.Config` と資格情報の設定は対象外 |
 | `gh` | `GH_CONFIG_DIR=data\gh`。認証が OS 資格情報ストアにある場合は対象外 |
 | `glab` | `GLAB_CONFIG_DIR=data\glab`。リポジトリ内の `.git\glab-cli` は対象外 |
-| `copilot` | `COPILOT_HOME=data\copilot`、`COPILOT_CACHE_HOME=data\copilot\cache`。資格情報ストアまで移るとは限らない |
+| `copilot` | `COPILOT_HOME=data\.copilot`、`COPILOT_CACHE_HOME=data\.cache\copilot`。資格情報ストアまで移るとは限らない |
 | `agy` | 個別の保存先指定はなし。公式の既定は `~/.gemini/antigravity-cli`。保存先を変える環境変数や引数は公式ドキュメントに記載がない (2026-11 時点)。資格情報ストアは対象外 |
-| `claude` | 個別の保存先指定はなし (`CLAUDE_CONFIG_DIR` は設定しない)。公式の導入手順を支援するため、本体は HOME 配下 (`.local\bin`、`.local\share\claude`) に置かれる。設定の保存先は Claude Code の既定に従う。Claude Console へ API キーなしでサインインした情報は `%APPDATA%\Anthropic` |
+| `claude` | `CLAUDE_CONFIG_DIR=data\.claude`。`claude install` の実行前に設定する。設定、セッション履歴、プラグイン、Windows の資格情報ファイル (`.credentials.json`) が移る。既定の `%USERPROFILE%\.claude` は HOME の変更では移らないため個別に指定する (テスト環境で確認)。`.claude.json` が移るかは公式ドキュメントに記載がない。Claude Console へ API キーなしでサインインした情報は `%APPDATA%\Anthropic` のまま。本体は HOME 配下 (`.local\bin`、`.local\share\claude`) に置かれる |
 | `inkscape` | `INKSCAPE_PROFILE_DIR=data\inkscape` |
 | `pwsh` | 指定なし。Documents の PowerShell プロファイルと AppData の PSReadLine 履歴は HOME の変更では移らない |
 | `pandoc` | 指定なし。Windows の既定は `%APPDATA%\pandoc`。環境変数での変更手段がなく、`--data-dir` の一律付与も行わない |

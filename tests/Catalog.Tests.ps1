@@ -98,7 +98,7 @@ Describe "packages.psd1" {
 
     It "claude は公式の claude install で HOME 配下へ導入し、自己更新に任せる" {
         $claude = $packages | Where-Object { $_.ShortName -eq "claude" }
-        $claude.Name | Should Be "Claude Code"
+        $claude.Name | Should Be "Claude Code CLI"
         $claude.ExtractStrategy | Should Be "NativeInstaller"
         $claude.InstallRoot | Should Be "Home"
         ($claude.InstallArguments -join ",") | Should Be "install,<Version>"

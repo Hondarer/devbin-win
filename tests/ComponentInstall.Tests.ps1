@@ -704,4 +704,56 @@ Describe "npm -g との相互運用" {
             }
         }
     }
+
+    Context "保存先の環境変数は配置より前に設定し、配置に失敗したら解除する" {
+        It "配置より前に保存先を設定する" {
+            InModuleScope Devbin {
+                . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+                $installDir = New-TestDirectory
+                try {
+                    $packages = @(New-TestPackage -ShortName "app")
+                    $manifest = New-TestManifest
+                    $global:DevbinTestCallOrder = New-Object System.Collections.ArrayList
+
+                    Mock Resolve-ComponentSource { [pscustomobject]@{ Success = $true; ArchiveFile = $null } }
+                    Mock Initialize-DevbinComponentStorage { [void]$global:DevbinTestCallOrder.Add("storage"); @("APP_HOME") }
+                    Mock Sync-EnvironmentVariables { }
+                    Mock Invoke-ExtractStrategy { [void]$global:DevbinTestCallOrder.Add("extract"); return $true }
+                    Mock Sync-ComponentManagerPath { }
+                    Mock Invoke-PackageLifecycleScripts { }
+
+                    Install-Component -ShortName "app" -Packages $packages -InstallDir $installDir -ScriptDir $installDir -Manifest $manifest -SkipDeps |
+                        Should Be $true
+                    ($global:DevbinTestCallOrder -join ",") | Should Be "storage,extract"
+                } finally {
+                    Remove-Variable -Name DevbinTestCallOrder -Scope Global -ErrorAction SilentlyContinue
+                    Remove-TestDirectory -Path $installDir
+                }
+            }
+        }
+
+        It "配置に失敗したら今回設定した保存先を解除する" {
+            InModuleScope Devbin {
+                . (Join-Path $env:DEVBIN_TESTS_DIR "TestHelpers.ps1")
+                $installDir = New-TestDirectory
+                try {
+                    $packages = @(New-TestPackage -ShortName "app")
+                    $manifest = New-TestManifest
+
+                    Mock Resolve-ComponentSource { [pscustomobject]@{ Success = $true; ArchiveFile = $null } }
+                    Mock Initialize-DevbinComponentStorage { @("APP_HOME") }
+                    Mock Sync-EnvironmentVariables { }
+                    Mock Set-DevbinUserEnvironmentValue { }
+                    Mock Invoke-ExtractStrategy { return $false }
+
+                    Install-Component -ShortName "app" -Packages $packages -InstallDir $installDir -ScriptDir $installDir -Manifest $manifest -SkipDeps |
+                        Should Be $false
+                    Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 1 -Exactly -ParameterFilter { $Name -eq "APP_HOME" -and [string]::IsNullOrEmpty($Value) }
+                    $manifest.components.ContainsKey("app") | Should Be $false
+                } finally {
+                    Remove-TestDirectory -Path $installDir
+                }
+            }
+        }
+    }
 }

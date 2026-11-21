@@ -410,7 +410,7 @@ Antigravity CLI は既定値では選択されていないため、コンポー�
 利用には Google アカウントでのサインイン、または環境変数 `GEMINI_API_KEY` が必要です。
 導入後は Antigravity CLI 自身が更新するため、上記の版は初回導入と明示的な再インストールで使用する版です。
 
-### Claude Code
+### Claude Code CLI
 
 from [anthropics/claude-code](https://github.com/anthropics/claude-code)
 
@@ -418,8 +418,8 @@ from [anthropics/claude-code](https://github.com/anthropics/claude-code)
     - [claude.exe (2.1.311, win32-x64)](https://downloads.claude.ai/claude-code-releases/2.1.311/win32-x64/claude.exe)
 
 devbin-win は公式インストーラーと同じく、取得した `claude.exe` で `claude install` を実行し、公式の既定の導入先 (HOME 配下の `.local\bin` と `.local\share\claude`) へ導入します。
-`bin` には配置せず、設定の保存先も変更しません。
-Claude Code は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
+`bin` には配置しません。設定は、導入前に環境変数 `CLAUDE_CONFIG_DIR` を設定して devbin-win の `data\.claude` に保存します。
+Claude Code CLI は既定値では選択されていないため、コンポーネント マネージャーで選択して導入してください。
 利用には Claude の契約 (Pro / Max / Team / Enterprise) または Claude Console のアカウントが必要です。
 導入後は Claude Code 自身が更新するため、上記の版は初回導入と明示的な再インストールで使用する版です。
 

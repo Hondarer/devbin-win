@@ -101,6 +101,19 @@ function Install-Component {
     }
     $archiveFile = $source.ArchiveFile
 
+    # ユーザー設定・キャッシュの保存先 (data 配下) を用意し、未設定の環境変数だけを設定します。
+    # 導入処理 (公式インストーラーなど) が最初の設定を書き込む時点で保存先が決まっているよう、配置より前に設定します。
+    $storageEnvNames = @()
+    try {
+        $storageEnvNames = @(Initialize-DevbinComponentStorage -ShortName $ShortName)
+        if ($storageEnvNames.Count -gt 0) {
+            Write-Host "  ユーザー データの保存先を設定しました: $($storageEnvNames -join ', ')"
+            Sync-EnvironmentVariables -VariableNames $storageEnvNames -Indent 4 | Out-Null
+        }
+    } catch {
+        Write-Host "    Warning: ユーザー データの保存先を設定できません: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+
     # npm install -g は npm がグローバル ツリーを管理するため、ファイルの差分は取りません。
     $isNpmInstall = ($pkg.ExtractStrategy -eq "NpmInstall")
 
@@ -118,6 +131,18 @@ function Install-Component {
 
     if (-not $result) {
         Write-Host "  Error: Extraction failed for '$ShortName'" -ForegroundColor Red
+        # 導入されていない状態で保存先の環境変数だけが残らないよう、今回設定したものを解除します。
+        if ($storageEnvNames.Count -gt 0) {
+            try {
+                foreach ($envName in $storageEnvNames) {
+                    Set-DevbinUserEnvironmentValue -Name $envName -Value $null
+                }
+                Sync-EnvironmentVariables -VariableNames $storageEnvNames -Indent 4 | Out-Null
+                Write-Host "  ユーザー データの保存先の設定を解除しました: $($storageEnvNames -join ', ')"
+            } catch {
+                Write-Host "    Warning: ユーザー データの保存先を解除できません: $($_.Exception.Message)" -ForegroundColor Yellow
+            }
+        }
         return $false
     }
 
@@ -150,17 +175,6 @@ function Install-Component {
             Write-Host "    Error: Failed to configure runtime environment: $($_.Exception.Message)" -ForegroundColor Red
             return $false
         }
-    }
-
-    # ユーザー設定・キャッシュの保存先 (data 配下) を用意し、未設定の環境変数だけを設定します。
-    try {
-        $storageEnvNames = @(Initialize-DevbinComponentStorage -ShortName $ShortName)
-        if ($storageEnvNames.Count -gt 0) {
-            Write-Host "  ユーザー データの保存先を設定しました: $($storageEnvNames -join ', ')"
-            Sync-EnvironmentVariables -VariableNames $storageEnvNames -Indent 4 | Out-Null
-        }
-    } catch {
-        Write-Host "    Warning: ユーザー データの保存先を設定できません: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 
     # インストール情報をマニフェストに記録します。

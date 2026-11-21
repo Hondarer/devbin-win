@@ -296,9 +296,11 @@ InModuleScope Devbin {
             Test-Path (Join-Path (Get-DevbinDataDirectory) 'gh') | Should Be $true
             Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 1 -Exactly -ParameterFilter { $Name -eq 'GH_CONFIG_DIR' -and $Value -eq (Join-Path (Get-DevbinDataDirectory) 'gh') }
         }
-        It 'leaves the Claude Code configuration at its official location' {
-            Initialize-DevbinComponentStorage -ShortName 'claude' | Should BeNullOrEmpty
-            Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 0 -Exactly
+        It 'points the Claude Code CLI configuration at data\.claude' {
+            $applied = @(Initialize-DevbinComponentStorage -ShortName 'claude')
+            $applied | Should Be 'CLAUDE_CONFIG_DIR'
+            Test-Path (Join-Path (Get-DevbinDataDirectory) '.claude') | Should Be $true
+            Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 1 -Exactly -ParameterFilter { $Name -eq 'CLAUDE_CONFIG_DIR' -and $Value -eq (Join-Path (Get-DevbinDataDirectory) '.claude') }
         }
         It 'resolves HOME from the user environment and falls back to data' {
             Get-DevbinHomeDirectory | Should Be (Get-DevbinDataDirectory)
@@ -309,8 +311,21 @@ InModuleScope Devbin {
         }
         It 'creates the parent directory for a variable that points at a file' {
             @(Initialize-DevbinComponentStorage -ShortName 'nodejs') -contains 'NPM_CONFIG_USERCONFIG' | Should Be $true
-            Test-Path (Join-Path (Get-DevbinDataDirectory) 'npm') | Should Be $true
-            Test-Path (Join-Path (Get-DevbinDataDirectory) 'npm\npmrc') | Should Be $false
+            Test-Path (Get-DevbinDataDirectory) | Should Be $true
+            Test-Path (Join-Path (Get-DevbinDataDirectory) '.npmrc') | Should Be $false
+            Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 1 -Exactly -ParameterFilter { $Name -eq 'NPM_CONFIG_USERCONFIG' -and $Value -eq (Join-Path (Get-DevbinDataDirectory) '.npmrc') }
+        }
+        It 'uses the official dotted names for tools that default to the home directory' {
+            $layout = @{}
+            foreach ($entry in Get-DevbinHomeLayout -HomePath 'D:\data') { $layout[$entry.EnvName] = $entry.Path }
+            $layout['CONTINUE_GLOBAL_DIR'] | Should Be 'D:\data\.continue'
+            $layout['COPILOT_HOME'] | Should Be 'D:\data\.copilot'
+            $layout['COPILOT_CACHE_HOME'] | Should Be 'D:\data\.cache\copilot'
+            $layout['CLAUDE_CONFIG_DIR'] | Should Be 'D:\data\.claude'
+            $layout['NUGET_PACKAGES'] | Should Be 'D:\data\.nuget\packages'
+            $layout['NPM_CONFIG_USERCONFIG'] | Should Be 'D:\data\.npmrc'
+            $layout['PUPPETEER_CACHE_DIR'] | Should Be 'D:\data\.cache\puppeteer'
+            $layout['GH_CONFIG_DIR'] | Should Be 'D:\data\gh'
         }
         It 'keeps a value the user already configured' {
             Mock Get-DevbinUserEnvironmentValue { 'C:\my-gh' } -ParameterFilter { $Name -eq 'GH_CONFIG_DIR' }
@@ -328,7 +343,7 @@ InModuleScope Devbin {
             Assert-MockCalled Set-DevbinUserEnvironmentValue -Scope It -Times 0 -Exactly
         }
         It 'keeps a shared destination while another component still uses it' {
-            Mock Get-DevbinUserEnvironmentValue { Join-Path (Get-DevbinDataDirectory) 'nuget\packages' } -ParameterFilter { $Name -eq 'NUGET_PACKAGES' }
+            Mock Get-DevbinUserEnvironmentValue { Join-Path (Get-DevbinDataDirectory) '.nuget\packages' } -ParameterFilter { $Name -eq 'NUGET_PACKAGES' }
             @(Remove-DevbinComponentStorage -ShortName 'nuget' -InstalledShortNames @('dotnet10sdk')) -contains 'NUGET_PACKAGES' | Should Be $false
             @(Remove-DevbinComponentStorage -ShortName 'nuget' -InstalledShortNames @()) -contains 'NUGET_PACKAGES' | Should Be $true
         }
